@@ -11,7 +11,8 @@ General Concepts
 
 A ``share`` is filesystem storage that you can create with manila. You can pick
 a network protocol for the underlying storage, manage access and perform
-lifecycle operations on the share via the ``manila`` command line tool.
+lifecycle operations on the share via the ``openstack share`` command line
+interface.
 
 Before we review the operations possible, lets take a look at certain
 important terms:
@@ -113,25 +114,33 @@ Usage and Limits
 
   .. code-block:: console
 
-     $ manila absolute-limits
-     +----------------------------+-------+
-     | Name                       | Value |
-     +----------------------------+-------+
-     | maxTotalReplicaGigabytes   | 1000  |
-     | maxTotalShareGigabytes     | 1000  |
-     | maxTotalShareNetworks      | 10    |
-     | maxTotalShareReplicas      | 100   |
-     | maxTotalShareSnapshots     | 50    |
-     | maxTotalShares             | 50    |
-     | maxTotalSnapshotGigabytes  | 1000  |
-     | totalReplicaGigabytesUsed  | 0     |
-     | totalShareGigabytesUsed    | 4     |
-     | totalShareNetworksUsed     | 1     |
-     | totalShareReplicasUsed     | 0     |
-     | totalShareSnapshotsUsed    | 1     |
-     | totalSharesUsed            | 4     |
-     | totalSnapshotGigabytesUsed | 1     |
-     +----------------------------+-------+
+     $ openstack share limits show --absolute
+     +------------------------------+-------+
+     | Name                         | Value |
+     +------------------------------+-------+
+     | maxTotalShares               |    50 |
+     | maxTotalShareSnapshots       |    50 |
+     | maxTotalShareGigabytes       |  1000 |
+     | maxTotalSnapshotGigabytes    |  1000 |
+     | maxTotalShareNetworks        |    10 |
+     | maxTotalShareGroups          |    50 |
+     | maxTotalShareGroupSnapshots  |    50 |
+     | maxTotalShareReplicas        |   100 |
+     | maxTotalReplicaGigabytes     |  1000 |
+     | maxTotalShareBackups         |    10 |
+     | maxTotalBackupGigabytes      |  1000 |
+     | totalSharesUsed              |     0 |
+     | totalShareSnapshotsUsed      |     0 |
+     | totalShareGigabytesUsed      |     0 |
+     | totalSnapshotGigabytesUsed   |     0 |
+     | totalShareNetworksUsed       |     0 |
+     | totalShareGroupsUsed         |     0 |
+     | totalShareGroupSnapshotsUsed |     0 |
+     | totalShareReplicasUsed       |     0 |
+     | totalReplicaGigabytesUsed    |     0 |
+     | totalShareBackupsUsed        |     0 |
+     | totalBackupGigabytesUsed     |     0 |
+     +------------------------------+-------+
 
 Share types
 -----------
@@ -141,22 +150,22 @@ Share types
   .. code-block:: console
 
      $ openstack share type list
-     +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
-     | ID                                   | Name                              | visibility | is_default | required_extra_specs                 | optional_extra_specs                       | Description                                             |
-     +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
-     | af7b64ec-cdb3-4a5f-93c9-51672d72e172 | dhss_true                         | public     | -          | driver_handles_share_servers : True  | snapshot_support : True                    | None                                                    |
-     |                                      |                                   |            |            |                                      | create_share_from_snapshot_support : True  |                                                         |
-     |                                      |                                   |            |            |                                      | revert_to_snapshot_support : True          |                                                         |
-     |                                      |                                   |            |            |                                      | mount_snapshot_support : True              |                                                         |
-     | c39d3565-cee0-4a64-9e60-af06991ea4f7 | default                           | public     | YES        | driver_handles_share_servers : False | snapshot_support : True                    | None                                                    |
-     |                                      |                                   |            |            |                                      | create_share_from_snapshot_support : True  |                                                         |
-     |                                      |                                   |            |            |                                      | revert_to_snapshot_support : True          |                                                         |
-     |                                      |                                   |            |            |                                      | mount_snapshot_support : True              |                                                         |
-     | e88213ca-66e6-4ae1-ba1b-d9d2c65bae12 | dhss_false                        | public     | -          | driver_handles_share_servers : False | snapshot_support : True                    | None                                                    |
-     |                                      |                                   |            |            |                                      | create_share_from_snapshot_support : True  |                                                         |
-     |                                      |                                   |            |            |                                      | revert_to_snapshot_support : True          |                                                         |
-     |                                      |                                   |            |            |                                      | mount_snapshot_support : True              |                                                         |
-     +--------------------------------------+-----------------------------------+------------+------------+--------------------------------------+--------------------------------------------+---------------------------------------------------------+
+     +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+     | ID                                   | Name       | Visibility | Is Default | Required Extra Specs                 | Optional Extra Specs                      | Description |
+     +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
+     | 57ba4538-6b25-4a53-a7e9-9f9c250a9655 | default    | public     | True       | driver_handles_share_servers : False | snapshot_support : True                   | None        |
+     |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+     |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+     |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+     | 3827ada8-4dc1-4fd2-8f33-00283e798d54 | dhss_false | public     | False      | driver_handles_share_servers : False | snapshot_support : True                   | None        |
+     |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+     |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+     |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+     | 5f5e225b-ec02-48fc-8daa-99a86a5a60df | dhss_true  | public     | False      | driver_handles_share_servers : True  | snapshot_support : True                   | None        |
+     |                                      |            |            |            |                                      | create_share_from_snapshot_support : True |             |
+     |                                      |            |            |            |                                      | revert_to_snapshot_support : True         |             |
+     |                                      |            |            |            |                                      | mount_snapshot_support : True             |             |
+     +--------------------------------------+------------+------------+------------+--------------------------------------+-------------------------------------------+-------------+
 
 Share networks
 --------------
@@ -165,22 +174,38 @@ Share networks
 
   .. code-block:: console
 
-     $ manila share-network-create \
+     $ openstack share network create \
          --name mysharenetwork \
          --description "My Manila network" \
-         --neutron-net-id 23da40b4-0d5e-468c-8ac9-3766e9ceaacd \
-         --neutron-subnet-id 4568bc9b-42fe-45ac-a49b-469e8276223c
-     +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-     | Property              | Value                                                                                                                                                                                                                                                                                                                                                                             |
-     +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-     | id                    | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                                                                                                                                                                                                                                                                              |
-     | name                  | mysharenetwork                                                                                                                                                                                                                                                                                                                                                                    |
-     | project_id            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                                                                                                                                                                                                                                                                                  |
-     | created_at            | 2020-08-07T04:47:53.000000                                                                                                                                                                                                                                                                                                                                                        |
-     | updated_at            | None                                                                                                                                                                                                                                                                                                                                                                              |
-     | description           | My Manila network                                                                                                                                                                                                                                                                                                                                                                 |
-     | share_network_subnets | [{'id': '187dcd27-8478-45c1-bd5e-5423cafd15ae', 'availability_zone': None, 'created_at': '2020-08-07T04:47:53.000000', 'updated_at': None, 'segmentation_id': None, 'neutron_net_id': '23da40b4-0d5e-468c-8ac9-3766e9ceaacd', 'neutron_subnet_id': '4568bc9b-42fe-45ac-a49b-469e8276223c', 'ip_version': None, 'cidr': None, 'network_type': None, 'mtu': None, 'gateway': None}] |
-     +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+         --neutron-net-id 5edf25ef-73eb-4635-8be0-8246e7d7417b \
+         --neutron-subnet-id 046cd84a-8938-4240-9ebd-ad5d8be10f20
+     +-----------------------------------+----------------------------------------------------------+
+     | Field                             | Value                                                    |
+     +-----------------------------------+----------------------------------------------------------+
+     | id                                | 5f19ae95-483c-4040-9a99-99fe109f6a8b                     |
+     | name                              | mysharenetwork                                           |
+     | project_id                        | 58951a7d00fd46f9a98bd038ed5d9e09                         |
+     | created_at                        | 2026-04-04T07:13:36.675153                               |
+     | updated_at                        | None                                                     |
+     | description                       | My Manila network                                        |
+     | status                            | active                                                   |
+     | security_service_update_support   | True                                                     |
+     | network_allocation_update_support | True                                                     |
+     | share_network_subnets             |                                                          |
+     |                                   | id = 4cf2d1f8-3c56-4e49-9f2a-62e1312ef574                |
+     |                                   | availability_zone = None                                 |
+     |                                   | created_at = 2026-04-04T07:13:36.706249                  |
+     |                                   | updated_at = None                                        |
+     |                                   | segmentation_id = None                                   |
+     |                                   | neutron_net_id = 5edf25ef-73eb-4635-8be0-8246e7d7417b    |
+     |                                   | neutron_subnet_id = 046cd84a-8938-4240-9ebd-ad5d8be10f20 |
+     |                                   | ip_version = None                                        |
+     |                                   | cidr = None                                              |
+     |                                   | network_type = None                                      |
+     |                                   | mtu = None                                               |
+     |                                   | gateway = None                                           |
+     |                                   | metadata = {}                                            |
+     +-----------------------------------+----------------------------------------------------------+
 
   .. note::
 
@@ -193,11 +218,11 @@ Share networks
 
   .. code-block:: console
 
-     $ manila share-network-list
+     $ openstack share network list
      +--------------------------------------+----------------+
-     | id                                   | name           |
+     | ID                                   | Name           |
      +--------------------------------------+----------------+
-     | c4bfdd5e-7502-4a65-8876-0ce8b9914a64 | mysharenetwork |
+     | 5f19ae95-483c-4040-9a99-99fe109f6a8b | mysharenetwork |
      +--------------------------------------+----------------+
 
 Create a share
@@ -213,27 +238,27 @@ Create a share
 
   .. code-block:: console
 
-     $ manila create NFS 1 \
+     $ openstack share create NFS 1 \
          --name myshare \
          --description "My Manila share" \
          --share-network mysharenetwork \
          --share-type dhss_true
      +---------------------------------------+--------------------------------------+
-     | Property                              | Value                                |
+     | Field                                 | Value                                |
      +---------------------------------------+--------------------------------------+
-     | id                                    | 83b0772b-00ad-4e45-8fad-106b9d4f1719 |
+     | id                                    | c8c7b376-364b-4b48-87d4-bba4609612fd |
      | size                                  | 1                                    |
      | availability_zone                     | None                                 |
-     | created_at                            | 2020-08-07T05:24:14.000000           |
+     | created_at                            | 2026-04-04T07:13:52.667825           |
      | status                                | creating                             |
      | name                                  | myshare                              |
      | description                           | My Manila share                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b     |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09     |
      | snapshot_id                           | None                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64 |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b |
      | share_proto                           | NFS                                  |
      | metadata                              | {}                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172 |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df |
      | is_public                             | False                                |
      | snapshot_support                      | True                                 |
      | task_state                            | None                                 |
@@ -241,7 +266,7 @@ Create a share
      | access_rules_status                   | active                               |
      | replication_type                      | None                                 |
      | has_replicas                          | False                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21     |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7     |
      | create_share_from_snapshot_support    | True                                 |
      | revert_to_snapshot_support            | True                                 |
      | share_group_id                        | None                                 |
@@ -254,68 +279,68 @@ Create a share
 
   .. code-block:: console
 
-     $ manila show myshare
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | Property                              | Value                                                                                                                |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | id                                    | 83b0772b-00ad-4e45-8fad-106b9d4f1719                                                                                 |
-     | size                                  | 1                                                                                                                    |
-     | availability_zone                     | nova                                                                                                                 |
-     | created_at                            | 2020-08-07T05:24:14.000000                                                                                           |
-     | status                                | available                                                                                                            |
-     | name                                  | myshare                                                                                                              |
-     | description                           | My Manila share                                                                                                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                     |
-     | snapshot_id                           | None                                                                                                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                 |
-     | share_proto                           | NFS                                                                                                                  |
-     | metadata                              | {}                                                                                                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                                                                 |
-     | is_public                             | False                                                                                                                |
-     | snapshot_support                      | True                                                                                                                 |
-     | task_state                            | None                                                                                                                 |
-     | share_type_name                       | dhss_true                                                                                                            |
-     | access_rules_status                   | active                                                                                                               |
-     | replication_type                      | None                                                                                                                 |
-     | has_replicas                          | False                                                                                                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                                                                     |
-     | create_share_from_snapshot_support    | True                                                                                                                 |
-     | revert_to_snapshot_support            | True                                                                                                                 |
-     | share_group_id                        | None                                                                                                                 |
-     | source_share_group_snapshot_member_id | None                                                                                                                 |
-     | mount_snapshot_support                | True                                                                                                                 |
-     | progress                              | 100%                                                                                                                 |
-     | export_locations                      |                                                                                                                      |
-     |                                       | id = 908e5a28-c5ea-4627-b17c-1cfeb894ccd1                                                                            |
-     |                                       | path = 10.0.0.11:/sharevolumes_10034/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = True                                                                                                     |
-     |                                       | id = 395244a1-8aa9-44af-9fda-f7d6036ce2b9                                                                            |
-     |                                       | path = 10.0.0.10:/sharevolumes_10034/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = False                                                                                                    |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+     $ openstack share show myshare
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | id                                    | c8c7b376-364b-4b48-87d4-bba4609612fd                                                                              |
+     | size                                  | 1                                                                                                                 |
+     | availability_zone                     | manila-zone-2                                                                                                     |
+     | created_at                            | 2026-04-04T07:13:52.667825                                                                                        |
+     | status                                | available                                                                                                         |
+     | name                                  | myshare                                                                                                           |
+     | description                           | My Manila share                                                                                                   |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                                                                  |
+     | snapshot_id                           | None                                                                                                              |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                                                              |
+     | share_proto                           | NFS                                                                                                               |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df                                                                              |
+     | is_public                             | False                                                                                                             |
+     | snapshot_support                      | True                                                                                                              |
+     | task_state                            | None                                                                                                              |
+     | share_type_name                       | dhss_true                                                                                                         |
+     | access_rules_status                   | active                                                                                                            |
+     | replication_type                      | None                                                                                                              |
+     | has_replicas                          | False                                                                                                             |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                                                                  |
+     | create_share_from_snapshot_support    | True                                                                                                              |
+     | revert_to_snapshot_support            | True                                                                                                              |
+     | share_group_id                        | None                                                                                                              |
+     | source_share_group_snapshot_member_id | None                                                                                                              |
+     | mount_snapshot_support                | True                                                                                                              |
+     | progress                              | 100%                                                                                                              |
+     | export_locations                      |                                                                                                                   |
+     |                                       | id = 94214735-4148-4fa7-b496-56d8a8d56008                                                                         |
+     |                                       | path = 192.0.2.10:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = True                                                                                                  |
+     |                                       | id = 3f0c4569-2567-4304-811e-373c35b34368                                                                         |
+     |                                       | path = 192.0.2.11:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = False                                                                                                 |
+     | properties                            |                                                                                                                   |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 * List shares.
 
   .. code-block:: console
 
-     $ manila list
-     +--------------------------------------+--------------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
-     | ID                                   | Name               | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
-     +--------------------------------------+--------------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
-     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | myshare            | 1    | NFS         | available | False     | dhss_true       |      | nova              |
-     +--------------------------------------+--------------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     $ openstack share list
+     +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     | ID                                   | Name    | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
+     +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     | c8c7b376-364b-4b48-87d4-bba4609612fd | myshare |    1 | NFS         | available | False     | dhss_true       |      | manila-zone-2     |
+     +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+------+-------------------+
 
 * List share export locations.
 
   .. code-block:: console
 
-     $ manila share-export-location-list myshare
-     +--------------------------------------+---------------------------------------------------------------------------------------------------------------+-----------+
-     | ID                                   | Path                                                                                                          | Preferred |
-     +--------------------------------------+---------------------------------------------------------------------------------------------------------------+-----------+
-     | 395244a1-8aa9-44af-9fda-f7d6036ce2b9 | 10.0.0.10:/sharevolumes_10034/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd | False     |
-     | 908e5a28-c5ea-4627-b17c-1cfeb894ccd1 | 10.0.0.11:/sharevolumes_10034/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd | True      |
-     +--------------------------------------+---------------------------------------------------------------------------------------------------------------+-----------+
+     $ openstack share export location list myshare
+     +--------------------------------------+------------------------------------------------------------------------------------------------------------+-----------+
+     | ID                                   | Path                                                                                                       | Preferred |
+     +--------------------------------------+------------------------------------------------------------------------------------------------------------+-----------+
+     | 94214735-4148-4fa7-b496-56d8a8d56008 | 192.0.2.10:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   | True      |
+     | 3f0c4569-2567-4304-811e-373c35b34368 | 192.0.2.11:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   | False     |
+     +--------------------------------------+------------------------------------------------------------------------------------------------------------+-----------+
 
 * Create a share using scheduler hints to specify the host.
 
@@ -325,37 +350,36 @@ Create a share
 
   .. code-block:: console
 
-     $ manila create NFS 1 \
+     $ openstack share create NFS 1 \
          --name myshare2 \
          --description "My Manila share - Different Host" \
-         --share-network mysharenetwork \
-         --share-type dhss_true \
-         --scheduler-hints different_host=myshare
+         --share-type dhss_false \
+         --scheduler-hint different_host=myshare
 
      +---------------------------------------+-----------------------------------------------------------------------+
-     | Property                              | Value                                                                 |
+     | Field                                 | Value                                                                 |
      +---------------------------------------+-----------------------------------------------------------------------+
-     | id                                    | 40de4f4c-4588-4d9c-844b-f74d8951053a                                  |
+     | id                                    | f1d4c7a8-1a8f-4029-aebb-e41ee9ee72cc                                  |
      | size                                  | 1                                                                     |
      | availability_zone                     | None                                                                  |
-     | created_at                            | 2020-08-07T05:24:14.000000                                            |
+     | created_at                            | 2026-04-04T07:14:46.776109                                            |
      | status                                | creating                                                              |
      | name                                  | myshare2                                                              |
      | description                           | My Manila share - Different Host                                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                      |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                      |
      | snapshot_id                           | None                                                                  |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                  |
+     | share_network_id                      | None                                                                  |
      | share_proto                           | NFS                                                                   |
-     | metadata                              | {'__affinity_different_host': '83b0772b-00ad-4e45-8fad-106b9d4f1719'} |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                  |
+     | metadata                              | {'__affinity_different_host': 'c8c7b376-364b-4b48-87d4-bba4609612fd'} |
+     | share_type                            | 3827ada8-4dc1-4fd2-8f33-00283e798d54                                  |
      | is_public                             | False                                                                 |
      | snapshot_support                      | True                                                                  |
      | task_state                            | None                                                                  |
-     | share_type_name                       | dhss_true                                                             |
+     | share_type_name                       | dhss_false                                                            |
      | access_rules_status                   | active                                                                |
      | replication_type                      | None                                                                  |
      | has_replicas                          | False                                                                 |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                      |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                      |
      | create_share_from_snapshot_support    | True                                                                  |
      | revert_to_snapshot_support            | True                                                                  |
      | share_group_id                        | None                                                                  |
@@ -364,17 +388,18 @@ Create a share
      | progress                              | None                                                                  |
      +---------------------------------------+-----------------------------------------------------------------------+
 
-   Share is created in a different host.
+  Share is created in a different host. An administrator can verify using
+  ``--all-projects``:
 
-   .. code-block:: console
+  .. code-block:: console
 
-     $ manila list
-     +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
-     | ID                                   | Name      | Size | Share Proto | Status    | Is Public | Share Type Name | Host                        | Availability Zone |
-     +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
-     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | myshare   | 1    | NFS         | available | False     | default         | nosb-devstack@london#LONDON | nova              |
-     | 40de4f4c-4588-4d9c-844b-f74d8951053a | myshare2  | 1    | NFS         | available | False     | default         | nosb-devstack@lisboa#LISBOA | nova              |
-     +--------------------------------------+-----------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
+     $ openstack share list --all-projects
+     +--------------------------------------+----------+------+-------------+-----------+-----------+-----------------+-----------------------------------------------+-------------------+
+     | ID                                   | Name     | Size | Share Proto | Status    | Is Public | Share Type Name | Host                                          | Availability Zone |
+     +--------------------------------------+----------+------+-------------+-----------+-----------+-----------------+-----------------------------------------------+-------------------+
+     | c8c7b376-364b-4b48-87d4-bba4609612fd | myshare  |    1 | NFS         | available | False     | dhss_true       | manila-intern-testing@lima#pool_GAMMA         | manila-zone-2     |
+     | f1d4c7a8-1a8f-4029-aebb-e41ee9ee72cc | myshare2 |    1 | NFS         | available | False     | dhss_false      | manila-intern-testing@bogota#pool_DELTA       | manila-zone-3     |
+     +--------------------------------------+----------+------+-------------+-----------+-----------+-----------------+-----------------------------------------------+-------------------+
 
 * Create a share using `mount_point_name`.
 
@@ -389,124 +414,86 @@ Create a share
     `--mount-point-name` flag. The `mount_point_name` should not exceed 255
     characters in length.
 
-  .. code-block:: bash
+  .. code-block:: console
 
-     openstack share create NFS 1 --share-type gold_provisioning_prefix \
-     --name MyShare --mount-point-name mount_abc1 \
-     --share-network 19d78275-55cb-4684-81f2-ec9c07701563
-
-    +---------------------------------------+--------------------------------------+
-    | Field                                 | Value                                |
-    +=======================================+======================================+
-    | access_rules_status                   | active                               |
-    +---------------------------------------+--------------------------------------+
-    | availability_zone                     | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | create_share_from_snapshot_support    | False                                |
-    +---------------------------------------+--------------------------------------+
-    | created_at                            | 2024-03-20T20:32:50.819345           |
-    +---------------------------------------+--------------------------------------+
-    | description                           | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | has_replicas                          | False                                |
-    +---------------------------------------+--------------------------------------+
-    | host                                  |                                      |
-    +---------------------------------------+--------------------------------------+
-    | id                                    | 138a6884-7a9b-4d9a-9ac1-f565701a4b83 |
-    +---------------------------------------+--------------------------------------+
-    | is_public                             | False                                |
-    +---------------------------------------+--------------------------------------+
-    | is_soft_deleted                       | False                                |
-    +---------------------------------------+--------------------------------------+
-    | metadata                              | {}                                   |
-    +---------------------------------------+--------------------------------------+
-    | mount_snapshot_support                | False                                |
-    +---------------------------------------+--------------------------------------+
-    | name                                  | MyShare                              |
-    +---------------------------------------+--------------------------------------+
-    | progress                              | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | project_id                            | 44754d5c4aea4c8c8d619bb6b4ebeb17     |
-    +---------------------------------------+--------------------------------------+
-    | replication_type                      | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | revert_to_snapshot_support            | False                                |
-    +---------------------------------------+--------------------------------------+
-    | scheduled_to_be_deleted_at            | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | share_group_id                        | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | share_network_id                      | 19d78275-55cb-4684-81f2-ec9c07701563 |
-    +---------------------------------------+--------------------------------------+
-    | share_proto                           | NFS                                  |
-    +---------------------------------------+--------------------------------------+
-    | share_server_id                       | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | share_type                            | ee1995d8-6827-4711-a58d-38ee00f24a75 |
-    +---------------------------------------+--------------------------------------+
-    | share_type_name                       | gold_provisioning_prefix             |
-    +---------------------------------------+--------------------------------------+
-    | size                                  | 1                                    |
-    +---------------------------------------+--------------------------------------+
-    | snapshot_id                           | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | snapshot_support                      | False                                |
-    +---------------------------------------+--------------------------------------+
-    | source_backup_id                      | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | source_share_group_snapshot_member_id | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | status                                | creating                             |
-    +---------------------------------------+--------------------------------------+
-    | task_state                            | None                                 |
-    +---------------------------------------+--------------------------------------+
-    | user_id                               | fbdba3d017b2484f9773033e3fc0c6ae     |
-    +---------------------------------------+--------------------------------------+
-    | volume_type                           | gold_provisioning_prefix             |
-    +---------------------------------------+--------------------------------------+
+     $ openstack share create NFS 1 --share-type gold_provisioning_prefix \
+         --name MyShare --mount-point-name mount_abc1 \
+         --share-network mysharenetwork
+     +---------------------------------------+--------------------------------------+
+     | Field                                 | Value                                |
+     +---------------------------------------+--------------------------------------+
+     | id                                    | 138a6884-7a9b-4d9a-9ac1-f565701a4b83 |
+     | size                                  | 1                                    |
+     | availability_zone                     | None                                 |
+     | created_at                            | 2026-04-04T08:32:50.819345           |
+     | status                                | creating                             |
+     | name                                  | MyShare                              |
+     | description                           | None                                 |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09     |
+     | snapshot_id                           | None                                 |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b |
+     | share_proto                           | NFS                                  |
+     | metadata                              | {}                                   |
+     | share_type                            | ee1995d8-6827-4711-a58d-38ee00f24a75 |
+     | is_public                             | False                                |
+     | snapshot_support                      | False                                |
+     | task_state                            | None                                 |
+     | share_type_name                       | gold_provisioning_prefix             |
+     | access_rules_status                   | active                               |
+     | replication_type                      | None                                 |
+     | has_replicas                          | False                                |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7     |
+     | create_share_from_snapshot_support    | False                                |
+     | revert_to_snapshot_support            | False                                |
+     | share_group_id                        | None                                 |
+     | source_share_group_snapshot_member_id | None                                 |
+     | mount_snapshot_support                | False                                |
+     | progress                              | None                                 |
+     +---------------------------------------+--------------------------------------+
 
 * To view the details of a share created with custom mount_point_name.
 
   .. code-block:: console
 
      $ openstack share show 138a6884-7a9b-4d9a-9ac1-f565701a4b83
-
-    +---------------------------------------+-------------------------------------------------------------------------+
-    | Field                                 | Value                                                                   |
-    +---------------------------------------+-------------------------------------------------------------------------+
-    | access_rules_status                   | active                                                                  |
-    | availability_zone                     | nova                                                                    |
-    | create_share_from_snapshot_support    | False                                                                   |
-    | created_at                            | 2024-03-20T20:32:50.819345                                              |
-    | description                           | None                                                                    |
-    | export_locations                      |                                                                         |
-    |                                       | id = 1f5d8a51-965e-4062-a1e1-03ca146ad277                               |
-    |                                       | path = <ip>:/gold_mount_abc1                                            |
-    |                                       | preferred = True                                                        |
-    |                                       | share_instance_id = 62a4d622-a3c8-4915-adca-54a7fe5789bf                |
-    |                                       | is_admin_only = False                                                   |
-    |                                       | id = ea7c936a-d94b-47bd-8a35-4b2f1f7b5e5a                               |
-    |                                       | path = <ip>:/gold_mount_abc1                                            |
-    |                                       | preferred = False                                                       |
-    |                                       | share_instance_id = 62a4d622-a3c8-4915-adca-54a7fe5789bf                |
-    |                                       | is_admin_only = False                                                   |
-    | has_replicas                          | False                                                                   |
-    | host                                  | host@share_server_dhss_true#AstraInfra                                  |
-    | id                                    | 138a6884-7a9b-4d9a-9ac1-f565701a4b83                                    |
-    | is_public                             | False                                                                   |
-    | is_soft_deleted                       | False                                                                   |
-    | mount_snapshot_support                | False                                                                   |
-    | name                                  | MyShare                                                                 |
-    | progress                              | 100%                                                                    |
-    | project_id                            | 44754d5c4aea4c8c8d619bb6b4ebeb17                                        |
-    | properties                            |                                                                         |
-    | replication_type                      | None                                                                    |
-    | revert_to_snapshot_support            | False                                                                   |
-    | scheduled_to_be_deleted_at            | None                                                                    |
-    | share_group_id                        | None                                                                    |
-    | share_network_id                      | 19d78275-55cb-4684-81f2-ec9c07701563                                    |
-    | share_proto                           | NFS                                                                     |
-    +---------------------------------------+-------------------------------------------------------------------------+
+     +---------------------------------------+----------------------------------------------------------------------+
+     | Field                                 | Value                                                                |
+     +---------------------------------------+----------------------------------------------------------------------+
+     | id                                    | 138a6884-7a9b-4d9a-9ac1-f565701a4b83                                 |
+     | size                                  | 1                                                                    |
+     | availability_zone                     | manila-zone-2                                                        |
+     | created_at                            | 2026-04-04T08:32:50.819345                                           |
+     | status                                | available                                                            |
+     | name                                  | MyShare                                                              |
+     | description                           | None                                                                 |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                     |
+     | snapshot_id                           | None                                                                 |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                 |
+     | share_proto                           | NFS                                                                  |
+     | share_type                            | ee1995d8-6827-4711-a58d-38ee00f24a75                                 |
+     | is_public                             | False                                                                |
+     | snapshot_support                      | False                                                                |
+     | task_state                            | None                                                                 |
+     | share_type_name                       | gold_provisioning_prefix                                             |
+     | access_rules_status                   | active                                                               |
+     | replication_type                      | None                                                                 |
+     | has_replicas                          | False                                                                |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                     |
+     | create_share_from_snapshot_support    | False                                                                |
+     | revert_to_snapshot_support            | False                                                                |
+     | share_group_id                        | None                                                                 |
+     | source_share_group_snapshot_member_id | None                                                                 |
+     | mount_snapshot_support                | False                                                                |
+     | progress                              | 100%                                                                 |
+     | export_locations                      |                                                                      |
+     |                                       | id = 1f5d8a51-965e-4062-a1e1-03ca146ad277                            |
+     |                                       | path = 192.0.2.10:/gold_mount_abc1                                   |
+     |                                       | preferred = True                                                     |
+     |                                       | id = ea7c936a-d94b-47bd-8a35-4b2f1f7b5e5a                            |
+     |                                       | path = 192.0.2.11:/gold_mount_abc1                                   |
+     |                                       | preferred = False                                                    |
+     | properties                            |                                                                      |
+     +---------------------------------------+----------------------------------------------------------------------+
 
 
 * Create a share using encryption key reference.
@@ -527,38 +514,38 @@ Create a share
          --share-type encrypted_share_type \
          --encryption-key-ref 86babe9b-7277-4c3a-a081-6eb3eac9231d
 
-     +---------------------------------------+-----------------------------------------------------------------------+
-     | Property                              | Value                                                                 |
-     +---------------------------------------+-----------------------------------------------------------------------+
-     | id                                    | 40de4f4c-4588-4d9c-844b-f74d8951053a                                  |
-     | size                                  | 1                                                                     |
-     | availability_zone                     | None                                                                  |
-     | created_at                            | 2020-08-07T05:24:14.000000                                            |
-     | status                                | creating                                                              |
-     | name                                  | myshare3                                                              |
-     | description                           | My Manila share - Encrypted                                           |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                      |
-     | snapshot_id                           | None                                                                  |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                  |
-     | share_proto                           | NFS                                                                   |
-     | metadata                              | {}                                                                    |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                  |
-     | is_public                             | False                                                                 |
-     | snapshot_support                      | True                                                                  |
-     | task_state                            | None                                                                  |
-     | share_type_name                       | encrypted_share_type                                                  |
-     | access_rules_status                   | active                                                                |
-     | replication_type                      | None                                                                  |
-     | has_replicas                          | False                                                                 |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                      |
-     | create_share_from_snapshot_support    | True                                                                  |
-     | revert_to_snapshot_support            | True                                                                  |
-     | share_group_id                        | None                                                                  |
-     | encryption_key_ref                    | 86babe9b-7277-4c3a-a081-6eb3eac9231d                                  |
-     | source_share_group_snapshot_member_id | None                                                                  |
-     | mount_snapshot_support                | True                                                                  |
-     | progress                              | None                                                                  |
-     +---------------------------------------+-----------------------------------------------------------------------+
+     +---------------------------------------+--------------------------------------+
+     | Field                                 | Value                                |
+     +---------------------------------------+--------------------------------------+
+     | id                                    | 7c69b887-8490-41f9-bb5d-6e8e6bffca76 |
+     | size                                  | 1                                    |
+     | availability_zone                     | None                                 |
+     | created_at                            | 2026-04-04T07:24:14.583291           |
+     | status                                | creating                             |
+     | name                                  | myshare3                             |
+     | description                           | My Manila share - Encrypted          |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09     |
+     | snapshot_id                           | None                                 |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b |
+     | share_proto                           | NFS                                  |
+     | metadata                              | {}                                   |
+     | share_type                            | b4c0453c-6c91-4b2e-a5a3-f92a7a481c17 |
+     | is_public                             | False                                |
+     | snapshot_support                      | True                                 |
+     | task_state                            | None                                 |
+     | share_type_name                       | encrypted_share_type                 |
+     | access_rules_status                   | active                               |
+     | replication_type                      | None                                 |
+     | has_replicas                          | False                                |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7     |
+     | create_share_from_snapshot_support    | True                                 |
+     | revert_to_snapshot_support            | True                                 |
+     | share_group_id                        | None                                 |
+     | source_share_group_snapshot_member_id | None                                 |
+     | mount_snapshot_support                | True                                 |
+     | progress                              | None                                 |
+     | encryption_key_ref                    | 86babe9b-7277-4c3a-a081-6eb3eac9231d |
+     +---------------------------------------+--------------------------------------+
 
 
 Grant and revoke share access
@@ -583,20 +570,21 @@ Allow read-write access
 
   .. code-block:: console
 
-     $ manila access-allow myshare ip 10.0.0.0/24 --metadata key1=value1
+     $ openstack share access create myshare \
+         ip 198.51.100.0/24 --properties key1=value1
      +--------------+--------------------------------------+
-     | Property     | Value                                |
+     | Field        | Value                                |
      +--------------+--------------------------------------+
-     | id           | e30bde96-9217-4f90-afdc-27c092af1c77 |
-     | share_id     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 |
+     | id           | 95dcca99-6b3a-433d-a324-212268beca28 |
+     | share_id     | c8c7b376-364b-4b48-87d4-bba4609612fd |
      | access_level | rw                                   |
-     | access_to    | 10.0.0.0/24                          |
+     | access_to    | 198.51.100.0/24                      |
      | access_type  | ip                                   |
      | state        | queued_to_apply                      |
      | access_key   | None                                 |
-     | created_at   | 2020-08-07T05:27:27.000000           |
+     | created_at   | 2026-04-04T07:15:41.985379           |
      | updated_at   | None                                 |
-     | metadata     | {'key1': 'value1'}                   |
+     | properties   | key1 : value1                        |
      +--------------+--------------------------------------+
 
   .. note::
@@ -612,12 +600,12 @@ Allow read-write access
 
   .. code-block:: console
 
-     $ manila access-list myshare
-     +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
-     | id                                   | access_type | access_to   | access_level | state  | access_key | created_at                 | updated_at |
-     +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
-     | e30bde96-9217-4f90-afdc-27c092af1c77 | ip          | 10.0.0.0/24 | rw           | active | None       | 2020-08-07T05:27:27.000000 | None       |
-     +--------------------------------------+-------------+-------------+--------------+--------+------------+----------------------------+------------+
+     $ openstack share access list myshare
+     +--------------------------------------+-------------+-----------------+--------------+--------+------------+----------------------------+----------------------------+
+     | ID                                   | Access Type | Access To       | Access Level | State  | Access Key | Created At                 | Updated At                 |
+     +--------------------------------------+-------------+-----------------+--------------+--------+------------+----------------------------+----------------------------+
+     | 95dcca99-6b3a-433d-a324-212268beca28 | ip          | 198.51.100.0/24 | rw           | active | None       | 2026-04-04T07:15:41.985379 | 2026-04-04T07:15:44.977918 |
+     +--------------------------------------+-------------+-----------------+--------------+--------+------------+----------------------------+----------------------------+
 
   An access rule is created.
 
@@ -628,33 +616,34 @@ Allow read-only access
 
   .. code-block:: console
 
-     $ manila access-allow myshare ip fd31:7ee0:3de4:a41b::/64 --access-level ro
+     $ openstack share access create myshare \
+         ip 2001:DB8:7ee0:3de4::/64 --access-level ro
      +--------------+--------------------------------------+
-     | Property     | Value                                |
+     | Field        | Value                                |
      +--------------+--------------------------------------+
-     | id           | 45b0a030-306a-4305-9e2a-36aeffb2d5b7 |
-     | share_id     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 |
+     | id           | 7112dedf-bcf6-46c8-a3c1-5f4068753770 |
+     | share_id     | c8c7b376-364b-4b48-87d4-bba4609612fd |
      | access_level | ro                                   |
-     | access_to    | fd31:7ee0:3de4:a41b::/64             |
+     | access_to    | 2001:DB8:7ee0:3de4::/64              |
      | access_type  | ip                                   |
      | state        | queued_to_apply                      |
      | access_key   | None                                 |
-     | created_at   | 2020-08-07T05:28:35.000000           |
+     | created_at   | 2026-04-04T07:15:54.852659           |
      | updated_at   | None                                 |
-     | metadata     | {}                                   |
+     | properties   |                                      |
      +--------------+--------------------------------------+
 
 * List access.
 
   .. code-block:: console
 
-     $ manila access-list myshare
-     +--------------------------------------+-------------+----------------------------+--------------+--------+------------+----------------------------+------------+
-     | id                                   | access_type | access_to                  | access_level | state  | access_key | created_at                 | updated_at |
-     +--------------------------------------+-------------+----------------------------+--------------+--------+------------+----------------------------+------------+
-     | 45b0a030-306a-4305-9e2a-36aeffb2d5b7 | ip          | fd31:7ee0:3de4:a41b::/64   | ro           | active | None       | 2020-08-07T05:28:35.000000 | None       |
-     | e30bde96-9217-4f90-afdc-27c092af1c77 | ip          | 10.0.0.0/24                | rw           | active | None       | 2020-08-07T05:27:27.000000 | None       |
-     +--------------------------------------+-------------+----------------------------+--------------+--------+------------+----------------------------+------------+
+     $ openstack share access list myshare
+     +--------------------------------------+-------------+--------------------------+--------------+--------+------------+----------------------------+----------------------------+
+     | ID                                   | Access Type | Access To                | Access Level | State  | Access Key | Created At                 | Updated At                 |
+     +--------------------------------------+-------------+--------------------------+--------------+--------+------------+----------------------------+----------------------------+
+     | 7112dedf-bcf6-46c8-a3c1-5f4068753770 | ip          | 2001:DB8:7ee0:3de4::/64  | ro           | active | None       | 2026-04-04T07:15:54.852659 | 2026-04-04T07:15:57.661621 |
+     | 95dcca99-6b3a-433d-a324-212268beca28 | ip          | 198.51.100.0/24          | rw           | active | None       | 2026-04-04T07:15:41.985379 | 2026-04-04T07:15:44.977918 |
+     +--------------------------------------+-------------+--------------------------+--------------+--------+------------+----------------------------+----------------------------+
 
   Another access rule is created.
 
@@ -671,42 +660,46 @@ Update access rules metadata
 
    .. code-block:: console
 
-      $ manila access-metadata 0c8470ca-0d77-490c-9e71-29e1f453bf97 set key2=value2
-      $ manila access-show 0c8470ca-0d77-490c-9e71-29e1f453bf97
+      $ openstack share access set \
+          95dcca99-6b3a-433d-a324-212268beca28 \
+          --property key2=value2
+      $ openstack share access show 95dcca99-6b3a-433d-a324-212268beca28
       +--------------+--------------------------------------+
-      | Property     | Value                                |
+      | Field        | Value                                |
       +--------------+--------------------------------------+
-      | id           | 0c8470ca-0d77-490c-9e71-29e1f453bf97 |
-      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | id           | 95dcca99-6b3a-433d-a324-212268beca28 |
+      | share_id     | c8c7b376-364b-4b48-87d4-bba4609612fd |
       | access_level | rw                                   |
-      | access_to    | 10.0.0.0/24                          |
+      | access_to    | 198.51.100.0/24                      |
       | access_type  | ip                                   |
       | state        | active                               |
       | access_key   | None                                 |
-      | created_at   | 2016-03-24T14:51:36.000000           |
-      | updated_at   | None                                 |
-      | metadata     | {'key1': 'value1', 'key2': 'value2'} |
+      | created_at   | 2026-04-04T07:15:41.985379           |
+      | updated_at   | 2026-04-04T07:15:44.977918           |
+      | properties   | key1 : value1                        |
+      |              | key2 : value2                        |
       +--------------+--------------------------------------+
 
 #. Remove a metadata key value.
 
    .. code-block:: console
 
-      $ manila access-metadata 0c8470ca-0d77-490c-9e71-29e1f453bf97 unset key
-      $ manila access-show 0c8470ca-0d77-490c-9e71-29e1f453bf97
+      $ openstack share access unset \
+          95dcca99-6b3a-433d-a324-212268beca28 --property key1
+      $ openstack share access show 95dcca99-6b3a-433d-a324-212268beca28
       +--------------+--------------------------------------+
-      | Property     | Value                                |
+      | Field        | Value                                |
       +--------------+--------------------------------------+
-      | id           | 0c8470ca-0d77-490c-9e71-29e1f453bf97 |
-      | share_id     | 8d8b854b-ec32-43f1-acc0-1b2efa7c3400 |
+      | id           | 95dcca99-6b3a-433d-a324-212268beca28 |
+      | share_id     | c8c7b376-364b-4b48-87d4-bba4609612fd |
       | access_level | rw                                   |
-      | access_to    | 10.0.0.0/24                          |
+      | access_to    | 198.51.100.0/24                      |
       | access_type  | ip                                   |
       | state        | active                               |
       | access_key   | None                                 |
-      | created_at   | 2016-03-24T14:51:36.000000           |
-      | updated_at   | None                                 |
-      | metadata     | {'key2': 'value2'}                   |
+      | created_at   | 2026-04-04T07:15:41.985379           |
+      | updated_at   | 2026-04-04T07:15:44.977918           |
+      | properties   | key2 : value2                        |
       +--------------+--------------------------------------+
 
 Deny access
@@ -716,8 +709,10 @@ Deny access
 
   .. code-block:: console
 
-     $ manila access-deny myshare 45b0a030-306a-4305-9e2a-36aeffb2d5b7
-     $ manila access-deny myshare e30bde96-9217-4f90-afdc-27c092af1c77
+     $ openstack share access delete myshare \
+         7112dedf-bcf6-46c8-a3c1-5f4068753770
+     $ openstack share access delete myshare \
+         95dcca99-6b3a-433d-a324-212268beca28
 
 .. note::
 
@@ -730,11 +725,7 @@ Deny access
 
   .. code-block:: console
 
-     $ manila access-list myshare
-     +----+-------------+-----------+--------------+-------+------------+------------+------------+
-     | id | access_type | access_to | access_level | state | access_key | created_at | updated_at |
-     +----+-------------+-----------+--------------+-------+------------+------------+------------+
-     +----+-------------+-----------+--------------+-------+------------+------------+------------+
+     $ openstack share access list myshare
 
   The access rules are removed.
 
@@ -750,35 +741,35 @@ Create snapshot
 
   .. code-block:: console
 
-     $ openstack share snapshot create --name mysnap --description "My Manila snapshot" myshare
-    +-------------------+--------------------------------------+
-    | Field             | Value                                |
-    +-------------------+--------------------------------------+
-    | id                | 286edbe1-a69e-40e7-ad50-61287570df55 |
-    | share_id          | bf7ffbb7-73a5-44fe-a93e-73cbd5a9197d |
-    | share_size        | 1                                    |
-    | created_at        | 2025-03-08T00:06:32.123637           |
-    | status            | creating                             |
-    | name              | mysnap                               |
-    | description       | My Manila snapshot                   |
-    | size              | 1                                    |
-    | share_proto       | NFS                                  |
-    | provider_location | None                                 |
-    | user_id           | 64e1409650ee4e94a8e78df24da86091     |
-    | project_id        | dd43995fee324b24b79adab2542d74e9     |
-    | metadata          | {}                                   |
-    +-------------------+--------------------------------------+
+     $ openstack share snapshot create --name mysnap \
+         --description "My Manila snapshot" myshare
+     +-------------+--------------------------------------+
+     | Field       | Value                                |
+     +-------------+--------------------------------------+
+     | id          | 87681665-e1c9-455e-a23e-6fc5f2af9bb8 |
+     | share_id    | c8c7b376-364b-4b48-87d4-bba4609612fd |
+     | share_size  | 1                                    |
+     | created_at  | 2026-04-04T07:16:51.648431           |
+     | status      | creating                             |
+     | name        | mysnap                               |
+     | description | My Manila snapshot                   |
+     | size        | 1                                    |
+     | share_proto | NFS                                  |
+     | user_id     | a6c6f585fe5249cbb91426b37e1161a7     |
+     | project_id  | 58951a7d00fd46f9a98bd038ed5d9e09     |
+     | metadata    | {}                                   |
+     +-------------+--------------------------------------+
 
 * List snapshots.
 
   .. code-block:: console
 
      $ openstack share snapshot list
-    +--------------------------------------+--------+
-    | ID                                   | Name   |
-    +--------------------------------------+--------+
-    | 7861eed0-8634-41e0-a57e-a1d87ad48a1b | mysnap |
-    +--------------------------------------+--------+
+     +--------------------------------------+--------+
+     | ID                                   | Name   |
+     +--------------------------------------+--------+
+     | 87681665-e1c9-455e-a23e-6fc5f2af9bb8 | mysnap |
+     +--------------------------------------+--------+
 
 
 Mount a snapshot
@@ -793,26 +784,26 @@ Mount a snapshot
 
   .. code-block:: console
 
-     $ openstack share snapshot access create mysnap ip 192.168.1.0/24
-    +-------------+--------------------------------------+
-    | Field       | Value                                |
-    +-------------+--------------------------------------+
-    | id          | 89e36a97-19d8-430c-b920-6d930ea27464 |
-    | access_type | ip                                   |
-    | access_to   | 192.168.1.0/24                       |
-    | state       | queued_to_apply                      |
-    +-------------+--------------------------------------+
+     $ openstack share snapshot access create mysnap ip 198.51.100.0/24
+     +-------------+--------------------------------------+
+     | Field       | Value                                |
+     +-------------+--------------------------------------+
+     | id          | ccc0c1d6-caaa-48f1-8974-332dfeb4b3d9 |
+     | access_type | ip                                   |
+     | access_to   | 198.51.100.0/24                      |
+     | state       | queued_to_apply                      |
+     +-------------+--------------------------------------+
 
 * List snapshot access.
 
   .. code-block:: console
 
      $ openstack share snapshot access list mysnap
-    +--------------------------------------+-------------+----------------+--------+
-    | ID                                   | Access Type | Access To      | State  |
-    +--------------------------------------+-------------+----------------+--------+
-    | 89e36a97-19d8-430c-b920-6d930ea27464 | ip          | 192.168.1.0/24 | active |
-    +--------------------------------------+-------------+----------------+--------+
+     +--------------------------------------+-------------+-----------------+--------+
+     | ID                                   | Access Type | Access To       | State  |
+     +--------------------------------------+-------------+-----------------+--------+
+     | ccc0c1d6-caaa-48f1-8974-332dfeb4b3d9 | ip          | 198.51.100.0/24 | active |
+     +--------------------------------------+-------------+-----------------+--------+
 
 Then proceed to mounting the snapshot on the clients whose access was created.
 
@@ -820,7 +811,8 @@ Then proceed to mounting the snapshot on the clients whose access was created.
 
   .. code-block:: console
 
-     $ openstack share snapshot access delete mysnap 89e36a97-19d8-430c-b920-6d930ea27464
+     $ openstack share snapshot access delete mysnap \
+         ccc0c1d6-caaa-48f1-8974-332dfeb4b3d9
 
 
 Create share from snapshot
@@ -836,26 +828,26 @@ Create share from snapshot
 
   .. code-block:: console
 
-     $ manila create NFS 1 \
-         --snapshot-id 8a18aa77-7500-4e56-be8f-6081146f47f1 \
+     $ openstack share create NFS 1 \
+         --snapshot-id 87681665-e1c9-455e-a23e-6fc5f2af9bb8 \
          --share-network mysharenetwork \
          --name mysharefromsnap
      +---------------------------------------+--------------------------------------+
-     | Property                              | Value                                |
+     | Field                                 | Value                                |
      +---------------------------------------+--------------------------------------+
-     | id                                    | 2a9336ea-3afc-4443-80bb-398f4bdb3a93 |
+     | id                                    | d1d594c1-d603-41c3-85ce-8a136f9d259e |
      | size                                  | 1                                    |
-     | availability_zone                     | nova                                 |
-     | created_at                            | 2020-08-07T05:34:12.000000           |
+     | availability_zone                     | manila-zone-2                        |
+     | created_at                            | 2026-04-04T07:17:25.755333           |
      | status                                | creating                             |
      | name                                  | mysharefromsnap                      |
      | description                           | None                                 |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b     |
-     | snapshot_id                           | 8a18aa77-7500-4e56-be8f-6081146f47f1 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64 |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09     |
+     | snapshot_id                           | 87681665-e1c9-455e-a23e-6fc5f2af9bb8 |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b |
      | share_proto                           | NFS                                  |
      | metadata                              | {}                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172 |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df |
      | is_public                             | False                                |
      | snapshot_support                      | True                                 |
      | task_state                            | None                                 |
@@ -863,7 +855,7 @@ Create share from snapshot
      | access_rules_status                   | active                               |
      | replication_type                      | None                                 |
      | has_replicas                          | False                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21     |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7     |
      | create_share_from_snapshot_support    | True                                 |
      | revert_to_snapshot_support            | True                                 |
      | share_group_id                        | None                                 |
@@ -877,55 +869,57 @@ Create share from snapshot
   .. code-block:: console
 
      $ openstack share list
-    +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+-------------------------------------------+-------------------+
-    | ID                                   | Name    | Size | Share Proto | Status    | Is Public | Share Type Name | Host                                      | Availability Zone |
-    +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+-------------------------------------------+-------------------+
-    | bf7ffbb7-73a5-44fe-a93e-73cbd5a9197d | myshare |    1 | NFS         | available | False     | default         | oid-na-scale-1@bogota#fake_pool_for_DELTA | manila-zone-3     |
-    +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+-------------------------------------------+-------------------+
+     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     | ID                                   | Name            | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
+     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     | c8c7b376-364b-4b48-87d4-bba4609612fd | myshare         |    1 | NFS         | available | False     | dhss_true       |      | manila-zone-2     |
+     | f1d4c7a8-1a8f-4029-aebb-e41ee9ee72cc | myshare2        |    1 | NFS         | available | False     | dhss_false      |      | manila-zone-3     |
+     | d1d594c1-d603-41c3-85ce-8a136f9d259e | mysharefromsnap |    1 | NFS         | available | False     | dhss_true       |      | manila-zone-2     |
+     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
 
 * Show the share created from snapshot.
 
   .. code-block:: console
 
-     $ manila show mysharefromsnap
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | Property                              | Value                                                                                                                |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | id                                    | 2a9336ea-3afc-4443-80bb-398f4bdb3a93                                                                                 |
-     | size                                  | 1                                                                                                                    |
-     | availability_zone                     | nova                                                                                                                 |
-     | created_at                            | 2020-08-07T05:34:12.000000                                                                                           |
-     | status                                | available                                                                                                            |
-     | name                                  | mysharefromsnap                                                                                                      |
-     | description                           | None                                                                                                                 |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                     |
-     | snapshot_id                           | 8a18aa77-7500-4e56-be8f-6081146f47f1                                                                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                 |
-     | share_proto                           | NFS                                                                                                                  |
-     | metadata                              | {}                                                                                                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                                                                 |
-     | is_public                             | False                                                                                                                |
-     | snapshot_support                      | True                                                                                                                 |
-     | task_state                            | None                                                                                                                 |
-     | share_type_name                       | dhss_true                                                                                                            |
-     | access_rules_status                   | active                                                                                                               |
-     | replication_type                      | None                                                                                                                 |
-     | has_replicas                          | False                                                                                                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                                                                     |
-     | create_share_from_snapshot_support    | True                                                                                                                 |
-     | revert_to_snapshot_support            | True                                                                                                                 |
-     | share_group_id                        | None                                                                                                                 |
-     | source_share_group_snapshot_member_id | None                                                                                                                 |
-     | mount_snapshot_support                | True                                                                                                                 |
-     | progress                              | 100%                                                                                                                 |
-     | export_locations                      |                                                                                                                      |
-     |                                       | id = 7928b361-cada-4505-a62e-4cefb1cf6fc5                                                                            |
-     |                                       | path = 10.0.0.11:/path/to/fake/share/share_2a9336ea_3afc_4443_80bb_398f4bdb3a93_97de2abe_d114_49a9_9d01_ce5e71337e48 |
-     |                                       | preferred = True                                                                                                     |
-     |                                       | id = e48d19ba-dee5-4492-b156-5181530955be                                                                            |
-     |                                       | path = 10.0.0.10:/path/to/fake/share/share_2a9336ea_3afc_4443_80bb_398f4bdb3a93_97de2abe_d114_49a9_9d01_ce5e71337e48 |
-     |                                       | preferred = False                                                                                                    |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+     $ openstack share show mysharefromsnap
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | id                                    | d1d594c1-d603-41c3-85ce-8a136f9d259e                                                                              |
+     | size                                  | 1                                                                                                                 |
+     | availability_zone                     | manila-zone-2                                                                                                     |
+     | created_at                            | 2026-04-04T07:17:25.755333                                                                                        |
+     | status                                | available                                                                                                         |
+     | name                                  | mysharefromsnap                                                                                                   |
+     | description                           | None                                                                                                              |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                                                                  |
+     | snapshot_id                           | 87681665-e1c9-455e-a23e-6fc5f2af9bb8                                                                              |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                                                              |
+     | share_proto                           | NFS                                                                                                               |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df                                                                              |
+     | is_public                             | False                                                                                                             |
+     | snapshot_support                      | True                                                                                                              |
+     | task_state                            | None                                                                                                              |
+     | share_type_name                       | dhss_true                                                                                                         |
+     | access_rules_status                   | active                                                                                                            |
+     | replication_type                      | None                                                                                                              |
+     | has_replicas                          | False                                                                                                             |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                                                                  |
+     | create_share_from_snapshot_support    | True                                                                                                              |
+     | revert_to_snapshot_support            | True                                                                                                              |
+     | share_group_id                        | None                                                                                                              |
+     | source_share_group_snapshot_member_id | None                                                                                                              |
+     | mount_snapshot_support                | True                                                                                                              |
+     | progress                              | 100%                                                                                                              |
+     | export_locations                      |                                                                                                                   |
+     |                                       | id = a0799f73-fc87-4ef5-b46f-197df18f89c7                                                                         |
+     |                                       | path = 192.0.2.10:/sharevolumes/share_d1d594c1_d603_41c3_85ce_8a136f9d259e_c7ca5db9_ea48_4bcd_aa3b_b41ec9a81774   |
+     |                                       | preferred = True                                                                                                  |
+     |                                       | id = 534a8730-e8dd-41fa-b9ba-2376080d398c                                                                         |
+     |                                       | path = 192.0.2.11:/sharevolumes/share_d1d594c1_d603_41c3_85ce_8a136f9d259e_c7ca5db9_ea48_4bcd_aa3b_b41ec9a81774   |
+     |                                       | preferred = False                                                                                                 |
+     | properties                            |                                                                                                                   |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 Delete share
 ------------
@@ -934,19 +928,20 @@ Delete share
 
   .. code-block:: console
 
-     $ manila delete mysharefromsnap
+     $ openstack share delete mysharefromsnap
 
 * List shares.
 
   .. code-block:: console
 
-     $ manila list
-     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
-     | ID                                   | Name            | Size | Share Proto | Status    | Is Public | Share Type Name | Host                        | Availability Zone |
-     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
-     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | myshare         | 1    | NFS         | available | False     | default         | nosb-devstack@london#LONDON | nova              |
-     | 2a9336ea-3afc-4443-80bb-398f4bdb3a93 | mysharefromsnap | 1    | NFS         | deleting  | False     | default         | nosb-devstack@london#LONDON | nova              |
-     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+-----------------------------+-------------------+
+     $ openstack share list
+     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     | ID                                   | Name            | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
+     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
+     | c8c7b376-364b-4b48-87d4-bba4609612fd | myshare         |    1 | NFS         | available | False     | dhss_true       |      | manila-zone-2     |
+     | f1d4c7a8-1a8f-4029-aebb-e41ee9ee72cc | myshare2        |    1 | NFS         | available | False     | dhss_false      |      | manila-zone-3     |
+     | d1d594c1-d603-41c3-85ce-8a136f9d259e | mysharefromsnap |    1 | NFS         | deleting  | False     | dhss_true       |      | manila-zone-2     |
+     +--------------------------------------+-----------------+------+-------------+-----------+-----------+-----------------+------+-------------------+
 
   The share is being deleted.
 
@@ -957,7 +952,7 @@ Delete snapshot
 
   .. code-block:: console
 
-     $ openstack share snapshot delete mysnapshot
+     $ openstack share snapshot delete mysnap
 
 * List snapshots after deleting.
 
@@ -975,95 +970,95 @@ Extend share
 
   .. code-block:: console
 
-     $ manila extend myshare 2
+     $ openstack share resize myshare 2
 
 * Show the share while it is being extended.
 
   .. code-block:: console
 
-     $ manila show myshare
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | Property                              | Value                                                                                                                |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | id                                    | 83b0772b-00ad-4e45-8fad-106b9d4f1719                                                                                 |
-     | size                                  | 1                                                                                                                    |
-     | availability_zone                     | nova                                                                                                                 |
-     | created_at                            | 2020-08-07T05:24:14.000000                                                                                           |
-     | status                                | extending                                                                                                            |
-     | name                                  | myshare                                                                                                              |
-     | description                           | My Manila share                                                                                                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                     |
-     | snapshot_id                           | None                                                                                                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                 |
-     | share_proto                           | NFS                                                                                                                  |
-     | metadata                              | {}                                                                                                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                                                                 |
-     | is_public                             | False                                                                                                                |
-     | snapshot_support                      | True                                                                                                                 |
-     | task_state                            | None                                                                                                                 |
-     | share_type_name                       | dhss_true                                                                                                            |
-     | access_rules_status                   | active                                                                                                               |
-     | replication_type                      | None                                                                                                                 |
-     | has_replicas                          | False                                                                                                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                                                                     |
-     | create_share_from_snapshot_support    | True                                                                                                                 |
-     | revert_to_snapshot_support            | True                                                                                                                 |
-     | share_group_id                        | None                                                                                                                 |
-     | source_share_group_snapshot_member_id | None                                                                                                                 |
-     | mount_snapshot_support                | True                                                                                                                 |
-     | progress                              | 100%                                                                                                                 |
-     | export_locations                      |                                                                                                                      |
-     |                                       | id = 908e5a28-c5ea-4627-b17c-1cfeb894ccd1                                                                            |
-     |                                       | path = 10.0.0.11:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = True                                                                                                     |
-     |                                       | id = 395244a1-8aa9-44af-9fda-f7d6036ce2b9                                                                            |
-     |                                       | path = 10.0.0.10:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = False                                                                                                    |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+     $ openstack share show myshare
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | id                                    | c8c7b376-364b-4b48-87d4-bba4609612fd                                                                              |
+     | size                                  | 1                                                                                                                 |
+     | availability_zone                     | manila-zone-2                                                                                                     |
+     | created_at                            | 2026-04-04T07:13:52.667825                                                                                        |
+     | status                                | extending                                                                                                         |
+     | name                                  | myshare                                                                                                           |
+     | description                           | My Manila share                                                                                                   |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                                                                  |
+     | snapshot_id                           | None                                                                                                              |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                                                              |
+     | share_proto                           | NFS                                                                                                               |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df                                                                              |
+     | is_public                             | False                                                                                                             |
+     | snapshot_support                      | True                                                                                                              |
+     | task_state                            | None                                                                                                              |
+     | share_type_name                       | dhss_true                                                                                                         |
+     | access_rules_status                   | active                                                                                                            |
+     | replication_type                      | None                                                                                                              |
+     | has_replicas                          | False                                                                                                             |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                                                                  |
+     | create_share_from_snapshot_support    | True                                                                                                              |
+     | revert_to_snapshot_support            | True                                                                                                              |
+     | share_group_id                        | None                                                                                                              |
+     | source_share_group_snapshot_member_id | None                                                                                                              |
+     | mount_snapshot_support                | True                                                                                                              |
+     | progress                              | 100%                                                                                                              |
+     | export_locations                      |                                                                                                                   |
+     |                                       | id = 94214735-4148-4fa7-b496-56d8a8d56008                                                                         |
+     |                                       | path = 192.0.2.10:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = True                                                                                                  |
+     |                                       | id = 3f0c4569-2567-4304-811e-373c35b34368                                                                         |
+     |                                       | path = 192.0.2.11:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = False                                                                                                 |
+     | properties                            |                                                                                                                   |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 * Show the share after it is extended.
 
   .. code-block:: console
 
-     $ manila show myshare
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | Property                              | Value                                                                                                                |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | id                                    | 83b0772b-00ad-4e45-8fad-106b9d4f1719                                                                                 |
-     | size                                  | 2                                                                                                                    |
-     | availability_zone                     | nova                                                                                                                 |
-     | created_at                            | 2020-08-07T05:24:14.000000                                                                                           |
-     | status                                | available                                                                                                            |
-     | name                                  | myshare                                                                                                              |
-     | description                           | My Manila share                                                                                                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                     |
-     | snapshot_id                           | None                                                                                                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                 |
-     | share_proto                           | NFS                                                                                                                  |
-     | metadata                              | {}                                                                                                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                                                                 |
-     | is_public                             | False                                                                                                                |
-     | snapshot_support                      | True                                                                                                                 |
-     | task_state                            | None                                                                                                                 |
-     | share_type_name                       | dhss_true                                                                                                            |
-     | access_rules_status                   | active                                                                                                               |
-     | replication_type                      | None                                                                                                                 |
-     | has_replicas                          | False                                                                                                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                                                                     |
-     | create_share_from_snapshot_support    | True                                                                                                                 |
-     | revert_to_snapshot_support            | True                                                                                                                 |
-     | share_group_id                        | None                                                                                                                 |
-     | source_share_group_snapshot_member_id | None                                                                                                                 |
-     | mount_snapshot_support                | True                                                                                                                 |
-     | progress                              | 100%                                                                                                                 |
-     | export_locations                      |                                                                                                                      |
-     |                                       | id = 908e5a28-c5ea-4627-b17c-1cfeb894ccd1                                                                            |
-     |                                       | path = 10.0.0.11:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = True                                                                                                     |
-     |                                       | id = 395244a1-8aa9-44af-9fda-f7d6036ce2b9                                                                            |
-     |                                       | path = 10.0.0.10:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = False                                                                                                    |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+     $ openstack share show myshare
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | id                                    | c8c7b376-364b-4b48-87d4-bba4609612fd                                                                              |
+     | size                                  | 2                                                                                                                 |
+     | availability_zone                     | manila-zone-2                                                                                                     |
+     | created_at                            | 2026-04-04T07:13:52.667825                                                                                        |
+     | status                                | available                                                                                                         |
+     | name                                  | myshare                                                                                                           |
+     | description                           | My Manila share                                                                                                   |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                                                                  |
+     | snapshot_id                           | None                                                                                                              |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                                                              |
+     | share_proto                           | NFS                                                                                                               |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df                                                                              |
+     | is_public                             | False                                                                                                             |
+     | snapshot_support                      | True                                                                                                              |
+     | task_state                            | None                                                                                                              |
+     | share_type_name                       | dhss_true                                                                                                         |
+     | access_rules_status                   | active                                                                                                            |
+     | replication_type                      | None                                                                                                              |
+     | has_replicas                          | False                                                                                                             |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                                                                  |
+     | create_share_from_snapshot_support    | True                                                                                                              |
+     | revert_to_snapshot_support            | True                                                                                                              |
+     | share_group_id                        | None                                                                                                              |
+     | source_share_group_snapshot_member_id | None                                                                                                              |
+     | mount_snapshot_support                | True                                                                                                              |
+     | progress                              | 100%                                                                                                              |
+     | export_locations                      |                                                                                                                   |
+     |                                       | id = 94214735-4148-4fa7-b496-56d8a8d56008                                                                         |
+     |                                       | path = 192.0.2.10:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = True                                                                                                  |
+     |                                       | id = 3f0c4569-2567-4304-811e-373c35b34368                                                                         |
+     |                                       | path = 192.0.2.11:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = False                                                                                                 |
+     | properties                            |                                                                                                                   |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 Shrink share
 ------------
@@ -1072,95 +1067,95 @@ Shrink share
 
   .. code-block:: console
 
-     $ manila shrink myshare 1
+     $ openstack share resize myshare 1
 
 * Show the share while it is being shrunk.
 
   .. code-block:: console
 
-     $ manila show myshare
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | Property                              | Value                                                                                                                |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | id                                    | 83b0772b-00ad-4e45-8fad-106b9d4f1719                                                                                 |
-     | size                                  | 2                                                                                                                    |
-     | availability_zone                     | nova                                                                                                                 |
-     | created_at                            | 2020-08-07T05:24:14.000000                                                                                           |
-     | status                                | shrinking                                                                                                            |
-     | name                                  | myshare                                                                                                              |
-     | description                           | My Manila share                                                                                                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                     |
-     | snapshot_id                           | None                                                                                                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                 |
-     | share_proto                           | NFS                                                                                                                  |
-     | metadata                              | {}                                                                                                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                                                                 |
-     | is_public                             | False                                                                                                                |
-     | snapshot_support                      | True                                                                                                                 |
-     | task_state                            | None                                                                                                                 |
-     | share_type_name                       | dhss_true                                                                                                            |
-     | access_rules_status                   | active                                                                                                               |
-     | replication_type                      | None                                                                                                                 |
-     | has_replicas                          | False                                                                                                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                                                                     |
-     | create_share_from_snapshot_support    | True                                                                                                                 |
-     | revert_to_snapshot_support            | True                                                                                                                 |
-     | share_group_id                        | None                                                                                                                 |
-     | source_share_group_snapshot_member_id | None                                                                                                                 |
-     | mount_snapshot_support                | True                                                                                                                 |
-     | progress                              | 100%                                                                                                                 |
-     | export_locations                      |                                                                                                                      |
-     |                                       | id = 908e5a28-c5ea-4627-b17c-1cfeb894ccd1                                                                            |
-     |                                       | path = 10.0.0.11:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = True                                                                                                     |
-     |                                       | id = 395244a1-8aa9-44af-9fda-f7d6036ce2b9                                                                            |
-     |                                       | path = 10.0.0.10:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = False                                                                                                    |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+     $ openstack share show myshare
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | id                                    | c8c7b376-364b-4b48-87d4-bba4609612fd                                                                              |
+     | size                                  | 2                                                                                                                 |
+     | availability_zone                     | manila-zone-2                                                                                                     |
+     | created_at                            | 2026-04-04T07:13:52.667825                                                                                        |
+     | status                                | shrinking                                                                                                         |
+     | name                                  | myshare                                                                                                           |
+     | description                           | My Manila share                                                                                                   |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                                                                  |
+     | snapshot_id                           | None                                                                                                              |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                                                              |
+     | share_proto                           | NFS                                                                                                               |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df                                                                              |
+     | is_public                             | False                                                                                                             |
+     | snapshot_support                      | True                                                                                                              |
+     | task_state                            | None                                                                                                              |
+     | share_type_name                       | dhss_true                                                                                                         |
+     | access_rules_status                   | active                                                                                                            |
+     | replication_type                      | None                                                                                                              |
+     | has_replicas                          | False                                                                                                             |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                                                                  |
+     | create_share_from_snapshot_support    | True                                                                                                              |
+     | revert_to_snapshot_support            | True                                                                                                              |
+     | share_group_id                        | None                                                                                                              |
+     | source_share_group_snapshot_member_id | None                                                                                                              |
+     | mount_snapshot_support                | True                                                                                                              |
+     | progress                              | 100%                                                                                                              |
+     | export_locations                      |                                                                                                                   |
+     |                                       | id = 94214735-4148-4fa7-b496-56d8a8d56008                                                                         |
+     |                                       | path = 192.0.2.10:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = True                                                                                                  |
+     |                                       | id = 3f0c4569-2567-4304-811e-373c35b34368                                                                         |
+     |                                       | path = 192.0.2.11:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = False                                                                                                 |
+     | properties                            |                                                                                                                   |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 * Show the share after it is being shrunk.
 
   .. code-block:: console
 
-     $ manila show myshare
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | Property                              | Value                                                                                                                |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-     | id                                    | 83b0772b-00ad-4e45-8fad-106b9d4f1719                                                                                 |
-     | size                                  | 1                                                                                                                    |
-     | availability_zone                     | nova                                                                                                                 |
-     | created_at                            | 2020-08-07T05:24:14.000000                                                                                           |
-     | status                                | available                                                                                                            |
-     | name                                  | myshare                                                                                                              |
-     | description                           | My Manila share                                                                                                      |
-     | project_id                            | d9932a60d9ee4087b6cff9ce6e9b4e3b                                                                                     |
-     | snapshot_id                           | None                                                                                                                 |
-     | share_network_id                      | c4bfdd5e-7502-4a65-8876-0ce8b9914a64                                                                                 |
-     | share_proto                           | NFS                                                                                                                  |
-     | metadata                              | {}                                                                                                                   |
-     | share_type                            | af7b64ec-cdb3-4a5f-93c9-51672d72e172                                                                                 |
-     | is_public                             | False                                                                                                                |
-     | snapshot_support                      | True                                                                                                                 |
-     | task_state                            | None                                                                                                                 |
-     | share_type_name                       | dhss_true                                                                                                            |
-     | access_rules_status                   | active                                                                                                               |
-     | replication_type                      | None                                                                                                                 |
-     | has_replicas                          | False                                                                                                                |
-     | user_id                               | 2cebd96a794f431caa06ce5215e0da21                                                                                     |
-     | create_share_from_snapshot_support    | True                                                                                                                 |
-     | revert_to_snapshot_support            | True                                                                                                                 |
-     | share_group_id                        | None                                                                                                                 |
-     | source_share_group_snapshot_member_id | None                                                                                                                 |
-     | mount_snapshot_support                | True                                                                                                                 |
-     | progress                              | 100%                                                                                                                 |
-     | export_locations                      |                                                                                                                      |
-     |                                       | id = 908e5a28-c5ea-4627-b17c-1cfeb894ccd1                                                                            |
-     |                                       | path = 10.0.0.11:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = True                                                                                                     |
-     |                                       | id = 395244a1-8aa9-44af-9fda-f7d6036ce2b9                                                                            |
-     |                                       | path = 10.0.0.10:/path/to/fake/share/share_83b0772b_00ad_4e45_8fad_106b9d4f1719_da404d59_4280_4b32_847f_6cfa4f730bbd |
-     |                                       | preferred = False                                                                                                    |
-     +---------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+     $ openstack share show myshare
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | id                                    | c8c7b376-364b-4b48-87d4-bba4609612fd                                                                              |
+     | size                                  | 1                                                                                                                 |
+     | availability_zone                     | manila-zone-2                                                                                                     |
+     | created_at                            | 2026-04-04T07:13:52.667825                                                                                        |
+     | status                                | available                                                                                                         |
+     | name                                  | myshare                                                                                                           |
+     | description                           | My Manila share                                                                                                   |
+     | project_id                            | 58951a7d00fd46f9a98bd038ed5d9e09                                                                                  |
+     | snapshot_id                           | None                                                                                                              |
+     | share_network_id                      | 5f19ae95-483c-4040-9a99-99fe109f6a8b                                                                              |
+     | share_proto                           | NFS                                                                                                               |
+     | share_type                            | 5f5e225b-ec02-48fc-8daa-99a86a5a60df                                                                              |
+     | is_public                             | False                                                                                                             |
+     | snapshot_support                      | True                                                                                                              |
+     | task_state                            | None                                                                                                              |
+     | share_type_name                       | dhss_true                                                                                                         |
+     | access_rules_status                   | active                                                                                                            |
+     | replication_type                      | None                                                                                                              |
+     | has_replicas                          | False                                                                                                             |
+     | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                                                                  |
+     | create_share_from_snapshot_support    | True                                                                                                              |
+     | revert_to_snapshot_support            | True                                                                                                              |
+     | share_group_id                        | None                                                                                                              |
+     | source_share_group_snapshot_member_id | None                                                                                                              |
+     | mount_snapshot_support                | True                                                                                                              |
+     | progress                              | 100%                                                                                                              |
+     | export_locations                      |                                                                                                                   |
+     |                                       | id = 94214735-4148-4fa7-b496-56d8a8d56008                                                                         |
+     |                                       | path = 192.0.2.10:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = True                                                                                                  |
+     |                                       | id = 3f0c4569-2567-4304-811e-373c35b34368                                                                         |
+     |                                       | path = 192.0.2.11:/sharevolumes/share_c8c7b376_364b_4b48_87d4_bba4609612fd_2adf9d85_855d_4a1e_af0a_bc44cb6b42db   |
+     |                                       | preferred = False                                                                                                 |
+     | properties                            |                                                                                                                   |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 Share metadata
 --------------
@@ -1169,36 +1164,39 @@ Share metadata
 
   .. code-block:: console
 
-     $ manila metadata myshare set purpose='storing financial data for analysis' year_started=2020
+     $ openstack share set myshare \
+         --property purpose='storing financial data for analysis' \
+         --property year_started=2020
 
 * Show share metadata
 
   .. code-block:: console
 
-     $ manila metadata-show myshare
-     +--------------+-------------------------------------+
-     | Property     | Value                               |
-     +--------------+-------------------------------------+
-     | purpose      | storing financial data for analysis |
-     | year_started | 2020                                |
-     +--------------+-------------------------------------+
+     $ openstack share show myshare
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | Field                                 | Value                                                                                                             |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
+     | ...                                   | ...                                                                                                               |
+     | properties                            | purpose='storing financial data for analysis', year_started='2020'                                                |
+     | ...                                   | ...                                                                                                               |
+     +---------------------------------------+-------------------------------------------------------------------------------------------------------------------+
 
 * Query share list with metadata
 
   .. code-block:: console
 
-     $ manila list --metadata year_started=2020
+     $ openstack share list --property year_started=2020
      +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+------+-------------------+
      | ID                                   | Name    | Size | Share Proto | Status    | Is Public | Share Type Name | Host | Availability Zone |
      +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+------+-------------------+
-     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | myshare | 1    | NFS         | available | False     | dhss_true       |      | nova              |
+     | c8c7b376-364b-4b48-87d4-bba4609612fd | myshare |    1 | NFS         | available | False     | dhss_true       |      | manila-zone-2     |
      +--------------------------------------+---------+------+-------------+-----------+-----------+-----------------+------+-------------------+
 
 * Unset share metadata
 
   .. code-block:: console
 
-     $ manila metadata myshare unset year_started
+     $ openstack share unset myshare --property year_started
 
 Share revert to snapshot
 ------------------------
@@ -1210,12 +1208,12 @@ Share revert to snapshot
    -  To revert a share to its snapshot, the share type of the share must
       contain the capability extra-spec ``revert_to_snapshot_support=True``.
    -  The revert operation can only be performed to the most recent available
-      snapshot of the share known to manila. If revert to an earlier snapshot
+      snapshot of the share known to Manila. If revert to an earlier snapshot
       is desired, later snapshots must explicitly be deleted.
 
   .. code-block:: console
 
-     $ manila revert-to-snapshot mysnapshot
+     $ openstack share revert mysnapshot
 
 Share Transfer
 --------------
@@ -1232,9 +1230,9 @@ Share Transfer
 
   .. code-block:: console
 
-     $ manila share-transfer-create myshare --name mytransfer
+     $ openstack share transfer create myshare --name mytransfer
      +------------------------+--------------------------------------+
-     | Property               | Value                                |
+     | Field                  | Value                                |
      +------------------------+--------------------------------------+
      | id                     | 1c56314e-7e97-455a-bbde-83828db038d4 |
      | created_at             | 2023-05-25T14:37:11.178869           |
@@ -1256,19 +1254,20 @@ Share Transfer
 
   .. code-block:: console
 
-     $ manila share-transfer-accept 1c56314e-7e97-455a-bbde-83828db038d4  af429e22e0abc31d
+     $ openstack share transfer accept \
+         1c56314e-7e97-455a-bbde-83828db038d4 af429e22e0abc31d
 
 * Delete a transfer
 
   .. code-block:: console
 
-     $ manila share-transfer-delete 1c56314e-7e97-455a-bbde-83828db038d4
+     $ openstack share transfer delete 1c56314e-7e97-455a-bbde-83828db038d4
 
 * List transfers
 
   .. code-block:: console
 
-     $ manila share-transfer-list
+     $ openstack share transfer list
      +--------------------------------------+------------+---------------+--------------------------------------+
      | ID                                   | Name       | Resource Type | Resource Id                          |
      +--------------------------------------+------------+---------------+--------------------------------------+
@@ -1279,9 +1278,9 @@ Share Transfer
 
   .. code-block:: console
 
-     $ manila share-transfer-show 1c56314e-7e97-455a-bbde-83828db038d4
+     $ openstack share transfer show 1c56314e-7e97-455a-bbde-83828db038d4
      +------------------------+--------------------------------------+
-     | Property               | Value                                |
+     | Field                  | Value                                |
      +------------------------+--------------------------------------+
      | id                     | 1c56314e-7e97-455a-bbde-83828db038d4 |
      | created_at             | 2023-05-25T14:37:11.178869           |
@@ -1303,23 +1302,23 @@ Snapshot metadata
 
      $ openstack share snapshot create myshare --name mysnapshot \
         --property key1=value1 --property key2=value2
-    +-------------------+--------------------------------------+
-    | Field             | Value                                |
-    +-------------------+--------------------------------------+
-    | created_at        | 2024-03-25T15:39:52.555692           |
-    | description       | None                                 |
-    | id                | 00a82c82-cb49-414b-a334-c1a1e9b360d5 |
-    | metadata          | {'key1': 'value1', 'key2': 'value2'} |
-    | name              | mysnapshot                           |
-    | project_id        | df63c20d921f48d8802083fdb858fd3e     |
-    | provider_location | None                                 |
-    | share_id          | 6c4d785b-9034-400b-95de-3d4f06280b31 |
-    | share_proto       | NFS                                  |
-    | share_size        | 1                                    |
-    | size              | 1                                    |
-    | status            | creating                             |
-    | user_id           | b3369f53dadd40499d797a9a4ee9326b     |
-    +-------------------+--------------------------------------+
+     +-------------+--------------------------------------+
+     | Field       | Value                                |
+     +-------------+--------------------------------------+
+     | id          | 00a82c82-cb49-414b-a334-c1a1e9b360d5 |
+     | share_id    | c8c7b376-364b-4b48-87d4-bba4609612fd |
+     | share_size  | 1                                    |
+     | created_at  | 2026-04-04T07:39:52.555692           |
+     | status      | creating                             |
+     | name        | mysnapshot                           |
+     | description | None                                 |
+     | size        | 1                                    |
+     | share_proto | NFS                                  |
+     | user_id     | a6c6f585fe5249cbb91426b37e1161a7     |
+     | project_id  | 58951a7d00fd46f9a98bd038ed5d9e09     |
+     | metadata    | key1 : value1                        |
+     |             | key2 : value2                        |
+     +-------------+--------------------------------------+
 
 * Set metadata items on your share snapshot
 
@@ -1336,7 +1335,7 @@ Snapshot metadata
      +--------------------------------------+------------+
      | ID                                   | Name       |
      +--------------------------------------+------------+
-     | 83b0772b-00ad-4e45-8fad-106b9d4f1719 | mysnapshot |
+     | 00a82c82-cb49-414b-a334-c1a1e9b360d5 | mysnapshot |
      +--------------------------------------+------------+
 
 * Unset snapshot metadata
@@ -1427,7 +1426,9 @@ Share backups
 
   .. code-block:: console
 
-     $ openstack share backup create --name test5 --backup-options backup_type=eng_data_backup source_share
+     $ openstack share backup create --name test5 \
+         --backup-options backup_type=eng_data_backup \
+         source_share
      +-------------------+--------------------------------------+
      | Field             | Value                                |
      +-------------------+--------------------------------------+
