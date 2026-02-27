@@ -214,7 +214,8 @@ These quotas can be updated with the :command:`openstack share quota set` comman
 
 .. code-block:: console
 
-   $ openstack share quota set %project_id% --user %user_id% --shares 49 --snapshots 49
+   $ openstack share quota set %project_id% --user %user_id% --shares 49 \
+       --snapshots 49
 
 The service will prevent the quota being set lower than the current
 consumption. However, a quota update can still be made if necessary with

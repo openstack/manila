@@ -162,20 +162,20 @@ Pre-requisite:
 
 Create a CIFS file share with 2GB of size::
 
-    $ manila create --name FILE_SHARE_NAME --share-type SHARE_TYPE CIFS 2
+    $ openstack share create --name FILE_SHARE_NAME --share-type SHARE_TYPE CIFS 2
 
 Check file share created as expected::
 
-    $ manila show FILE_SHARE_NAME
+    $ openstack share show FILE_SHARE_NAME
 
 Configuration to provide share access to AD user::
 
-    $ manila access-allow FILE_SHARE_NAME user AD_DOMAIN_NAME\\\\AD_USER
+    $ openstack share access create FILE_SHARE_NAME user AD_DOMAIN_NAME\\\\AD_USER
       --access-level rw
 
 Check users permission set as expected::
 
-    $ manila access-list FILE_SHARE_NAME
+    $ openstack share access list FILE_SHARE_NAME
 
 The AD_DOMAIN_NAME\\AD_USER must be listed in access_to column and should
 show active in its state column as result of this command.

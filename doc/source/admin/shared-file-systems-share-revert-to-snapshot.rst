@@ -5,7 +5,7 @@ Share revert to snapshot
 ========================
 
 To revert a share to the latest available snapshot, use the
-:command:`manila revert-to-snapshot`.
+:command:`openstack share revert`.
 
 .. note::
     - In order to use this feature, the available backend in your deployment
@@ -36,4 +36,4 @@ To revert a share to a snapshot, run:
 
 .. code-block:: console
 
-   $ manila revert-to-snapshot 14ee8575-aac2-44af-8392-d9c9d344f392
+   $ openstack share revert 14ee8575-aac2-44af-8392-d9c9d344f392

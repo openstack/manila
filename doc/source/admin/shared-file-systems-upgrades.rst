@@ -91,8 +91,8 @@ Upgrade procedure
   The manila-data service may be processing time consuming data migrations.
   Shutting it down will interrupt any ongoing migrations, and these will not
   be automatically started when the service comes back up. You can check
-  the status on ongoing migrations with ``manila migration-get-progress``
-  command; issue ``manila migration-complete`` for any ongoing migrations
+  the status on ongoing migrations with ``openstack share migration show``
+  command; issue ``openstack share migration complete`` for any ongoing migrations
   that have completed their data copy phase.
 
 #. Upgrade all the service packages. If upgrading from distribution packages,
@@ -102,7 +102,7 @@ Upgrade procedure
 #. Run ``manila-manage db sync`` from any node with the latest manila
    packages.
 #. Start all the Shared File System service processes.
-#. Inspect the ``services`` by running ``manila service-list``. If there are
+#. Inspect the ``services`` by running ``openstack share service list``. If there are
    any orphaned records, run ``manila-manage service cleanup`` to delete them.
 
 Upgrade testing

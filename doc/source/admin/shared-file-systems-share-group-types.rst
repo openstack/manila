@@ -108,7 +108,8 @@ using **openstack share group type set <share_group_type> --group-specs <key=val
 
 .. code-block:: console
 
-   $ openstack share group type set group_type_for_cg --group-specs consistent_snapshot_support=host
+   $ openstack share group type set group_type_for_cg \
+       --group-specs consistent_snapshot_support=host
 
 It is also possible to view a list of current share group types and extra
 specifications:
@@ -168,8 +169,10 @@ by providing their IDs:
 
 .. code-block:: console
 
-   $ openstack share group type access create my_type1 63ce0a1452384fce9edb0189425ea0e2
-   $ openstack share group type access create my_type1 d274cfc59e2543d38aa223af4f5eb327
+   $ openstack share group type access create my_type1 \
+       63ce0a1452384fce9edb0189425ea0e2
+   $ openstack share group type access create my_type1 \
+       d274cfc59e2543d38aa223af4f5eb327
 
 To view information about access for a private share group type, use the command  :command:`openstack share group type access list my_type1`:
 
@@ -192,4 +195,5 @@ To deny access for a specified project, use
 
 .. code-block:: console
 
-   $ openstack share group type access delete my_type1 b0fa13353e594d6f809dfa405fedc46a
+   $ openstack share group type access delete my_type1 \
+       b0fa13353e594d6f809dfa405fedc46a

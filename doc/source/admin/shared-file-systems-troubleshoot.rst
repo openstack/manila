@@ -19,7 +19,7 @@ Solution
    is not set, you will not get any tips from logs how to fix your issue.
 
 #. Find what share service holds a specified share. To do that, run command
-   :command:`manila show <share_id_or_name>` and find a share host in the
+   :command:`openstack share show <share_id_or_name>` and find a share host in the
    output. Host uniquely identifies what share service holds the broken share.
 
 #. Look thought logs of this share service. Usually, it can be found at

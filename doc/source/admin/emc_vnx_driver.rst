@@ -263,14 +263,14 @@ For new share type, these extra specifications can be set directly when creating
 
 .. code-block:: console
 
-    manila type-create --snapshot_support True --create_share_from_snapshot_support True ${share_type_name} True
+    openstack share type create --snapshot-support True --create-share-from-snapshot-support True ${share_type_name} True
 
 Or you can update already existing share type with command:
 
 .. code-block:: console
 
-    manila type-key ${share_type_name} set snapshot_support=True
-    manila type-key ${share_type_name} set create_share_from_snapshot_support=True
+    openstack share type set ${share_type_name} --extra-specs snapshot_support=True
+    openstack share type set ${share_type_name} --extra-specs create_share_from_snapshot_support=True
 
 To snapshot a share and create share from the snapshot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -280,14 +280,14 @@ Then snapshot the share with command:
 
 .. code-block:: console
 
-    manila snapshot-create ${source_share_name} --name ${target_snapshot_name} --description " "
+    openstack share snapshot create ${source_share_name} --name ${target_snapshot_name} --description " "
 
 After creating the snapshot from previous step, you can create share from that snapshot.
 Use command:
 
 .. code-block:: console
 
-    manila create nfs 1 --name ${target_share_name} --metadata source=snapshot --description " " --snapshot-id ${source_snapshot_id}
+    openstack share create nfs 1 --name ${target_share_name} --property source=snapshot --description " " --snapshot-id ${source_snapshot_id}
 
 Restrictions
 ------------

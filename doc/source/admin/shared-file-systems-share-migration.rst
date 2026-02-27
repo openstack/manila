@@ -78,7 +78,9 @@ The commands to interact with the share migration API are:
 
   .. code-block:: console
 
-     $ manila migration-start share_1 ubuntu@generic2#GENERIC2 --writable False --preserve-snapshots False --preserve-metadata False --nondisruptive False
+     $ openstack share migration start share_1 ubuntu@generic2#GENERIC2 \
+         --writable False --preserve-snapshots False \
+         --preserve-metadata False --nondisruptive False
 
   .. note::
      This command has no output.
@@ -88,7 +90,7 @@ The commands to interact with the share migration API are:
 
   .. code-block:: console
 
-     $ manila migration-complete share_1
+     $ openstack share migration complete share_1
 
   .. note::
      This command has no output.
@@ -98,10 +100,10 @@ The commands to interact with the share migration API are:
 
   .. code-block:: console
 
-     $ manila migration-get-progress share_1
+     $ openstack share migration show share_1
 
      +----------------+--------------------------+
-     | Property       | Value                    |
+     | Field          | Value                    |
      +----------------+--------------------------+
      | task_state     | data_copying_in_progress |
      | total_progress | 37                       |
@@ -111,7 +113,7 @@ The commands to interact with the share migration API are:
 
   .. code-block:: console
 
-     $ manila migration-cancel share_1
+     $ openstack share migration cancel share_1
 
   .. note::
      This command has no output.

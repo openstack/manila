@@ -163,7 +163,7 @@ set to False.
 
 .. code-block:: console
 
-   $ manila type-create flashblade False
+   $ openstack share type create flashblade False
 
 Additionally, the driver also reports the following common capabilities that
 can be specified in the share type:
@@ -188,8 +188,8 @@ for example:
 
 .. code-block:: console
 
-   $ manila type-key flashblade set snapshot_support=True
-   $ manila type-key flashblade set revert_to_snapshot=True
+   $ openstack share type set flashblade --extra-specs snapshot_support=True
+   $ openstack share type set flashblade --extra-specs revert_to_snapshot=True
 
 Step 3 - Restart the Services
 *****************************

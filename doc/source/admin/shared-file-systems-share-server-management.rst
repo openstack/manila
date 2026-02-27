@@ -33,13 +33,13 @@ shares known to the Shared File Systems service.
 Manage a share server
 ---------------------
 To bring a share server under the Shared File System service, use the
-:command:`manila share-server-manage` command:
+:command:`openstack share server adopt` command:
 
 .. code-block:: console
 
-    manila share-server-manage
-        [--driver_options [<key=value> [<key=value> ...]]]
-        [--share_network_subnet <share-network-subnet>]]
+    openstack share server adopt
+        [--driver-options <key=value>]
+        [--share-network-subnet <share-network-subnet>]
         <host> <share_network> <identifier>
 
 The positional arguments are:
@@ -80,12 +80,12 @@ To manage a share server, run:
 
 .. code-block:: console
 
-    $ manila share-server-manage \
+    $ openstack share server adopt \
         manila@paris \
         share_net_test \
         backend_server_1 \
     +--------------------+------------------------------------------+
-    | Property           | Value                                    |
+    | Field              | Value                                    |
     +--------------------+------------------------------------------+
     | id                 | 441d806f-f0e0-4c90-b7e2-a553c6aa76b2     |
     | project_id         | 907004508ef4447397ce6741a8f037c1         |
@@ -94,7 +94,7 @@ To manage a share server, run:
     | host               | manila@paris                             |
     | share_network_name | share_net_test                           |
     | share_network_id   | c895fe26-92be-4152-9e6c-f2ad230efb13     |
-    | created_at         | 2019-04-25T18:25:23.000000               |
+    | created_at         | 2026-03-31T18:25:23.000000               |
     | backend_details    | {}                                       |
     | is_auto_deletable  | False                                    |
     | identifier         | backend_server_1                         |
@@ -123,12 +123,12 @@ Unmanage a share server
 -----------------------
 
 To ``unmanage`` a share server, run
-:command:`manila share-server-unmanage <share-server>`.
+:command:`openstack share server abandon <share-server>`.
 
 .. code-block:: console
 
-    $ manila share-server-unmanage 441d806f-f0e0-4c90-b7e2-a553c6aa76b2
-    $ manila share-server-show 441d806f-f0e0-4c90-b7e2-a553c6aa76b2
+    $ openstack share server abandon 441d806f-f0e0-4c90-b7e2-a553c6aa76b2
+    $ openstack share server show 441d806f-f0e0-4c90-b7e2-a553c6aa76b2
     ERROR: Share server 441d806f-f0e0-4c90-b7e2-a553c6aa76b2 could not be
     found.
 
@@ -137,7 +137,7 @@ Reset the share server state
 
 As administrator you are able to reset a share server state. To reset the state
 of a share server, run
-:command:`manila share-server-reset-state <share-server> --state <state>`.
+:command:`openstack share server set <share-server> --status <state>`.
 
 The positional arguments are:
 
@@ -157,14 +157,14 @@ List share servers
 ------------------
 
 To list share servers, run
-:command:`manila share-server-list` command:
+:command:`openstack share server list` command:
 
 .. code-block:: console
 
-    manila share-server-list [--host <hostname>] [--status <status>]
-                             [--share-network <share_network>]
-                             [--project-id <project_id>]
-                             [--columns <columns>]
+    openstack share server list [--host <hostname>] [--status <status>]
+                                [--share-network <share_network>]
+                                [--project-id <project_id>]
+                                [--columns <columns>]
 
 All the arguments above are optional. They can ben used to filter share
 servers. The options to filter:
@@ -183,7 +183,7 @@ servers. The options to filter:
 
 .. code-block:: console
 
-    $ manila share-server-list
+    $ openstack share server list
     +--------------------------------------+--------------+--------+----------------+----------------------------------+------------+
     | Id                                   | Host         | Status | Share Network  | Project Id                       | Updated_at |
     +--------------------------------------+--------------+--------+----------------+----------------------------------+------------+
