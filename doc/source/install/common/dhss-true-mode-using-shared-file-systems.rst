@@ -26,16 +26,17 @@ server is an instance where NFS shares are served.
 
    .. code-block:: console
 
-      $ manila type-create default_share_type True
+      $ openstack share type create default_share_type True
       +----------------------+--------------------------------------+
-      | Property             | Value                                |
+      | Field                | Value                                |
       +----------------------+--------------------------------------+
-      | required_extra_specs | driver_handles_share_servers : True  |
-      | Name                 | default_share_type                   |
-      | Visibility           | public                               |
+      | id                   | 0c5e5365-e3b3-4c4d-8a10-5e1a0b204467 |
+      | name                 | default_share_type                   |
+      | visibility           | public                               |
       | is_default           | -                                    |
-      | ID                   | 8a35da28-0f74-490d-afff-23664ecd4f01 |
+      | required_extra_specs | driver_handles_share_servers : True  |
       | optional_extra_specs | snapshot_support : True              |
+      | description          | None                                 |
       +----------------------+--------------------------------------+
 
    Set this default share type in ``manila.conf`` under the ``[DEFAULT]``
@@ -74,52 +75,44 @@ server is an instance where NFS shares are served.
    .. code-block:: console
 
       $ curl -L \
-      https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2 | \
-      glance image-create \
-      --name "manila-service-image" \
+      https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2 \
+      -o /tmp/manila-service-image.qcow2
+      $ openstack image create "manila-service-image" \
+      --file /tmp/manila-service-image.qcow2 \
       --disk-format qcow2 \
       --container-format bare \
-      --visibility public --progress
-      %   Total    %   Received %   Xferd  Average  Speed   Time     Time     Time      Current
-                                           Dload    Upload  Total    Spent    Left      Speed
-      100 3008k    100 3008k    0   0      1042k    0       0:00:02  0:00:02  --:--:--  1041k
-      +------------------+----------------------------------------------------------------------------------+
-      | Property         | Value                                                                            |
-      +------------------+----------------------------------------------------------------------------------+
-      | checksum         | 48a08e746cf0986e2bc32040a9183445                                                 |
-      | container_format | bare                                                                             |
-      | created_at       | 2016-01-26T19:52:24Z                                                             |
-      | direct_url       | rbd://3c3a4cbc-7331-4fc1-8cbb-79213b9cebff/images/ff97deff-b184-47f8-827c-       |
-      |                  | 16c349c82720/snap                                                                |
-      | disk_format      | qcow2                                                                            |
-      | id               | 1fc7f29e-8fe6-44ef-9c3c-15217e83997c                                             |
-      | locations        | [{"url": "rbd://3c3a4cbc-7331-4fc1-8cbb-79213b9cebff/images/ff97deff-b184-47f8   |
-      |                  | -827c-16c349c82720/snap", "metadata": {}}]                                       |
-      | min_disk         | 0                                                                                |
-      | min_ram          | 0                                                                                |
-      | name             | manila-service-image                                                             |
-      | owner            | e2c965830ecc4162a002bf16ddc91ab7                                                 |
-      | protected        | False                                                                            |
-      | size             | 306577408                                                                        |
-      | status           | active                                                                           |
-      | tags             | []                                                                               |
-      | updated_at       | 2016-01-26T19:52:28Z                                                             |
-      | virtual_size     | None                                                                             |
-      | visibility       | public                                                                           |
-      +------------------+----------------------------------------------------------------------------------+
+      --public
+      +------------------+--------------------------------------+
+      | Field            | Value                                |
+      +------------------+--------------------------------------+
+      | container_format | bare                                 |
+      | created_at       | 2026-03-31T19:52:24Z                 |
+      | disk_format      | qcow2                                |
+      | id               | 1fc7f29e-8fe6-44ef-9c3c-15217e83997c |
+      | min_disk         | 0                                    |
+      | min_ram          | 0                                    |
+      | name             | manila-service-image                 |
+      | owner            | e2c965830ecc4162a002bf16ddc91ab7     |
+      | protected        | False                                |
+      | size             | 306577408                            |
+      | status           | active                               |
+      | tags             |                                      |
+      | updated_at       | 2026-03-31T19:52:28Z                 |
+      | visibility       | public                               |
+      +------------------+--------------------------------------+
 
 #. List available networks in order to get id and subnets of the private
    network:
 
    .. code-block:: console
 
-      $ neutron net-list
-      +--------------------------------------+---------+----------------------------------------------------+
-      | id                                   | name    | subnets                                            |
-      +--------------------------------------+---------+----------------------------------------------------+
-      | 0e62efcd-8cee-46c7-b163-d8df05c3c5ad | public  | 5cc70da8-4ee7-4565-be53-b9c011fca011 10.3.31.0/24  |
-      | 7c6f9b37-76b4-463e-98d8-27e5686ed083 | private | 3482f524-8bff-4871-80d4-5774c2730728 172.16.1.0/24 |
-      +--------------------------------------+---------+----------------------------------------------------+
+      $ openstack network list
+      +--------------------------------------+---------+--------------------------------------+
+      | ID                                   | Name    | Subnets                              |
+      +--------------------------------------+---------+--------------------------------------+
+      | 0e62efcd-8cee-46c7-b163-d8df05c3c5ad | public  | 5cc70da8-4ee7-4565-be53-b9c011fca011 |
+      | 7c6f9b37-76b4-463e-98d8-27e5686ed083 | private | 3482f524-8bff-4871-80d4-5774c2730728 |
+      +--------------------------------------+---------+--------------------------------------+
 
 #. Source the ``demo`` credentials to perform
    the following steps as a non-administrative project:
@@ -130,25 +123,30 @@ server is an instance where NFS shares are served.
 
    .. code-block:: console
 
-      $ manila share-network-create --name demo-share-network1 \
-      --neutron-net-id PRIVATE_NETWORK_ID \
-      --neutron-subnet-id PRIVATE_NETWORK_SUBNET_ID
-      +-------------------+--------------------------------------+
-      | Property          | Value                                |
-      +-------------------+--------------------------------------+
-      | name              | demo-share-network1                  |
-      | segmentation_id   | None                                 |
-      | created_at        | 2016-01-26T20:03:41.877838           |
-      | neutron_subnet_id | 3482f524-8bff-4871-80d4-5774c2730728 |
-      | updated_at        | None                                 |
-      | network_type      | None                                 |
-      | neutron_net_id    | 7c6f9b37-76b4-463e-98d8-27e5686ed083 |
-      | ip_version        | None                                 |
-      | cidr              | None                                 |
-      | project_id        | e2c965830ecc4162a002bf16ddc91ab7     |
-      | id                | 58b2f0e6-5509-4830-af9c-97f525a31b14 |
-      | description       | None                                 |
-      +-------------------+--------------------------------------+
+      $ openstack share network create --name demo-share-network1 \
+          --neutron-net-id PRIVATE_NETWORK_ID \
+          --neutron-subnet-id PRIVATE_NETWORK_SUBNET_ID
+      +-----------------------------------+----------------------------------------------------------+
+      | Field                             | Value                                                    |
+      +-----------------------------------+----------------------------------------------------------+
+      | id                                | 58b2f0e6-5509-4830-af9c-97f525a31b14                     |
+      | name                              | demo-share-network1                                      |
+      | project_id                        | e2c965830ecc4162a002bf16ddc91ab7                         |
+      | created_at                        | 2026-03-31T20:03:41.877838                               |
+      | updated_at                        | None                                                     |
+      | description                       | None                                                     |
+      | status                            | active                                                   |
+      | share_network_subnets             |                                                          |
+      |                                   | id = d952ef97-e2f5-47b8-bf19-516b10d56782                |
+      |                                   | availability_zone = None                                 |
+      |                                   | created_at = 2026-03-31T20:03:41.905123                  |
+      |                                   | segmentation_id = None                                   |
+      |                                   | neutron_net_id = 7c6f9b37-76b4-463e-98d8-27e5686ed083    |
+      |                                   | neutron_subnet_id = 3482f524-8bff-4871-80d4-5774c2730728 |
+      |                                   | ip_version = None                                        |
+      |                                   | cidr = None                                              |
+      |                                   | network_type = None                                      |
+      +-----------------------------------+----------------------------------------------------------+
 
 Create a share
 --------------
@@ -158,79 +156,92 @@ Create a share
 
    .. code-block:: console
 
-      $ manila create NFS 1 --name demo-share1 --share-network demo-share-network1
-      +-----------------------------+--------------------------------------+
-      | Property                    | Value                                |
-      +-----------------------------+--------------------------------------+
-      | status                      | None                                 |
-      | share_type_name             | default_share_type                   |
-      | description                 | None                                 |
-      | availability_zone           | None                                 |
-      | share_network_id            | 58b2f0e6-5509-4830-af9c-97f525a31b14 |
-      | share_group_id              | None                                 |
-      | host                        | None                                 |
-      | snapshot_id                 | None                                 |
-      | is_public                   | False                                |
-      | task_state                  | None                                 |
-      | snapshot_support            | True                                 |
-      | id                          | 016ca18f-bdd5-48e1-88c0-782e4c1aa28c |
-      | size                        | 1                                    |
-      | name                        | demo-share1                          |
-      | share_type                  | 8a35da28-0f74-490d-afff-23664ecd4f01 |
-      | created_at                  | 2016-01-26T20:08:50.502877           |
-      | export_location             | None                                 |
-      | share_proto                 | NFS                                  |
-      | project_id                  | 48e8c35b2ac6495d86d4be61658975e7     |
-      | metadata                    | {}                                   |
-      +-----------------------------+--------------------------------------+
+      $ openstack share create NFS 1 --name demo-share1 \
+          --share-network demo-share-network1
+      +---------------------------------------+--------------------------------------+
+      | Field                                 | Value                                |
+      +---------------------------------------+--------------------------------------+
+      | id                                    | 80397c62-176c-474b-bd1f-af249caa9ec4 |
+      | size                                  | 1                                    |
+      | availability_zone                     | None                                 |
+      | created_at                            | 2026-03-31T20:08:25.807322           |
+      | status                                | creating                             |
+      | name                                  | demo-share1                          |
+      | description                           | None                                 |
+      | project_id                            | 48e8c35b2ac6495d86d4be61658975e7     |
+      | snapshot_id                           | None                                 |
+      | share_network_id                      | 58b2f0e6-5509-4830-af9c-97f525a31b14 |
+      | share_proto                           | NFS                                  |
+      | metadata                              | {}                                   |
+      | share_type                            | 0c5e5365-e3b3-4c4d-8a10-5e1a0b204467 |
+      | is_public                             | False                                |
+      | snapshot_support                      | True                                 |
+      | task_state                            | None                                 |
+      | share_type_name                       | default_share_type                   |
+      | access_rules_status                   | active                               |
+      | replication_type                      | None                                 |
+      | has_replicas                          | False                                |
+      | user_id                               | a6c6f585fe5249cbb91426b37e1161a7     |
+      | create_share_from_snapshot_support    | True                                 |
+      | revert_to_snapshot_support            | True                                 |
+      | share_group_id                        | None                                 |
+      | source_share_group_snapshot_member_id | None                                 |
+      | mount_snapshot_support                | True                                 |
+      | progress                              | None                                 |
+      +---------------------------------------+--------------------------------------+
 
 #. After some time, the share status should change from ``creating``
    to ``available``:
 
    .. code-block:: console
 
-      $ manila list
-      +--------------------------------------+-------------+------+-------------+-----------+-----------+------------------------+-----------------------------+-------------------+
-      | ID                                   | Name        | Size | Share Proto | Status    | Is Public | Share Type Name        | Host                        | Availability Zone |
-      +--------------------------------------+-------------+------+-------------+-----------+-----------+------------------------+-----------------------------+-------------------+
-      | 5f8a0574-a95e-40ff-b898-09fd8d6a1fac | demo-share1 | 1    | NFS         | available | False     |   default_share_type   | storagenode@generic#GENERIC | nova              |
-      +--------------------------------------+-------------+------+-------------+-----------+-----------+------------------------+-----------------------------+-------------------+
+      $ openstack share list
+      +--------------------------------------+-------------+------+-------------+-----------+-----------+--------------------+-----------------------------+-------------------+
+      | ID                                   | Name        | Size | Share Proto | Status    | Is Public | Share Type Name    | Host                        | Availability Zone |
+      +--------------------------------------+-------------+------+-------------+-----------+-----------+--------------------+-----------------------------+-------------------+
+      | 80397c62-176c-474b-bd1f-af249caa9ec4 | demo-share1 |    1 | NFS         | available | False     | default_share_type | storagenode@generic#GENERIC | nova              |
+      +--------------------------------------+-------------+------+-------------+-----------+-----------+--------------------+-----------------------------+-------------------+
 
 #. Determine export IP address of the share:
 
    .. code-block:: console
 
-      $ manila show demo-share1
-      +-----------------------------+------------------------------------------------------------------------------------+
-      | Property                    | Value                                                                              |
-      +-----------------------------+------------------------------------------------------------------------------------+
-      | status                      | available                                                                          |
-      | share_type_name             | default_share_type                                                                 |
-      | description                 | None                                                                               |
-      | availability_zone           | nova                                                                               |
-      | share_network_id            | 58b2f0e6-5509-4830-af9c-97f525a31b14                                               |
-      | share_group_id              | None                                                                               |
-      | export_locations            |                                                                                    |
-      |                             | path = 10.254.0.6:/shares/share-0bfd69a1-27f0-4ef5-af17-7cd50bce6550               |
-      |                             | id = e525cbca-b3cc-4adf-a1cb-b1bf48fa2422                                          |
-      |                             | preferred = False                                                                  |
-      | host                        | storagenode@generic#GENERIC                                                        |
-      | access_rules_status         | active                                                                             |
-      | snapshot_id                 | None                                                                               |
-      | is_public                   | False                                                                              |
-      | task_state                  | None                                                                               |
-      | snapshot_support            | True                                                                               |
-      | id                          | 5f8a0574-a95e-40ff-b898-09fd8d6a1fac                                               |
-      | size                        | 1                                                                                  |
-      | name                        | demo-share1                                                                        |
-      | share_type                  | 8a35da28-0f74-490d-afff-23664ecd4f01                                               |
-      | has_replicas                | False                                                                              |
-      | replication_type            | None                                                                               |
-      | created_at                  | 2016-03-30T19:10:33.000000                                                         |
-      | share_proto                 | NFS                                                                                |
-      | project_id                  | 48e8c35b2ac6495d86d4be61658975e7                                                   |
-      | metadata                    | {}                                                                                 |
-      +-----------------------------+------------------------------------------------------------------------------------+
+      $ openstack share show demo-share1
+      +---------------------------------------+----------------------------------------------------------------------+
+      | Field                                 | Value                                                                |
+      +---------------------------------------+----------------------------------------------------------------------+
+      | id                                    | 80397c62-176c-474b-bd1f-af249caa9ec4                                 |
+      | size                                  | 1                                                                    |
+      | availability_zone                     | nova                                                                 |
+      | created_at                            | 2026-03-31T20:08:25.807322                                           |
+      | status                                | available                                                            |
+      | name                                  | demo-share1                                                          |
+      | description                           | None                                                                 |
+      | project_id                            | 48e8c35b2ac6495d86d4be61658975e7                                     |
+      | snapshot_id                           | None                                                                 |
+      | share_network_id                      | 58b2f0e6-5509-4830-af9c-97f525a31b14                                 |
+      | share_proto                           | NFS                                                                  |
+      | share_type                            | 0c5e5365-e3b3-4c4d-8a10-5e1a0b204467                                 |
+      | is_public                             | False                                                                |
+      | snapshot_support                      | True                                                                 |
+      | task_state                            | None                                                                 |
+      | share_type_name                       | default_share_type                                                   |
+      | access_rules_status                   | active                                                               |
+      | replication_type                      | None                                                                 |
+      | has_replicas                          | False                                                                |
+      | user_id                               | a6c6f585fe5249cbb91426b37e1161a7                                     |
+      | create_share_from_snapshot_support    | True                                                                 |
+      | revert_to_snapshot_support            | True                                                                 |
+      | share_group_id                        | None                                                                 |
+      | source_share_group_snapshot_member_id | None                                                                 |
+      | mount_snapshot_support                | True                                                                 |
+      | progress                              | 100%                                                                 |
+      | export_locations                      |                                                                      |
+      |                                       | id = a329a0c1-ad55-4500-bd57-b17c0d1567e1                            |
+      |                                       | path = 192.0.2.6:/shares/share-0bfd69a1-27f0-4ef5-af17-7cd50bce6550  |
+      |                                       | preferred = True                                                     |
+      | properties                            |                                                                      |
+      +---------------------------------------+----------------------------------------------------------------------+
 
 Allow access to the share
 -------------------------
@@ -242,16 +253,20 @@ Allow access to the share
 
    .. code-block:: console
 
-      $ manila access-allow demo-share1 ip INSTANCE_IP
+      $ openstack share access create demo-share1 ip INSTANCE_IP
       +--------------+--------------------------------------+
-      | Property     | Value                                |
+      | Field        | Value                                |
       +--------------+--------------------------------------+
-      | share_id     | 5f8a0574-a95e-40ff-b898-09fd8d6a1fac |
-      | access_type  | ip                                   |
-      | access_to    | 10.0.0.46                            |
+      | id           | eb04dfed-aa25-4cea-99c0-4d0969909cd9 |
+      | share_id     | 80397c62-176c-474b-bd1f-af249caa9ec4 |
       | access_level | rw                                   |
-      | state        | new                                  |
-      | id           | aefeab01-7197-44bf-ad0f-d6ca6f99fc96 |
+      | access_to    | 198.51.100.46                        |
+      | access_type  | ip                                   |
+      | state        | queued_to_apply                      |
+      | access_key   | None                                 |
+      | created_at   | 2026-03-31T20:09:05.198219           |
+      | updated_at   | None                                 |
+      | properties   |                                      |
       +--------------+--------------------------------------+
 
 
@@ -270,4 +285,6 @@ Mount the share on a compute instance
 
    .. code-block:: console
 
-      $ mount -vt nfs 10.254.0.6:/shares/share-0bfd69a1-27f0-4ef5-af17-7cd50bce6550 ~/test_folder
+      $ mount -vt nfs \
+          192.0.2.6:/shares/share-0bfd69a1-27f0-4ef5-af17-7cd50bce6550 \
+          ~/test_folder
