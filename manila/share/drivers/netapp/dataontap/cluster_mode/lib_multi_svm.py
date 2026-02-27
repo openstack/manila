@@ -742,7 +742,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         else:
             return _delete_vserver_without_lock()
 
-    def _delete_port_vlans(_self, client, ports):
+    def _delete_port_vlans(self, client, ports):
         """Delete Port's VLAN configuration
 
         must be called with a cluster client
