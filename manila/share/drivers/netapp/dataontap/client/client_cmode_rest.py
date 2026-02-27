@@ -5672,7 +5672,7 @@ class NetAppRestClient(object):
         return ports
 
     @na_utils.trace
-    def _get_valid_broadcast_domains(_self, broadcast_domains):
+    def _get_valid_broadcast_domains(self, broadcast_domains):
         valid_domains = []
         for broadcast_domain in broadcast_domains:
             if (
