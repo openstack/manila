@@ -40,7 +40,7 @@ below:
    [LVM_sample_backend]
    driver_handles_share_servers = False
    share_driver = manila.share.drivers.lvm.LVMShareDriver
-   lvm_share_export_ips = 1.2.3.4
+   lvm_share_export_ips = 192.0.2.4
 
 In the example above, ``lvm_share_export_ips`` is the address to be used by
 clients for accessing shares. In the simplest case, it should be the same

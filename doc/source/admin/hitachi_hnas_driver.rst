@@ -163,11 +163,11 @@ Below is an example of a valid configuration of HNAS driver:
    share_backend_name = HITACHI1
    share_driver = manila.share.drivers.hitachi.hnas.driver.HitachiHNASDriver
    driver_handles_share_servers = False
-   hitachi_hnas_ip = 172.24.44.15
+   hitachi_hnas_ip = 192.0.2.15
    hitachi_hnas_user = supervisor
    hitachi_hnas_password = supervisor
    hitachi_hnas_evs_id = 1
-   hitachi_hnas_evs_ip = 10.0.1.20
+   hitachi_hnas_evs_ip = 192.0.2.20
    hitachi_hnas_file_system_name = FS-Manila
 
 Step 2 - Prepare the Network
@@ -234,7 +234,7 @@ EVS in use, such as in the following example:
 
 .. code-block:: console
 
-   $ console-context --evs 3 route-net-add --gateway 192.168.1.1 10.0.0.0/24
+   $ console-context --evs 3 route-net-add --gateway 203.0.113.1 198.51.100.0/24
 
 Step 3 - Share Type Configuration
 *********************************
@@ -348,7 +348,7 @@ Where:
 |  protocol        | NFS or CIFS protocols are currently supported.           |
 +------------------+----------------------------------------------------------+
 |  export_path     | The export path of the share.                            |
-|                  | For example: *172.24.44.31:/shares/some_share_id*        |
+|                  | For example: *192.0.2.31:/shares/some_share_id*          |
 +------------------+----------------------------------------------------------+
 
 

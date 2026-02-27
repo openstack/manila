@@ -206,8 +206,8 @@ Pre-configuration on HNAS
 
      .. code-block:: console
 
-        $ console-context --evs 3 route-net-add --gateway 192.168.1.1 \
-        10.0.0.0/24
+        $ console-context --evs 3 route-net-add --gateway 203.0.113.1 \
+        198.51.100.0/24
 
 #. Configure the CIFS security.
 
@@ -234,11 +234,11 @@ Back end configuration
         share_backend_name = HNAS1
         share_driver = manila.share.drivers.hitachi.hnas.driver.HitachiHNASDriver
         driver_handles_share_servers = False
-        hitachi_hnas_ip = 172.24.44.15
+        hitachi_hnas_ip = 192.0.2.15
         hitachi_hnas_user = supervisor
         hitachi_hnas_password = supervisor
         hitachi_hnas_evs_id = 1
-        hitachi_hnas_evs_ip = 10.0.1.20
+        hitachi_hnas_evs_ip = 192.0.2.20
         hitachi_hnas_file_system_name = FS-Manila
         hitachi_hnas_cifs_snapshot_while_mounted = True
 
@@ -266,11 +266,11 @@ Back end configuration
         share_backend_name = HNAS1
         share_driver = manila.share.drivers.hitachi.hnas.driver.HitachiHNASDriver
         driver_handles_share_servers = False
-        hitachi_hnas_ip = 172.24.44.15
+        hitachi_hnas_ip = 192.0.2.15
         hitachi_hnas_user = supervisor
         hitachi_hnas_password = supervisor
         hitachi_hnas_evs_id = 1
-        hitachi_hnas_evs_ip = 10.0.1.20
+        hitachi_hnas_evs_ip = 192.0.2.20
         hitachi_hnas_file_system_name = FS-Manila1
         hitachi_hnas_cifs_snapshot_while_mounted = True
 
@@ -278,11 +278,11 @@ Back end configuration
         share_backend_name = HNAS2
         share_driver = manila.share.drivers.hitachi.hnas.driver.HitachiHNASDriver
         driver_handles_share_servers = False
-        hitachi_hnas_ip = 172.24.44.15
+        hitachi_hnas_ip = 192.0.2.15
         hitachi_hnas_user = supervisor
         hitachi_hnas_password = supervisor
         hitachi_hnas_evs_id = 1
-        hitachi_hnas_evs_ip = 10.0.1.20
+        hitachi_hnas_evs_ip = 192.0.2.20
         hitachi_hnas_file_system_name = FS-Manila2
         hitachi_hnas_cifs_snapshot_while_mounted = True
 
@@ -297,7 +297,7 @@ Back end configuration
 
    .. code-block:: console
 
-      $ manila type-create hitachi False
+      $ openstack share type create hitachi False
 
 #. Optional: Add extra-specs for enabling HNAS-supported features:
 
@@ -306,10 +306,14 @@ Back end configuration
 
      .. code-block:: console
 
-        $ manila type-key hitachi set snapshot_support=True
-        $ manila type-key hitachi set mount_snapshot_support=True
-        $ manila type-key hitachi set revert_to_snapshot_support=True
-        $ manila type-key hitachi set create_share_from_snapshot_support=True
+        $ openstack share type set hitachi \
+            --extra-specs snapshot_support=True
+        $ openstack share type set hitachi \
+            --extra-specs mount_snapshot_support=True
+        $ openstack share type set hitachi \
+            --extra-specs revert_to_snapshot_support=True
+        $ openstack share type set hitachi \
+            --extra-specs create_share_from_snapshot_support=True
 
    * To specify which HNAS back end will be created by the share, in case of
      multiple back end setups, add an extra-spec for each share-type to match
@@ -318,8 +322,10 @@ Back end configuration
 
      .. code-block:: console
 
-        $ manila type-key hitachi set share_backend_name=hnas1
-        $ manila type-key hitachi2 set share_backend_name=hnas2
+        $ openstack share type set hitachi \
+            --extra-specs share_backend_name=hnas1
+        $ openstack share type set hitachi2 \
+            --extra-specs share_backend_name=hnas2
 
 #. Restart all Shared File Systems services (``manila-share``,
    ``manila-scheduler`` and ``manila-api``).
@@ -353,11 +359,11 @@ To **manage** a share, use:
 
 .. code-block:: console
 
-   $ manila manage [--name <name>] [--description <description>]
-                   [--share_type <share-type>]
-                   [--driver_options [<key=value> [<key=value> ...]]]
-                   [--public]
-                   <service_host> <protocol> <export_path>
+   $ openstack share adopt [--name <name>] [--description <description>]
+                           [--share-type <share-type>]
+                           [--driver-options [<key=value> [<key=value> ...]]]
+                           [--public]
+                           <service-host> <protocol> <export-path>
 
 Where:
 
@@ -366,8 +372,8 @@ Where:
 +====================+======================================================+
 |                    | Manila host, back end and share name. For example,   |
 |  ``service_host``  | ``ubuntu@hitachi1#hsp1``. The available hosts can    |
-|                    | be listed with the command: ``manila pool-list``     |
-|                    | (admin only).                                        |
+|                    | be listed with the command:                          |
+|                    | ``openstack share pool list`` (admin only).          |
 +--------------------+------------------------------------------------------+
 |  ``protocol``      | Protocol of share to manage, such as NFS or CIFS.    |
 +--------------------+------------------------------------------------------+
@@ -388,13 +394,13 @@ Where:
    should also be noted that the backslash ``\`` character has to be escaped
    when entered in Linux terminals.
 
-For additional details, refer to ``manila help manage``.
+For additional details, refer to ``openstack help share adopt``.
 
 To **unmanage** a share, use:
 
 .. code-block:: console
 
-   $ manila unmanage <share>
+   $ openstack share abandon <share>
 
 Where:
 
@@ -402,7 +408,8 @@ Where:
 |  **Parameter**   | **Description**                                         |
 +==================+=========================================================+
 |  ``share``       | ID or name of the share to be unmanaged. A list of      |
-|                  | shares can be fetched with ``manila list``.             |
+|                  | shares can be fetched with                              |
+|                  | ``openstack share list``.                               |
 +------------------+---------------------------------------------------------+
 
 Manage and unmanage snapshots
@@ -418,9 +425,10 @@ To **manage** a snapshot, use:
 
 .. code-block:: console
 
-   $ manila snapshot-manage [--name <name>] [--description <description>]
-                            [--driver_options [<key=value> [<key=value> ...]]]
-                            <share> <provider_location>
+   $ openstack share snapshot adopt \
+       [--name <name>] [--description <description>] \
+       [--driver-option <key=value>] \
+       <share> <provider_location>
 
 Where:
 
@@ -428,12 +436,13 @@ Where:
 |  **Parameter**         | **Description**                                 |
 +========================+=================================================+
 |  ``share``             | ID or name of the share to be managed. A list   |
-|                        | of shares can be fetched with ``manila list``.  |
+|                        | of shares can be fetched with                   |
+|                        | ``openstack share list``.                       |
 +------------------------+-------------------------------------------------+
 | ``provider_location``  | Location of the snapshot on the back end, such  |
 |                        | as ``/snapshots/share_ID/snapshot_ID``.         |
 +------------------------+-------------------------------------------------+
-| ``--driver_options``   | Driver-related configuration, passed such as    |
+| ``--driver-option``    | Driver-related configuration, passed such as    |
 |                        | ``size=10``.                                    |
 +------------------------+-------------------------------------------------+
 
@@ -442,7 +451,7 @@ Where:
    NFS and CIFS shares. This is only the case for snapshot management.
 
 .. note::
-   The ``--driver_options`` parameter ``size`` is **required** for the HNAS
+   The ``--driver-option`` parameter ``size`` is **required** for the HNAS
    driver. Administrators need to know the size of the to-be-managed
    snapshot beforehand.
 
@@ -455,7 +464,7 @@ To **unmanage** a snapshot, use:
 
 .. code-block:: console
 
-   $ manila snapshot-unmanage <snapshot>
+   $ openstack share snapshot abandon <snapshot>
 
 Where:
 
@@ -476,5 +485,5 @@ Additional notes
   take any space in HNAS, it only stores the difference between the share and
   the snapshot, so it grows when share data is changed.
 * Administrators should manage the project's quota
-  (:command:`manila quota-update`) to control the back end usage.
+  (:command:`openstack share quota set`) to control the back end usage.
 * Shares will need to be remounted after a revert-to-snapshot operation.

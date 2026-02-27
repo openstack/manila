@@ -262,13 +262,15 @@ To create a file share in this mode, you need to:
 
     .. code-block:: console
 
-        $ manila type-create ${share_type_name} False
+        $ openstack share type create ${share_type_name} False
 
 #. Create share.
 
     .. code-block:: console
 
-        $ manila create ${share_protocol} ${size} --name ${share_name} --share-type ${share_type_name}
+        $ openstack share create ${share_protocol} ${size} \
+            --name ${share_name} \
+            --share-type ${share_type_name}
 
 .. note::
 
@@ -303,14 +305,19 @@ creating share type:
 
 .. code-block:: console
 
-    $ manila type-create --snapshot_support True --create_share_from_snapshot_support True ${share_type_name} True
+    $ openstack share type create \
+        --snapshot-support True \
+        --create-share-from-snapshot-support True \
+        ${share_type_name} True
 
 Or you can update already existing share type with command:
 
 .. code-block:: console
 
-    $ manila type-key ${share_type_name} set snapshot_support=True
-    $ manila type-key ${share_type_name} set create_share_from_snapshot_support=True
+    $ openstack share type set ${share_type_name} \
+        --extra-specs snapshot_support=True
+    $ openstack share type set ${share_type_name} \
+        --extra-specs create_share_from_snapshot_support=True
 
 To snapshot a share and create share from the snapshot
 ------------------------------------------------------
@@ -321,14 +328,18 @@ Then snapshot the share with command:
 
 .. code-block:: console
 
-    $ manila snapshot-create ${source_share_name} --name ${target_snapshot_name} --description " "
+    $ openstack share snapshot create ${source_share_name} \
+        --name ${target_snapshot_name} --description " "
 
 After creating the snapshot from previous step, you can create share from that
 snapshot. Use command:
 
 .. code-block:: console
 
-    $ manila create nfs 1 --name ${target_share_name} --metadata source=snapshot --description " " --snapshot-id ${source_snapshot_id}
+    $ openstack share create nfs 1 \
+        --name ${target_share_name} \
+        --property source=snapshot --description " " \
+        --snapshot-id ${source_snapshot_id}
 
 To manage an existing share server
 ----------------------------------
@@ -340,18 +351,25 @@ To manage a share server existing in Unity System, you need to:
 
     .. code-block:: console
 
-        $ openstack network create ${network_name} --provider-network-type ${network_type}
-        $ openstack subnet create ${subnet_name} --network ${network_name} --subnet-range ${subnet_range}
-        $ openstack port create --network ${network_name} --fixed-ip subnet=${subnet_name},ip-address=${ip address} \
-          ${port_name} --device-owner=manila:share
-        $ manila share-network-create --name ${share_network_name} --neutron-net-id ${network_name} \
-          --neutron-subnet-id ${subnet_name}
+        $ openstack network create ${network_name} \
+            --provider-network-type ${network_type}
+        $ openstack subnet create ${subnet_name} \
+            --network ${network_name} \
+            --subnet-range ${subnet_range}
+        $ openstack port create --network ${network_name} \
+            --fixed-ip subnet=${subnet_name},ip-address=${ip address} \
+            ${port_name} --device-owner=manila:share
+        $ openstack share network create \
+            --name ${share_network_name} \
+            --neutron-net-id ${network_name} \
+            --neutron-subnet-id ${subnet_name}
 
 #. Manage the share server in OpenStack:
 
     .. code-block:: console
 
-        $ manila share-server-manage ${host} ${share_network_name} ${identifier}
+        $ openstack share server adopt ${host} \
+            ${share_network_name} ${identifier}
 
     .. note::
 
@@ -363,7 +381,7 @@ To unmanage a share server existing in OpenStack:
 
     .. code-block:: console
 
-        $ manila share-server-unmanage ${share_server_id}
+        $ openstack share server abandon ${share_server_id}
 
 To manage an existing share
 ---------------------------
@@ -378,8 +396,12 @@ To manage a share existing in Unity System:
 
     .. code-block:: console
 
-        $ manila manage ${service_host} ${protocol} '${export_path}' --name ${share_name} --driver_options size=${share_size} \
-          --share_type ${share_type} --share_server_id ${share_server_id}
+        $ openstack share adopt ${service_host} \
+            ${protocol} '${export_path}' \
+            --name ${share_name} \
+            --driver-options size=${share_size} \
+            --share-type ${share_type} \
+            --share-server-id ${share_server_id}
 
     .. note::
 
@@ -390,8 +412,11 @@ To manage a share existing in Unity System:
 
     .. code-block:: console
 
-        $ manila manage ${service_host} ${protocol} '${export_path}' --name ${share_name} --driver_options size=${share_size} \
-          --share_type ${share_type}
+        $ openstack share adopt ${service_host} \
+            ${protocol} '${export_path}' \
+            --name ${share_name} \
+            --driver-options size=${share_size} \
+            --share-type ${share_type}
 
     .. note::
 
@@ -403,7 +428,7 @@ To unmanage a share existing in OpenStack:
 
     .. code-block:: console
 
-        $ manila unmanage ${share_id}
+        $ openstack share abandon ${share_id}
 
 To manage an existing share snapshot
 ------------------------------------
@@ -413,7 +438,10 @@ share instance is existing in OpenStack, otherwise need to manage share first
 
     .. code-block:: console
 
-        $ manila snapshot-manage --name ${name} ${share_name} ${provider_location} --driver_options size=${snapshot_size}
+        $ openstack share snapshot adopt \
+            --name ${name} ${share_name} \
+            ${provider_location} \
+            --driver-option size=${snapshot_size}
 
     .. note::
 
@@ -426,7 +454,7 @@ To unmanage a snapshot existing in OpenStack:
 
     .. code-block:: console
 
-        $ manila snapshot-unmanage ${snapshot_id}
+        $ openstack share snapshot abandon ${snapshot_id}
 
 Supported security services
 ---------------------------

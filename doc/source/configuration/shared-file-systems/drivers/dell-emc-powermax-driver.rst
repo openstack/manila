@@ -415,33 +415,34 @@ For a new share type:
 
 .. code-block:: console
 
-   $ manila type-create --snapshot_support True \
-                        --create_share_from_snapshot_support True \
+   $ openstack share type create --snapshot-support True \
+                        --create-share-from-snapshot-support True \
                         ${share_type_name} True
 
 For an existing share type:
 
 .. code-block:: console
 
-   $ manila type-key ${share_type_name} \
-                     set snapshot_support=True
-   $ manila type-key ${share_type_name} \
-                     set create_share_from_snapshot_support=True
+   $ openstack share type set ${share_type_name} \
+                     --extra-specs snapshot_support=True
+   $ openstack share type set ${share_type_name} \
+                     --extra-specs create_share_from_snapshot_support=True
 
 To create a snapshot from a share where snapshot_support=True:
 
 .. code-block:: console
 
-   $ manila snapshot-create ${source_share_name} --name ${target_snapshot_name}
+   $ openstack share snapshot create ${source_share_name} \
+       --name ${target_snapshot_name}
 
 To create a target share from a shapshot where create_share_from_snapshot_support=True:
 
 .. code-block:: console
 
-   $ manila create cifs 3 --name ${target_share_name} \
+   $ openstack share create cifs 3 --name ${target_share_name} \
                           --share-network ${share_network} \
                           --share-type ${share_type_name} \
-                          --metadata source=snapshot \
+                          --property source=snapshot \
                           --snapshot-id ${snapshot_id}
 
 
@@ -544,9 +545,9 @@ Other Remarks
 
    .. code-block:: console
 
-      $ manila quota-show --tenant <project_id> --user <user_id>
+      $ openstack share quota show --tenant <project_id> --user <user_id>
       +-----------------------+-------+
-      | Property              | Value |
+      | Field                 | Value |
       +-----------------------+-------+
       | share_groups          | 50    |
       | gigabytes             | 1000  |
