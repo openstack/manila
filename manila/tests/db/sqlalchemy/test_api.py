@@ -1347,11 +1347,11 @@ class ShareDatabaseAPITestCase(test.TestCase):
         replica = db_utils.create_share_replica(
             share_id=share['id'])
         db_api.share_replica_metadata_update(
-            self.ctxt, share_instance_id=replica['id'],
+            self.ctxt, replica['id'],
             metadata=metadata, delete=False)
         self.assertEqual(
             metadata, db_api.share_replica_metadata_get(
-                self.ctxt, share_instance_id=replica['id']))
+                self.ctxt, replica['id']))
 
     def test_share_replica_metadata_get_item(self):
         metadata = {'a': 'b', 'c': 'd'}
@@ -1361,11 +1361,11 @@ class ShareDatabaseAPITestCase(test.TestCase):
         replica = db_utils.create_share_replica(
             share_id=share['id'])
         db_api.share_replica_metadata_update(
-            self.ctxt, share_instance_id=replica['id'],
+            self.ctxt, replica['id'],
             metadata=metadata, delete=False)
         self.assertEqual(
             shouldbe, db_api.share_replica_metadata_get_item(
-                self.ctxt, share_replica_id=replica['id'],
+                self.ctxt, replica['id'],
                 key=key))
 
     def test_share_replica_metadata_update(self):
@@ -1376,14 +1376,14 @@ class ShareDatabaseAPITestCase(test.TestCase):
         replica = db_utils.create_share_replica(
             share_id=share['id'])
         db_api.share_replica_metadata_update(
-            self.ctxt, share_instance_id=replica['id'],
+            self.ctxt, replica['id'],
             metadata=metadata1, delete=False)
         db_api.share_replica_metadata_update(
-            self.ctxt, share_instance_id=replica['id'],
+            self.ctxt, replica['id'],
             metadata=metadata2, delete=False)
         self.assertEqual(
             should_be, db_api.share_replica_metadata_get(
-                self.ctxt, share_instance_id=replica['id']))
+                self.ctxt, replica['id']))
 
     def test_share_replica_metadata_delete(self):
         key = 'a'
@@ -1393,14 +1393,14 @@ class ShareDatabaseAPITestCase(test.TestCase):
         replica = db_utils.create_share_replica(
             share_id=share['id'])
         db_api.share_replica_metadata_update(
-            self.ctxt, share_instance_id=replica['id'],
+            self.ctxt, replica['id'],
             metadata=metadata, delete=False)
         db_api.share_replica_metadata_delete(
-            self.ctxt, share_instance_id=replica['id'],
+            self.ctxt, replica['id'],
             key=key)
         self.assertEqual(
             should_be, db_api.share_replica_metadata_get(
-                self.ctxt, share_instance_id=replica['id']))
+                self.ctxt, replica['id']))
 
 
 @ddt.ddt
