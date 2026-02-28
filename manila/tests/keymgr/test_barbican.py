@@ -16,7 +16,6 @@
 from unittest import mock
 
 from oslo_config import cfg
-from oslo_utils import uuidutils
 
 from manila import exception
 from manila.keymgr import barbican as barbican_module
@@ -33,33 +32,20 @@ class BarbicanSecretACLTestCase(test.TestCase):
         self.secret_ref = 'mock-secret-id'
         self.barbican_acl = barbican_module.BarbicanSecretACL(CONF)
 
-    def test_get_client_and_href_with_valid_secret(self):
-        mock_href = uuidutils.generate_uuid()
+    def test_get_client_with_valid_secret(self):
         mock_client = mock.Mock()
         self.mock_object(self.barbican_acl, '_get_barbican_client',
                          mock.Mock(return_value=(mock_client, mock.Mock())))
-        self.mock_object(self.barbican_acl, '_create_secret_ref',
-                         mock.Mock(return_value=mock_href))
 
-        result_client, result_href = self.barbican_acl.get_client_and_href(
-            self.context, mock_href)
+        result_client = self.barbican_acl.get_client(self.context)
         self.assertEqual(mock_client, result_client)
-        self.assertEqual(mock_href, result_href)
 
-    def test_get_client_and_href_missing_backend(self):
+    def test_get_client_missing_backend(self):
         CONF.set_default('backend', 'wrong.backend', group='key_manager')
         self.assertRaises(
             exception.ManilaBarbicanACLError,
-            self.barbican_acl.get_client_and_href,
-            self.context,
-            self.secret_ref)
-
-    def test_get_client_and_href_missing_secret_ref(self):
-        self.assertRaises(
-            exception.ManilaBarbicanACLError,
-            self.barbican_acl.get_client_and_href,
-            self.context,
-            None)
+            self.barbican_acl.get_client,
+            self.context)
 
 
 class BarbicanUserAppCredsTestCase(test.TestCase):
