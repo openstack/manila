@@ -3833,7 +3833,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_create_from_snap.assert_called_once_with(
             fake.PROVISIONING_OPTIONS, extra_specs=fake.EXTRA_SPEC,
-            qos_specs=fake.QOS_NORMALIZED_SPEC)
+            qos_specs=fake.QOS_NORMALIZED_SPEC,
+            qos_type_specs=None)
 
     def test_validate_provisioning_options_for_share_aqos_not_supported(self):
         self.assertRaises(

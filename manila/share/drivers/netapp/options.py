@@ -279,7 +279,16 @@ netapp_provisioning_opts = [
                 default=False,
                 help='This option enables the logical space reporting on a '
                      'newly created vserver and logical space accounting '
-                     'on newly created volumes on this vserver. ')
+                     'on newly created volumes on this vserver. '),
+    cfg.StrOpt('netapp_fixed_qos_policy_prefix',
+               default='FIXED_QOS',
+               help='This option enables user to configure the prefix of '
+                    'fixed QoS policies created on vserver.'),
+    cfg.StrOpt('netapp_adaptive_qos_policy_prefix',
+               default='ADAPTIVE_QOS',
+               help='This option enables user to configure the prefix of '
+                    'adaptive QoS policies created on vserver.'),
+
 ]
 
 netapp_cluster_opts = [

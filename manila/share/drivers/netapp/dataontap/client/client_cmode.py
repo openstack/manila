@@ -3306,6 +3306,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
+                        'adaptive-policy-group-name': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -3366,6 +3367,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'size-used'),
             'qos-policy-group-name': volume_qos_attributes.get_child_content(
                 'policy-group-name'),
+            'adaptive-qos-policy-group-name': (
+                volume_qos_attributes.get_child_content(
+                    'adaptive-policy-group-name')),
             'style-extended': volume_id_attributes.get_child_content(
                 'style-extended'),
             'snaplock-type': volume_snaplock_attributes.get_child_content(
@@ -3447,6 +3451,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
+                        'adaptive-policy-group-name': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -3500,8 +3505,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'owning-vserver-name'),
             'size': volume_space_attributes.get_child_content('size'),
             'qos-policy-group-name': volume_qos_attributes.get_child_content(
-                'policy-group-name')
-
+                'policy-group-name'),
+            'adaptive-qos-policy-group-name': (
+                volume_qos_attributes.get_child_content(
+                    'adaptive-policy-group-name')),
         }
         return volume
 
@@ -5903,16 +5910,167 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return status_info
 
     @na_utils.trace
-    def qos_policy_group_exists(self, qos_policy_group_name):
-        """Checks if a QoS policy group exists."""
+    def adaptive_qos_policy_group_exists(self, qos_policy_group_name):
+        """Checks if an adaptive QoS policy group exists."""
         try:
-            self.qos_policy_group_get(qos_policy_group_name)
+            self.adaptive_qos_policy_group_get(qos_policy_group_name)
         except exception.NetAppException:
             return False
         return True
 
     @na_utils.trace
-    def qos_policy_group_get(self, qos_policy_group_name):
+    def adaptive_qos_policy_group_get(self, qos_policy_group_name):
+        """Checks if an adaptive QoS policy group exists."""
+        api_args = {
+            'query': {
+                'qos-adaptive-policy-group-info': {
+                    'policy-group': qos_policy_group_name,
+                },
+            },
+            'desired-attributes': {
+                'qos-adaptive-policy-group-info': {
+                    'policy-group': None,
+                    'vserver': None,
+                    'peak-iops': None,
+                    'peak-iops-allocation': None,
+                    'expected-iops': None,
+                    'expected-iops-allocation': None,
+                    'absolute-min-iops': None,
+                    'block-size': None,
+                    'num-workloads': None
+                },
+            },
+        }
+
+        try:
+            result = self.send_request('qos-adaptive-policy-group-get-iter',
+                                       api_args,
+                                       False)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                msg = _("Configured ONTAP login user cannot retrieve "
+                        "adaptive QoS policies.")
+                LOG.error(msg)
+                raise exception.NetAppException(msg)
+            else:
+                raise
+        if not self._has_records(result):
+            msg = _("No adaptive QoS policy group found with name %s.")
+            raise exception.NetAppException(msg % qos_policy_group_name)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        qos_policy_group_info = attributes_list.get_child_by_name(
+            'qos-adaptive-policy-group-info') or netapp_api.NaElement('none')
+
+        policy_info = {
+            'policy-group': qos_policy_group_info.get_child_content(
+                'policy-group'),
+            'vserver': qos_policy_group_info.get_child_content('vserver'),
+            'num-workloads': int(qos_policy_group_info.get_child_content(
+                'num-workloads')),
+            'block_size': qos_policy_group_info.get_child_content(
+                'block-size'),
+            'absolute_min_iops': qos_policy_group_info.get_child_content(
+                'absolute-min-iops'),
+            'peak_iops': qos_policy_group_info.get_child_content(
+                'peak-iops'),
+            'peak_iops_allocation': qos_policy_group_info.get_child_content(
+                'peak-iops-allocation'),
+            'expected_iops': qos_policy_group_info.get_child_content(
+                'expected-iops'),
+            'expected_iops_allocation': (
+                qos_policy_group_info.get_child_content(
+                    'expected-iops-allocation')),
+        }
+        return policy_info
+
+    @na_utils.trace
+    def adaptive_qos_policy_group_create(self, qos_policy_group_name, vserver,
+                                         qos_type_specs):
+
+        """Creates an adaptive QoS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'vserver': vserver,
+        }
+        api_args['peak-iops'] = qos_type_specs.get('peak_iops')
+        api_args['expected-iops'] = qos_type_specs.get('expected_iops')
+
+        if qos_type_specs.get('absolute_min_iops'):
+            api_args['absolute-min-iops'] = qos_type_specs.get(
+                'absolute_min_iops')
+        if qos_type_specs.get('block_size'):
+            api_args['block-size'] = qos_type_specs.get('block_size')
+        if qos_type_specs.get('expected_iops_allocation'):
+            api_args['expected-iops-allocation'] = qos_type_specs.get(
+                'expected_iops_allocation')
+        if qos_type_specs.get('peak_iops_allocation'):
+            api_args['peak-iops-allocation'] = qos_type_specs.get(
+                'peak_iops_allocation')
+
+        return self.send_request('qos-adaptive-policy-group-create',
+                                 api_args, False)
+
+    @na_utils.trace
+    def adaptive_qos_policy_group_modify(self, qos_policy_group_name,
+                                         qos_type_specs):
+        """Modifies an adaptive QoS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+        }
+
+        if qos_type_specs.get('peak_iops'):
+            api_args['peak-iops'] = qos_type_specs.get('peak_iops')
+        if qos_type_specs.get('expected_iops'):
+            api_args['expected-iops'] = qos_type_specs.get('expected_iops')
+        if qos_type_specs.get('absolute_min_iops'):
+            api_args['absolute-min-iops'] = qos_type_specs.get(
+                'absolute_min_iops')
+        if qos_type_specs.get('block_size'):
+            api_args['block-size'] = qos_type_specs.get('block_size')
+        if qos_type_specs.get('expected_iops_allocation'):
+            api_args['expected-iops-allocation'] = qos_type_specs.get(
+                'expected_iops_allocation')
+        if qos_type_specs.get('peak_iops_allocation'):
+            api_args['peak-iops-allocation'] = qos_type_specs.get(
+                'peak_iops_allocation')
+
+        return self.send_request(
+            'qos-adaptive-policy-group-modify', api_args, False)
+
+    @na_utils.trace
+    def adaptive_qos_policy_group_delete(self, qos_policy_group_name):
+        """Attempts to delete an adaptive QoS policy group."""
+        api_args = {'policy-group': qos_policy_group_name}
+        return self.send_request(
+            'qos-adaptive-policy-group-delete', api_args, False)
+
+    @na_utils.trace
+    def adaptive_qos_policy_group_rename(self, qos_policy_group_name,
+                                         new_name):
+        """Renames an adaptive QoS policy group."""
+        if qos_policy_group_name == new_name:
+            return
+        api_args = {
+            'policy-group-name': qos_policy_group_name,
+            'new-name': new_name,
+        }
+        return self.send_request(
+            'qos-adaptive-policy-group-rename', api_args, False)
+
+    @na_utils.trace
+    def qos_policy_group_exists(self, qos_policy_group_name):
+        """Checks if a QoS policy group exists."""
+        try:
+            self.qos_policy_group_get_legacy(qos_policy_group_name)
+        except exception.NetAppException:
+            return False
+        return True
+
+    @na_utils.trace
+    def qos_policy_group_get_legacy(self, qos_policy_group_name):
         """Checks if a QoS policy group exists."""
         api_args = {
             'query': {
@@ -5967,8 +6125,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return policy_info
 
     @na_utils.trace
-    def qos_policy_group_create(self, qos_policy_group_name, vserver,
-                                max_throughput=None, min_throughput=None):
+    def qos_policy_group_create_legacy(self, qos_policy_group_name, vserver,
+                                       max_throughput=None,
+                                       min_throughput=None):
         """Creates a QoS policy group."""
         api_args = {
             'policy-group': qos_policy_group_name,
@@ -5981,8 +6140,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return self.send_request('qos-policy-group-create', api_args, False)
 
     @na_utils.trace
-    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput,
-                                min_throughput):
+    def qos_policy_group_modify_legacy(self, qos_policy_group_name,
+                                       max_throughput, min_throughput):
         """Modifies a QoS policy group."""
         api_args = {
             'policy-group': qos_policy_group_name,
@@ -5992,6 +6151,154 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if min_throughput:
             api_args['min-throughput'] = min_throughput
         return self.send_request('qos-policy-group-modify', api_args, False)
+
+    def _generate_qos_policy_throughput(self, mbps, iops):
+        parts = []
+        if mbps is not None:
+            if isinstance(mbps, float) and mbps.is_integer():
+                mbps = int(mbps)
+            parts.append(f"{mbps}MB/s")
+
+        if iops is not None:
+            if isinstance(iops, float) and iops.is_integer():
+                iops = int(iops)
+            parts.append(f"{iops}iops")
+        return ",".join(parts)
+
+    def _extract_qos_policy_throughput(self, throughput):
+        mbps = None
+        iops = None
+
+        mbps_match = re.search(r'([\d.]+)\s*MB/s', throughput, re.IGNORECASE)
+        if mbps_match:
+            mbps = int(mbps_match.group(1))
+
+        iops_match = re.search(r'(\d+)\s*iops', throughput, re.IGNORECASE)
+        if iops_match:
+            iops = int(iops_match.group(1))
+
+        return mbps, iops
+
+    @na_utils.trace
+    def qos_policy_group_create(self, qos_policy_group_name, vserver,
+                                qos_type_specs):
+        """Creates a QoS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'vserver': vserver,
+        }
+
+        mbps = qos_type_specs.get('max_throughput_mbps')
+        iops = qos_type_specs.get('max_throughput_iops')
+        max_throughput = self._generate_qos_policy_throughput(mbps, iops)
+        if max_throughput:
+            api_args['max-throughput'] = max_throughput
+
+        mbps = qos_type_specs.get('min_throughput_mbps')
+        iops = qos_type_specs.get('min_throughput_iops')
+        min_throughput = self._generate_qos_policy_throughput(mbps, iops)
+        if min_throughput:
+            api_args['min-throughput'] = min_throughput
+
+        if qos_type_specs.get('capacity_shared') == 'true':
+            api_args['is-shared'] = 'true'
+        else:
+            api_args['is-shared'] = 'false'
+        return self.send_request('qos-policy-group-create', api_args, False)
+
+    @na_utils.trace
+    def qos_policy_group_modify(self, qos_policy_group_name, qos_type_specs):
+        """Modifies a QoS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+        }
+        mbps = qos_type_specs.get('max_throughput_mbps')
+        iops = qos_type_specs.get('max_throughput_iops')
+        max_throughput = self._generate_qos_policy_throughput(mbps, iops)
+        if max_throughput:
+            api_args['max-throughput'] = max_throughput
+
+        mbps = qos_type_specs.get('min_throughput_mbps')
+        iops = qos_type_specs.get('min_throughput_iops')
+        min_throughput = self._generate_qos_policy_throughput(mbps, iops)
+        if min_throughput:
+            api_args['min-throughput'] = min_throughput
+
+        return self.send_request('qos-policy-group-modify', api_args, False)
+
+    @na_utils.trace
+    def qos_policy_group_get(self, qos_policy_group_name):
+        """Checks if a QoS policy group exists."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': qos_policy_group_name,
+                },
+            },
+            'desired-attributes': {
+                'qos-policy-group-info': {
+                    'policy-group': None,
+                    'vserver': None,
+                    'max-throughput': None,
+                    'min-throughput': None,
+                    'is-shared': None,
+                    'num-workloads': None
+                },
+            },
+        }
+
+        try:
+            result = self.send_request('qos-policy-group-get-iter',
+                                       api_args,
+                                       False)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                msg = _("Configured ONTAP login user cannot retrieve "
+                        "QoS policies.")
+                LOG.error(msg)
+                raise exception.NetAppException(msg)
+            else:
+                raise
+        if not self._has_records(result):
+            msg = _("No QoS policy group found with name %s.")
+            raise exception.NetAppException(msg % qos_policy_group_name)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        qos_policy_group_info = attributes_list.get_child_by_name(
+            'qos-policy-group-info') or netapp_api.NaElement('none')
+
+        policy_info = {
+            'policy-group': qos_policy_group_info.get_child_content(
+                'policy-group'),
+            'vserver': qos_policy_group_info.get_child_content('vserver'),
+            'num-workloads': int(qos_policy_group_info.get_child_content(
+                'num-workloads')),
+            'capacity_shared': qos_policy_group_info.get_child_content(
+                'is-shared'),
+        }
+
+        max_throughput = qos_policy_group_info.get_child_content(
+            'max-throughput')
+        if max_throughput:
+            max_mbps, max_iops = self._extract_qos_policy_throughput(
+                max_throughput)
+            if max_mbps:
+                policy_info['max_throughput_mbps'] = max_mbps
+            if max_iops:
+                policy_info['max_throughput_iops'] = max_iops
+
+        min_throughput = qos_policy_group_info.get_child_content(
+            'min-throughput')
+        if min_throughput:
+            min_mbps, min_iops = self._extract_qos_policy_throughput(
+                min_throughput)
+            if min_mbps:
+                policy_info['min_throughput_mbps'] = min_mbps
+            if min_iops:
+                policy_info['min_throughput_iops'] = min_iops
+        return policy_info
 
     @na_utils.trace
     def qos_policy_group_delete(self, qos_policy_group_name):
@@ -6032,12 +6339,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self.remove_unused_qos_policy_groups()
 
     @na_utils.trace
-    def remove_unused_qos_policy_groups(self):
+    def remove_unused_qos_policy_groups(self, prefix=DELETED_PREFIX):
         """Deletes all QoS policy groups that are marked for deletion."""
         api_args = {
             'query': {
                 'qos-policy-group-info': {
-                    'policy-group': '%s*' % DELETED_PREFIX,
+                    'policy-group': '%s*' % prefix,
                 }
             },
             'max-records': 3500,

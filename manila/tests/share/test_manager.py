@@ -930,6 +930,7 @@ class ShareManagerTestCase(test.TestCase):
             'availability_zone': share_instance.get('availability_zone'),
             'export_locations': share_instance.get('export_locations') or [],
             'mount_point_name': share_instance.get('mount_point_name'),
+            'qos_type_id': share_instance.get('qos_type_id'),
         }
         return share_instance_ref
 

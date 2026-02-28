@@ -639,24 +639,41 @@ class DataMotionSession(object):
         return is_sync_policy
 
     @na_utils.trace
-    def remove_qos_on_old_active_replica(self, orig_active_replica):
-        old_active_replica_qos_policy = (
-            self._get_backend_qos_policy_group_name(orig_active_replica)
-        )
+    def remove_qos_on_old_active_replica(self, orig_active_replica,
+                                         qos_type_specs):
+
         replica_volume_name, replica_vserver, replica_backend = (
             self.get_backend_info_for_share(orig_active_replica))
         replica_client = get_client_for_backend(
             replica_backend, vserver_name=replica_vserver)
-        try:
-            replica_client.set_qos_policy_group_for_volume(
-                replica_volume_name, 'none')
-            replica_client.mark_qos_policy_group_for_deletion(
-                old_active_replica_qos_policy)
-        except exception.StorageCommunicationException:
-            LOG.exception("Could not communicate with the backend "
-                          "for replica %s to unset QoS policy and mark "
-                          "the QoS policy group for deletion.",
-                          orig_active_replica['id'])
+
+        if qos_type_specs:
+            try:
+                if qos_type_specs.get('policy_type') == 'fixed':
+                    replica_client.set_qos_policy_group_for_volume(
+                        replica_volume_name, 'none')
+                else:
+                    replica_client.set_qos_adaptive_policy_group_for_volume(
+                        replica_volume_name, 'none')
+            except exception.StorageCommunicationException:
+                LOG.exception("Could not communicate with the backend "
+                              "for replica %s to unset QoS policy and mark "
+                              "the QoS policy group for deletion.",
+                              orig_active_replica['id'])
+        else:
+            try:
+                old_active_replica_qos_policy = (
+                    self._get_backend_qos_policy_group_name(
+                        orig_active_replica))
+                replica_client.set_qos_policy_group_for_volume(
+                    replica_volume_name, 'none')
+                replica_client.mark_qos_policy_group_for_deletion(
+                    old_active_replica_qos_policy)
+            except exception.StorageCommunicationException:
+                LOG.exception("Could not communicate with the backend "
+                              "for replica %s to unset QoS policy and mark "
+                              "the QoS policy group for deletion.",
+                              orig_active_replica['id'])
 
     def create_snapmirror_svm(self, source_share_server,
                               dest_share_server):

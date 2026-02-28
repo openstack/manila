@@ -1,0 +1,32 @@
+---
+upgrade:
+  - |
+    NetApp ONTAP driver is updated to consider fixed and adaptive qos
+    policies using qos-type and its specs. The existing way of creating
+    fixed qos policy using share-type extra-specs will remain supported.
+    However, a share-type will support either share-type extra-specs or
+    qos-type specs, but not both.
+
+    To use qos-type specs, admin must follow below steps:
+
+    - Create qos-type with unique name (maximum length 60)
+    - Create qos-type specs. The specs contain fields needed to define qos
+      policy. The spec with key 'policy_type' and valid value i.e. either
+      'fixed' or 'adaptive' must be present in qos-type specs.
+    - For fixed qos policy, remaining valid spec keys are
+      'max_throughput_iops', 'max_throughput_mbps', 'min_throughput_iops',
+      'min_throughput_mbps' and 'capacity_shared'.
+    - For adaptive qos policy, remaining valid spec keys are
+      'expected_iops', 'peak_iops', 'absolute_min_iops', 'block_size',
+      'peak_iops_allocation', 'expected_iops_allocation'.
+    - In order to create share with qos policy (defined using qos-type
+      specs), the qos-type name (from step 1) needs to be added in the
+      share-type extra-spec 'default_qos_type'. During share creation,
+      respective policy with unique policy name will be created on share
+      server (if not already present) and applied to share. If share-type
+      extra-spec 'default_qos_type' is not defined, share will be created
+      without qos policy.
+    - If qos-type specs are updated by cloud-admin, the updated values
+      will be validated and applied to existing qos policy created from
+      that qos-type specs. This will take effect once share is created
+      after qos-type specs modification.

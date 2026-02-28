@@ -1971,6 +1971,151 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(fake.PROVISIONING_OPTIONS_STRING_DEFAULT, result)
 
+    def test__get_normalized_qos_type_specs_fixed(self):
+        specs = {
+            'policy_type': 'FIXED',
+            'max_throughput_iops': '3000',
+            'min_throughput_iops': '1000',
+        }
+        expected_normalized_spec = {
+            'policy_type': 'fixed',
+            'max_throughput_iops': '3000',
+            'min_throughput_iops': '1000',
+        }
+        qos_specs = self.library._get_normalized_qos_type_specs(specs)
+        self.assertDictEqual(expected_normalized_spec, qos_specs)
+
+    def test__get_normalized_qos_type_specs_adaptive(self):
+        specs = {
+            'policy_type': 'ADAPtive',
+            'expected_iops': '3000',
+            'peak_iops': '1000',
+        }
+        expected_normalized_spec = {
+            'policy_type': 'adaptive',
+            'expected_iops': 3000,
+            'peak_iops': 1000,
+        }
+        qos_specs = self.library._get_normalized_qos_type_specs(specs)
+        self.assertDictEqual(expected_normalized_spec, qos_specs)
+
+    @ddt.data(None,
+              {},
+              {'foo': 'bar'},
+              {'policy_type': 'fake', 'absiops': '3000'},
+              {'qos': 'fake', 'netapp:maxiops:': '3000'},
+              {'policy_type': 'adaptive', 'peak_iops': 'non_int'},
+              {'policy_type': 'adaptive', 'expected_iops': 'non_int'},
+              {'policy_type': 'adaptive', 'min_absolute_iops': 'non_int'},
+              {'policy_type': 'adaptive', 'peak_iops_allocation': 'fake'},
+              {'policy_type': 'adaptive', 'expected_iops_allocation': 'fake'},
+              {'policy_type': 'fixed', 'block_size': 'invalid_value'},
+              {'policy_type': 'adaptive', 'unexpected_key': 'fake'},
+              {'policy_type': 'fixed', 'unexpected_key': 'fake'})
+    def test_get_normalized_qos_type_specs_no_qos_specs(self, specs):
+        if not specs:
+            self.assertDictEqual(
+                {}, self.library._get_normalized_qos_type_specs(specs))
+        else:
+            self.assertRaises(exception.NetAppException,
+                              self.library._get_normalized_qos_type_specs,
+                              specs)
+
+    @ddt.data(True, False)
+    def test__create_qos_type_policy_group_fixed(self, test_modify):
+        mock_qos_policy_create = self.mock_object(
+            self.library._client, 'qos_policy_group_create')
+        policy_info = {
+            'max_throughput_iops': '3000'
+        }
+        mock_adaptive_qos_policy_create = self.mock_object(
+            self.library._client, 'adaptive_qos_policy_group_create')
+
+        qos_type_specs = {
+            'policy_type': 'fixed',
+            'max_throughput_iops': '3000'
+        }
+        if test_modify:
+            self.mock_object(
+                self.library._client,
+                'qos_policy_group_get',
+                mock.Mock(return_value=policy_info))
+            qos_type_specs.update({'min_throughput_iops': '1000'})
+            mock_qos_policy_modify = self.mock_object(
+                self.library._client, 'qos_policy_group_modify')
+        else:
+            self.mock_object(
+                self.library._client,
+                'qos_policy_group_get',
+                mock.Mock(side_effect=exception.NetAppException()))
+
+        self.library._create_qos_type_policy_group(
+            fake.SHARE, fake.VSERVER1, qos_type_specs)
+
+        expected_policy_name = ('FIXED_QOS_' + fake.VSERVER1 + "_")
+        if test_modify:
+            mock_qos_policy_modify.assert_called_once_with(
+                expected_policy_name, qos_type_specs)
+        else:
+            mock_qos_policy_create.assert_called_once_with(
+                expected_policy_name, fake.VSERVER1,
+                qos_type_specs)
+        mock_adaptive_qos_policy_create.assert_not_called()
+
+    @ddt.data(True, False)
+    def test__create_qos_type_policy_group_adaptive(self, test_modify):
+        mock_qos_policy_create = self.mock_object(
+            self.library._client, 'qos_policy_group_create')
+        adaptive_policy_info = {
+            'peak_iops': 3000,
+            'expected_iops': 1000,
+        }
+        mock_adaptive_qos_policy_create = self.mock_object(
+            self.library._client, 'adaptive_qos_policy_group_create')
+
+        qos_type_specs = {
+            'policy_type': 'adaptive',
+            'peak_iops': 3000,
+            'expected_iops': 1000
+        }
+        if test_modify:
+            self.mock_object(
+                self.library._client,
+                'adaptive_qos_policy_group_get',
+                mock.Mock(return_value=adaptive_policy_info))
+            qos_type_specs.update({'absolute_min_iops': '500'})
+            mock_qos_policy_modify = self.mock_object(
+                self.library._client, 'adaptive_qos_policy_group_modify')
+        else:
+            self.mock_object(
+                self.library._client,
+                'adaptive_qos_policy_group_get',
+                mock.Mock(side_effect=exception.NetAppException()))
+
+        self.library._create_qos_type_policy_group(
+            fake.SHARE, fake.VSERVER1, qos_type_specs)
+
+        expected_policy_name = ('ADAPTIVE_QOS_' + fake.VSERVER1 + "_")
+        if test_modify:
+            mock_qos_policy_modify.assert_called_once_with(
+                expected_policy_name,
+                {'policy_type': 'adaptive', 'absolute_min_iops': '500'})
+        else:
+            mock_adaptive_qos_policy_create.assert_called_once_with(
+                expected_policy_name, fake.VSERVER1, qos_type_specs)
+        mock_qos_policy_create.assert_not_called()
+
+    def test__create_qos_type_policy_group_invalid(self):
+        mock_qos_policy_create = self.mock_object(
+            self.library._client, 'qos_policy_group_create')
+        mock_adaptive_qos_policy_create = self.mock_object(
+            self.library._client, 'adaptive_qos_policy_group_create')
+
+        self.library._create_qos_type_policy_group(
+            fake.SHARE, fake.VSERVER1, {})
+        mock_adaptive_qos_policy_create.assert_not_called()
+        mock_qos_policy_create.assert_not_called()
+
     @ddt.data({}, {'foo': 'bar'}, {'netapp:maxiops': '3000'},
               {'qos': True, 'netapp:absiops': '3000'},
               {'qos': True, 'netapp:maxiops:': '3000'})
@@ -2045,9 +2190,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, throughput)
 
-    def test_create_qos_policy_group(self):
+    def test_create_qos_policy_group_legacy(self):
         mock_qos_policy_create = self.mock_object(
-            self.library._client, 'qos_policy_group_create')
+            self.library._client, 'qos_policy_group_create_legacy')
 
         self.library._create_qos_policy_group(
             fake.SHARE, fake.VSERVER1, {'maxiops': '3000'})
@@ -3694,7 +3839,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(vserver_client, 'get_volume',
                          mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
         self.mock_object(self.library, '_get_max_throughput')
-        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(
+            self.library._client, 'qos_policy_group_modify_legacy')
 
         retval = self.library._adjust_qos_policy_with_volume_resize(
             fake.SHARE, 10, vserver_client)
@@ -3703,7 +3849,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         share_types.get_extra_specs_from_share.assert_called_once_with(
             fake.SHARE)
         self.library._get_max_throughput.assert_not_called()
-        self.library._client.qos_policy_group_modify.assert_not_called()
+        self.library._client.qos_policy_group_modify_legacy.assert_not_called(
+        )
 
     def test_adjust_qos_policy_with_volume_resize(self):
         self.library._have_cluster_creds = True
@@ -3713,7 +3860,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client = mock.Mock()
         self.mock_object(vserver_client, 'get_volume',
                          mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
-        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(
+            self.library._client, 'qos_policy_group_modify_legacy')
 
         retval = self.library._adjust_qos_policy_with_volume_resize(
             fake.SHARE, 10, vserver_client)
@@ -3722,8 +3870,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(retval)
         share_types.get_extra_specs_from_share.assert_called_once_with(
             fake.SHARE)
-        self.library._client.qos_policy_group_modify.assert_called_once_with(
-            fake.QOS_POLICY_GROUP_NAME, expected_max_throughput, None)
+        (self.library._client.qos_policy_group_modify_legacy.
+            assert_called_once_with(
+                fake.QOS_POLICY_GROUP_NAME, expected_max_throughput, None))
 
     def test_extend_share(self):
 
@@ -5264,8 +5413,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=(fake.VSERVER1, vserver_client)))
         self.mock_object(self.library._client, 'qos_policy_group_exists',
                          mock.Mock(return_value=True))
-        self.mock_object(self.library._client, 'qos_policy_group_modify',
-                         mock.Mock(side_effect=netapp_api.NaApiError))
+        self.mock_object(
+            self.library._client, 'qos_policy_group_modify_legacy',
+            mock.Mock(side_effect=netapp_api.NaApiError))
 
         retval = self.library._handle_qos_on_replication_change(
             self.mock_dm_session, self.fake_replica_2, self.fake_replica, True,
@@ -5273,7 +5423,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertIsNone(retval)
         (self.mock_dm_session.remove_qos_on_old_active_replica
-         .assert_called_once_with(self.fake_replica))
+         .assert_called_once_with(self.fake_replica, {}))
         lib_base.LOG.exception.assert_called_once()
         lib_base.LOG.info.assert_not_called()
         vserver_client.set_qos_policy_group_for_volume.assert_not_called()
@@ -5294,7 +5444,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=(fake.VSERVER1, vserver_client)))
         self.mock_object(self.library._client, 'qos_policy_group_exists',
                          mock.Mock(return_value=True))
-        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(
+            self.library._client, 'qos_policy_group_modify_legacy')
         self.mock_object(self.library, '_create_qos_policy_group')
 
         retval = self.library._handle_qos_on_replication_change(
@@ -5304,12 +5455,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(retval)
         if is_dr:
             (self.mock_dm_session.remove_qos_on_old_active_replica.
-                assert_called_once_with(self.fake_replica))
+                assert_called_once_with(self.fake_replica, {}))
         else:
             (self.mock_dm_session.remove_qos_on_old_active_replica.
                 assert_not_called())
-        self.library._client.qos_policy_group_modify.assert_called_once_with(
-            'qos_' + volume_name_on_backend, '3000iops', None)
+        (self.library._client.qos_policy_group_modify_legacy.
+            assert_called_once_with(
+                'qos_' + volume_name_on_backend, '3000iops', None))
         vserver_client.set_qos_policy_group_for_volume.assert_called_once_with(
             volume_name_on_backend, 'qos_' + volume_name_on_backend)
         self.library._create_qos_policy_group.assert_not_called()
@@ -5328,7 +5480,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=(fake.VSERVER1, vserver_client)))
         self.mock_object(self.library._client, 'qos_policy_group_exists',
                          mock.Mock(return_value=False))
-        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(
+            self.library._client, 'qos_policy_group_modify_legacy')
         self.mock_object(self.library, '_create_qos_policy_group')
 
         retval = self.library._handle_qos_on_replication_change(
@@ -5338,7 +5491,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(retval)
         self.library._create_qos_policy_group.assert_called_once_with(
             self.fake_replica_2, fake.VSERVER1, {'maxiops': '3000'})
-        self.library._client.qos_policy_group_modify.assert_not_called()
+        self.library._client.qos_policy_group_modify_legacy.assert_not_called(
+        )
         lib_base.LOG.exception.assert_not_called()
         lib_base.LOG.info.assert_called_once()
 
@@ -7432,7 +7586,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(vserver_client, 'get_volume',
                          mock.Mock(return_value=fake.FLEXVOL_WITHOUT_QOS))
         self.mock_object(self.library, '_create_qos_policy_group')
-        self.mock_object(self.library._client, 'qos_policy_group_modify')
+        self.mock_object(
+            self.library._client, 'qos_policy_group_modify_legacy')
         qos_policy_name = self.library._get_backend_qos_policy_group_name(
             fake.SHARE['id'])
 
@@ -7445,7 +7600,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'id': fake.SHARE['id'],
         }
         self.assertEqual(qos_policy_name, retval)
-        self.library._client.qos_policy_group_modify.assert_not_called()
+        self.library._client.qos_policy_group_modify_legacy.assert_not_called(
+        )
         self.library._create_qos_policy_group.assert_called_once_with(
             share_obj, fake.VSERVER1, {'maxiops': '3000', 'miniops': '20'},
             vserver_client=vserver_client)
@@ -7493,10 +7649,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_object(vserver_client, 'get_volume',
                          mock.Mock(return_value=fake.FLEXVOL_WITH_QOS))
-        self.mock_object(self.library._client, 'qos_policy_group_get',
+        self.mock_object(self.library._client, 'qos_policy_group_get_legacy',
                          mock.Mock(return_value=qos_policy))
         mock_qos_policy_modify = self.mock_object(
-            self.library._client, 'qos_policy_group_modify')
+            self.library._client, 'qos_policy_group_modify_legacy')
         mock_qos_policy_rename = self.mock_object(
             self.library._client, 'qos_policy_group_rename')
         mock_create_qos_policy = self.mock_object(
@@ -7528,7 +7684,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 share_obj, fake.VSERVER1,
                 {'maxiops': expected_max_iops, 'miniops': expected_min_iops},
                 vserver_client=vserver_client)
-            self.library._client.qos_policy_group_modify.assert_not_called()
+            (self.library._client.qos_policy_group_modify_legacy.
+                assert_not_called())
             self.library._client.qos_policy_group_rename.assert_not_called()
 
     @ddt.data(('host', True), ('pool', False), (None, False), ('fake', False))
@@ -7846,38 +8003,50 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     @ddt.data({'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
                'qos_specs': {fake.QOS_NORMALIZED_SPEC: 3000},
                'extra_specs': None,
-               'cluster_credentials': True},
+               'cluster_credentials': True,
+               'qos_type_specs': None},
               {'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
                'qos_specs': None,
                'extra_specs': fake.EXTRA_SPEC_WITH_REPLICATION,
-               'cluster_credentials': True},
+               'cluster_credentials': True,
+               'qos_type_specs': None},
               {'provisioning_opts': fake.PROVISIONING_OPTIONS,
                'qos_specs': {fake.QOS_NORMALIZED_SPEC: 3000},
                'extra_specs': None,
-               'cluster_credentials': False},
+               'cluster_credentials': False,
+               'qos_type_specs': None},
               {'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
                'qos_specs': None,
                'extra_specs': None,
-               'cluster_credentials': False},
+               'cluster_credentials': False,
+               'qos_type_specs': None},
               {'provisioning_opts': fake.PROVISIONING_OPTIONS_INVALID_FPOLICY,
                'qos_specs': None,
                'extra_specs': None,
-               'cluster_credentials': False},
+               'cluster_credentials': False,
+               'qos_type_specs': None},
               {'provisioning_opts': fake.PROVISIONING_OPTIONS_WITH_FPOLICY,
                'qos_specs': None,
                'extra_specs': {'replication_type': 'dr'},
-               'cluster_credentials': False}
+               'cluster_credentials': False,
+               'qos_type_specs': None},
+              {'provisioning_opts': fake.PROVISIONING_OPTS_WITH_ADAPT_QOS,
+               'qos_specs': None,
+               'extra_specs': None,
+               'cluster_credentials': False,
+               'qos_type_specs': 'fake_qos_type_specs'},
               )
     @ddt.unpack
     def test_validate_provisioning_options_for_share_invalid_params(
             self, provisioning_opts, qos_specs, extra_specs,
-            cluster_credentials):
+            cluster_credentials, qos_type_specs):
         self.library._have_cluster_creds = cluster_credentials
 
         self.assertRaises(exception.NetAppException,
                           self.library.validate_provisioning_options_for_share,
                           provisioning_opts, extra_specs=extra_specs,
-                          qos_specs=qos_specs)
+                          qos_specs=qos_specs,
+                          qos_type_specs=qos_type_specs)
 
     def test__get_backend_fpolicy_policy_name(self):
         result = self.library._get_backend_fpolicy_policy_name(

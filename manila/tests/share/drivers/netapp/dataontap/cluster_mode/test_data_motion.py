@@ -1046,7 +1046,7 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         self.mock_object(data_motion.LOG, 'exception')
 
         retval = self.dm_session.remove_qos_on_old_active_replica(
-            self.fake_src_share)
+            self.fake_src_share, None)
 
         self.assertIsNone(retval)
         (mock_source_client.set_qos_policy_group_for_volume
@@ -1060,10 +1060,30 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         self.mock_object(data_motion.LOG, 'exception')
 
         retval = self.dm_session.remove_qos_on_old_active_replica(
-            self.fake_src_share)
+            self.fake_src_share, None)
 
         self.assertIsNone(retval)
         (mock_source_client.set_qos_policy_group_for_volume
+         .assert_called_once_with(self.fake_src_vol_name, 'none'))
+        data_motion.LOG.exception.assert_not_called()
+
+    def test_remove_qos_on_old_active_replica_qos_type_specs(self):
+        mock_source_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_source_client))
+        self.mock_object(data_motion.LOG, 'exception')
+
+        qos_type_specs = {
+            'policy_type': 'adaptive',
+            'peak-iops': '5000',
+            'expected-iops': '3000',
+        }
+
+        retval = self.dm_session.remove_qos_on_old_active_replica(
+            self.fake_src_share, qos_type_specs)
+
+        self.assertIsNone(retval)
+        (mock_source_client.set_qos_adaptive_policy_group_for_volume
          .assert_called_once_with(self.fake_src_vol_name, 'none'))
         data_motion.LOG.exception.assert_not_called()
 
