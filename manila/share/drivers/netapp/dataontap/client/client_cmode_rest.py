@@ -1969,19 +1969,19 @@ class NetAppRestClient(object):
             'vserver': qos_policy_group_info.get('svm', {}).get('name'),
             'num-workloads': int(qos_policy_group_info.get('object_count')),
         }
-        policy_info['absolute_min_iops'] = qos_policy_group_info.get(
-            'adaptive', {}).get('absolute_min_iops')
-        policy_info['block_size'] = qos_policy_group_info.get(
-            'adaptive', {}).get('block_size')
-        policy_info['peak_iops'] = qos_policy_group_info.get(
-            'adaptive', {}).get('peak_iops')
-        policy_info['peak_iops_allocation'] = qos_policy_group_info.get(
-            'adaptive', {}).get('peak_iops_allocation')
-        policy_info['expected_iops'] = qos_policy_group_info.get(
-            'adaptive', {}).get('expected_iops')
-        policy_info['expected_iops_allocation'] = qos_policy_group_info.get(
-            'adaptive', {}).get('expected_iops_allocation')
 
+        adaptive_qos = qos_policy_group_info.get("adaptive", {})
+        keys = [
+            "absolute_min_iops",
+            "block_size",
+            "peak_iops",
+            "peak_iops_allocation",
+            "expected_iops",
+            "expected_iops_allocation",
+        ]
+
+        for key in keys:
+            policy_info[key] = adaptive_qos.get(key)
         return policy_info
 
     @na_utils.trace
@@ -1996,18 +1996,15 @@ class NetAppRestClient(object):
         body['adaptive.peak_iops'] = qos_type_specs.get('peak_iops')
         body['adaptive.expected_iops'] = qos_type_specs.get('expected_iops')
 
-        if qos_type_specs.get('absolute_min_iops'):
-            body['adaptive.absolute_min_iops'] = qos_type_specs.get(
-                'absolute_min_iops')
-        if qos_type_specs.get('block_size'):
-            body['adaptive.block_size'] = qos_type_specs.get(
-                'block_size')
-        if qos_type_specs.get('expected_iops_allocation'):
-            body['adaptive.expected_iops_allocation'] = qos_type_specs.get(
-                'expected_iops_allocation')
-        if qos_type_specs.get('peak_iops_allocation'):
-            body['adaptive.peak_iops_allocation'] = qos_type_specs.get(
-                'peak_iops_allocation')
+        adaptive_qos_keys = [
+            "absolute_min_iops", "block_size",
+            "expected_iops_allocation", "peak_iops_allocation",
+        ]
+
+        for key in adaptive_qos_keys:
+            value = qos_type_specs.get(key)
+            if value is not None:
+                body[f"adaptive.{key}"] = value
 
         return self.send_request('/storage/qos/policies', 'post',
                                  body=body)
@@ -2021,23 +2018,16 @@ class NetAppRestClient(object):
             'name': qos_policy_group_name,
         }
         body = {}
-        if qos_type_specs.get('peak_iops'):
-            body['adaptive.peak_iops'] = qos_type_specs.get('peak_iops')
-        if qos_type_specs.get('expected_iops'):
-            body['adaptive.expected_iops'] = qos_type_specs.get(
-                'expected_iops')
-        if qos_type_specs.get('absolute_min_iops'):
-            body['adaptive.absolute_min_iops'] = qos_type_specs.get(
-                'absolute_min_iops')
-        if qos_type_specs.get('block_size'):
-            body['adaptive.block_size'] = qos_type_specs.get(
-                'block_size')
-        if qos_type_specs.get('expected_iops_allocation'):
-            body['adaptive.expected_iops_allocation'] = qos_type_specs.get(
-                'expected_iops_allocation')
-        if qos_type_specs.get('peak_iops_allocation'):
-            body['adaptive.peak_iops_allocation'] = qos_type_specs.get(
-                'peak_iops_allocation')
+
+        adaptive_qos_keys = [
+            "peak_iops", "expected_iops", "absolute_min_iops",
+            "block_size", "expected_iops_allocation", "peak_iops_allocation",
+        ]
+
+        for key in adaptive_qos_keys:
+            value = qos_type_specs.get(key)
+            if value is not None:
+                body[f"adaptive.{key}"] = value
 
         res = self.send_request('/storage/qos/policies', 'get', query=query)
         if not res.get('records'):
@@ -2234,18 +2224,21 @@ class NetAppRestClient(object):
             'name': qos_policy_group_name,
             'svm.name': vserver,
         }
-        if qos_type_specs.get('max_throughput_mbps'):
-            body['fixed.max_throughput_mbps'] = int(
-                qos_type_specs.get('max_throughput_mbps'))
-        if qos_type_specs.get('max_throughput_iops'):
-            body['fixed.max_throughput_iops'] = int(
-                qos_type_specs.get('max_throughput_iops'))
-        if qos_type_specs.get('min_throughput_mbps'):
-            body['fixed.min_throughput_mbps'] = int(
-                qos_type_specs.get('min_throughput_mbps'))
-        if qos_type_specs.get('min_throughput_iops'):
-            body['fixed.min_throughput_iops'] = int(
-                qos_type_specs.get('min_throughput_iops'))
+
+        fixed_keys = [
+            "max_throughput_mbps", "max_throughput_iops",
+            "min_throughput_mbps", "min_throughput_iops",
+        ]
+        for key in fixed_keys:
+            value = qos_type_specs.get(key)
+            if value is not None:
+                try:
+                    body[f"fixed.{key}"] = int(value)
+                except (TypeError, ValueError):
+                    msg = _('Failed to parse value of fixed qos key %s.')
+                    LOG.warning(msg, key)
+                    pass
+
         if qos_type_specs.get('capacity_shared') == 'true':
             body['fixed.capacity_shared'] = 'true'
         else:
@@ -2317,14 +2310,11 @@ class NetAppRestClient(object):
             'num-workloads': int(qos_policy_group_info.get('object_count')),
         }
 
-        max_iops = qos_policy_group_info.get('fixed', {}).get(
-            'max_throughput_iops')
-        max_mbps = qos_policy_group_info.get('fixed', {}).get(
-            'max_throughput_mbps')
-        min_iops = qos_policy_group_info.get('fixed', {}).get(
-            'min_throughput_iops')
-        min_mbps = qos_policy_group_info.get('fixed', {}).get(
-            'min_throughput_mbps')
+        fixed_qos = qos_policy_group_info.get('fixed', {})
+        max_iops = fixed_qos.get('max_throughput_iops')
+        max_mbps = fixed_qos.get('max_throughput_mbps')
+        min_iops = fixed_qos.get('min_throughput_iops')
+        min_mbps = fixed_qos.get('min_throughput_mbps')
         if max_mbps:
             policy_info['max_throughput_mbps'] = max_mbps
         if max_iops:

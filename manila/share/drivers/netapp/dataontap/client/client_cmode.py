@@ -6029,6 +6029,21 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         return policy_info
 
+    def _get_optional_adaptive_qos_policy_specs(self, api_args,
+                                                qos_type_specs):
+        if qos_type_specs.get('absolute_min_iops'):
+            api_args['absolute-min-iops'] = qos_type_specs.get(
+                'absolute_min_iops')
+        if qos_type_specs.get('block_size'):
+            api_args['block-size'] = qos_type_specs.get('block_size')
+        if qos_type_specs.get('expected_iops_allocation'):
+            api_args['expected-iops-allocation'] = qos_type_specs.get(
+                'expected_iops_allocation')
+        if qos_type_specs.get('peak_iops_allocation'):
+            api_args['peak-iops-allocation'] = qos_type_specs.get(
+                'peak_iops_allocation')
+        return api_args
+
     @na_utils.trace
     def adaptive_qos_policy_group_create(self, qos_policy_group_name, vserver,
                                          qos_type_specs):
@@ -6041,18 +6056,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         api_args['peak-iops'] = qos_type_specs.get('peak_iops')
         api_args['expected-iops'] = qos_type_specs.get('expected_iops')
 
-        if qos_type_specs.get('absolute_min_iops'):
-            api_args['absolute-min-iops'] = qos_type_specs.get(
-                'absolute_min_iops')
-        if qos_type_specs.get('block_size'):
-            api_args['block-size'] = qos_type_specs.get('block_size')
-        if qos_type_specs.get('expected_iops_allocation'):
-            api_args['expected-iops-allocation'] = qos_type_specs.get(
-                'expected_iops_allocation')
-        if qos_type_specs.get('peak_iops_allocation'):
-            api_args['peak-iops-allocation'] = qos_type_specs.get(
-                'peak_iops_allocation')
-
+        api_args = self._get_optional_adaptive_qos_policy_specs(
+            api_args, qos_type_specs)
         return self.send_request('qos-adaptive-policy-group-create',
                                  api_args, False)
 
@@ -6068,18 +6073,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['peak-iops'] = qos_type_specs.get('peak_iops')
         if qos_type_specs.get('expected_iops'):
             api_args['expected-iops'] = qos_type_specs.get('expected_iops')
-        if qos_type_specs.get('absolute_min_iops'):
-            api_args['absolute-min-iops'] = qos_type_specs.get(
-                'absolute_min_iops')
-        if qos_type_specs.get('block_size'):
-            api_args['block-size'] = qos_type_specs.get('block_size')
-        if qos_type_specs.get('expected_iops_allocation'):
-            api_args['expected-iops-allocation'] = qos_type_specs.get(
-                'expected_iops_allocation')
-        if qos_type_specs.get('peak_iops_allocation'):
-            api_args['peak-iops-allocation'] = qos_type_specs.get(
-                'peak_iops_allocation')
 
+        api_args = self._get_optional_adaptive_qos_policy_specs(
+            api_args, qos_type_specs)
         return self.send_request(
             'qos-adaptive-policy-group-modify', api_args, False)
 
