@@ -61,6 +61,18 @@ The following operations are supported:
 
 - Schedule Dedupe job for a share
 
+Pre-configurations for Compression on PowerScale
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Ensure the PowerScale backend supports inline compression (verify OneFS
+version and node-pool compatibility), enable cluster-wide compression using
+the PowerScale user interface, and confirm that compression-capable storage
+pools are used for Manila share paths.
+
+**Compression is managed by OneFS at the pool level. Ensure the Manila root
+path is on a compression-enabled pool if you want data to be compressed.
+No Manila extra-spec is required.**
+
 Back end configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
