@@ -92,7 +92,6 @@ class RequestContext(context.RequestContext):
     def to_dict(self):
         values = super().to_dict()
         values['user_id'] = self.user_id
-        values['project_id'] = self.project_id
         values['project_name'] = self.project_name
         values['domain_id'] = self.domain_id
         values['read_deleted'] = self.read_deleted
@@ -100,7 +99,6 @@ class RequestContext(context.RequestContext):
         values['timestamp'] = self.timestamp.isoformat()
         values['quota_class'] = self.quota_class
         values['service_catalog'] = self.service_catalog
-        values['request_id'] = self.request_id
         return values
 
     @classmethod
@@ -108,20 +106,13 @@ class RequestContext(context.RequestContext):
         return super().from_dict(
             values,
             user_id=values.get('user_id'),
-            project_id=values.get('project_id'),
-            project_name=values.get('project_name'),
             domain_id=values.get('domain_id'),
             read_deleted=values.get('read_deleted', 'no'),
             remote_address=values.get('remote_address'),
             timestamp=values.get('timestamp'),
             quota_class=values.get('quota_class'),
             service_catalog=values.get('service_catalog'),
-            request_id=values.get('request_id'),
-            is_admin=values.get('is_admin'),
-            roles=values.get('roles'),
-            auth_token=values.get('auth_token'),
-            user_domain_id=values.get('user_domain'),
-            project_domain_id=values.get('project_domain')
+            is_admin=values.get('is_admin')
         )
 
     def elevated(self, read_deleted=None, overwrite=False):
