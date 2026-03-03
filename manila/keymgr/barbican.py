@@ -15,6 +15,7 @@
 
 import itertools
 
+from barbicanclient import base as client_base
 from castellan.key_manager import barbican_key_manager
 from castellan import options as castellan_options
 from keystoneauth1 import loading as ks_loading
@@ -76,25 +77,29 @@ def _require_barbican_key_manager_backend(conf):
 
 class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
 
-    def get_client_and_href(self, context, secret_ref):
-        """Get user barbican client and a secret href"""
-        _require_barbican_key_manager_backend(self.conf)
-
+    def _require_secret_ref(self, secret_ref):
         if not secret_ref:
             LOG.error("Missing secret_ref provided in current user context.")
             raise exception.ManilaBarbicanACLError()
+
+    def get_client(self, context):
+        """Get user barbican client"""
+        _require_barbican_key_manager_backend(self.conf)
 
         # Establish a Barbican client session of current user and keystone
         # session of barbican user to get its user_id. Grant ACL to barbican
         # user that it will be used for the key_ref handover process.
         try:
-            user_barbican_client, base_url = self._get_barbican_client(context)
-            secret_ref = self._create_secret_ref(base_url, secret_ref)
+            ret = self._get_barbican_client(context)
+            if isinstance(ret, tuple):
+                # In castellan < 5.6.0, _get_barbican_client returns
+                # (client, base_url)
+                return ret[0]
+            # In castellan >= 5.6.0, _get_barbican_client returns client
+            return ret
         except Exception as e:
             LOG.error("Failed to create barbican client. Error: %s", e)
             raise exception.ManilaBarbicanACLError()
-
-        return user_barbican_client, secret_ref
 
     def _get_barbican_user_id(self):
         barbican_auth = ks_loading.load_auth_from_conf_options(
@@ -108,11 +113,13 @@ class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
 
     def create_secret_access(self, context, secret_ref):
         try:
-            user_barbican_client, secret_href = self.get_client_and_href(
-                context, secret_ref)
+            self._require_secret_ref(secret_ref)
+            user_barbican_client = self.get_client(context)
             barbican_user_id = self._get_barbican_user_id()
+            secret_ref = client_base.calculate_uuid_ref(secret_ref, 'secrets')
+            secret_ref = '/' + secret_ref
             # Create a Barbican ACL so the barbican user can access it.
-            acl = user_barbican_client.acls.create(entity_ref=secret_href,
+            acl = user_barbican_client.acls.create(entity_ref=secret_ref,
                                                    users=[barbican_user_id],
                                                    project_access=False)
             acl.submit()
@@ -122,12 +129,13 @@ class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
 
     def delete_secret_access(self, context, secret_ref):
         try:
-            user_barbican_client, secret_href = self.get_client_and_href(
-                context, secret_ref)
+            self._require_secret_ref(secret_ref)
+            user_barbican_client = self.get_client(context)
             barbican_user_id = self._get_barbican_user_id()
-
+            secret_ref = client_base.calculate_uuid_ref(secret_ref, 'secrets')
+            secret_ref = '/' + secret_ref
             # Remove a Barbican ACL for the barbican user.
-            acl_entity = user_barbican_client.acls.get(entity_ref=secret_href)
+            acl_entity = user_barbican_client.acls.get(entity_ref=secret_ref)
             existing_users = acl_entity.read.users
             remove_users = [barbican_user_id]
             updated_users = set(existing_users).difference(remove_users)
@@ -139,9 +147,12 @@ class BarbicanSecretACL(barbican_key_manager.BarbicanKeyManager):
 
     def get_secret_href(self, context, secret_ref):
         try:
-            user_barbican_client, secret_href = self.get_client_and_href(
-                context, secret_ref)
-            return secret_href
+            self._require_secret_ref(secret_ref)
+            user_barbican_client = self.get_client(context)
+            # TODO(tkajinam): This probably needs to be in barbicanclient
+            resp = user_barbican_client.client.get(
+                client_base.calculate_uuid_ref(secret_ref, 'secrets'))
+            return resp['secret_ref']
         except Exception as e:
             LOG.error("Failed to get barbican secret href. Error: %s", e)
             raise exception.ManilaBarbicanACLError()
