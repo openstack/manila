@@ -597,31 +597,34 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
-    def test_get_cluster_aggregate_capacities(self):
+    def test_get_cluster_aggregate_attributes(self):
 
         response = fake.AGGR_GET_ITER_RESPONSE_REST['records']
         self.mock_object(self.client,
                          '_get_aggregates',
                          mock.Mock(return_value=response))
 
-        result = self.client.get_cluster_aggregate_capacities(
-            response)
+        result = self.client.get_cluster_aggregate_attributes(
+            fake.SHARE_AGGREGATE_NAMES)
 
-        fields = 'name,space'
+        fields = 'name,space,data_encryption.software_encryption_enabled'
         self.client._get_aggregates.assert_has_calls([
             mock.call(
-                aggregate_names=response,
+                aggregate_names=fake.SHARE_AGGREGATE_NAMES,
                 fields=fields)])
+
         expected = {
             response[0]['name']: {
                 'available': 568692293632,
                 'total': 1271819509760,
                 'used': 703127216128,
+                'encryption_enabled': True,
             },
             response[1]['name']: {
                 'available': 727211110400,
                 'total': 1426876227584,
                 'used': 699665117184,
+                'encryption_enabled': False,
             }
         }
 
@@ -1087,7 +1090,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             volume_type='rw', qos_policy_group=None, encrypt=False,
             adaptive_qos_policy_group=None, mount_point_name=None,
             efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME,
-            snaplock_type="enterprise",
+            snaplock_type="enterprise", aggregate_encrypted=None,
         )
         mock_update.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, False,
@@ -1121,7 +1124,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client._get_create_volume_body.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, None, None, None, 'rw', None, False,
-            None, None, None)
+            None, None, None, None)
         self.client.send_request.assert_called_once_with(
             '/storage/volumes', 'post', body=body, wait_on_accepted=True)
         self.assertEqual(expected_result, result)
@@ -2903,11 +2906,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client.start_volume_move(fake.VOLUME_NAMES[0], fake.VSERVER_NAME,
                                       fake.SHARE_AGGREGATE_NAME,
-                                      'fake_cutover', False)
+                                      'fake_cutover', False, True)
 
         mock__send_volume_move_request.assert_called_once_with(
             fake.VOLUME_NAMES[0], fake.VSERVER_NAME, fake.SHARE_AGGREGATE_NAME,
-            cutover_action='fake_cutover', encrypt_destination=False)
+            cutover_action='fake_cutover', encrypt_destination=False,
+            dest_aggr_encryption=True)
 
     def test_check_volume_move(self):
 
@@ -2915,11 +2919,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             self.client, '_send_volume_move_request')
 
         self.client.check_volume_move(fake.VOLUME_NAMES[0], fake.VSERVER_NAME,
-                                      fake.SHARE_AGGREGATE_NAME, False)
+                                      fake.SHARE_AGGREGATE_NAME, False, True)
 
         mock__send_volume_move_request.assert_called_once_with(
             fake.VOLUME_NAMES[0], fake.VSERVER_NAME, fake.SHARE_AGGREGATE_NAME,
-            validation_only=True, encrypt_destination=False)
+            validation_only=True, encrypt_destination=False,
+            dest_aggr_encryption=True)
 
     def test__send_volume_move_request(self):
         mock_sr = self.mock_object(self.client, 'send_request')
@@ -2927,11 +2932,11 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                               'destination_aggregate',
                                               cutover_action='wait',
                                               validation_only=True,
-                                              encrypt_destination=False)
+                                              encrypt_destination=False,
+                                              dest_aggr_encryption=True)
         query = {'name': 'volume_name'}
         body = {
             'movement.destination_aggregate.name': 'destination_aggregate',
-            'encryption.enabled': 'false',
             'validate_only': 'true',
             'movement.state': 'wait',
         }
@@ -3260,7 +3265,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                                   True,
                                                   fake.QOS_POLICY_GROUP_NAME,
                                                   fake.SHARE_MOUNT_POINT,
-                                                  "compliance")
+                                                  "compliance",
+                                                  True)
         self.assertEqual(expected, res)
 
     def test_get_job_state(self):

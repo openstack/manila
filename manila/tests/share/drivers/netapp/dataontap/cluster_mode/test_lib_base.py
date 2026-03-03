@@ -366,27 +366,27 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
-    def test_get_aggregate_space_cluster_creds(self):
+    def test__get_aggregate_pool_attributes_cluster_creds(self):
 
         self.library._have_cluster_creds = True
         self.mock_object(self.library._client,
-                         'get_cluster_aggregate_capacities',
+                         'get_cluster_aggregate_attributes',
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
 
-        result = self.library._get_aggregate_space(fake.AGGREGATES)
+        result = self.library._get_aggregate_pool_attributes(fake.AGGREGATES)
 
-        (self.library._client.get_cluster_aggregate_capacities.
+        (self.library._client.get_cluster_aggregate_attributes.
             assert_called_once_with(fake.AGGREGATES))
         self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
 
-    def test_get_aggregate_space_no_cluster_creds(self):
+    def test__get_aggregate_pool_attributes_no_cluster_creds(self):
 
         self.library._have_cluster_creds = False
         self.mock_object(self.library._client,
                          'get_vserver_aggregate_capacities',
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
 
-        result = self.library._get_aggregate_space(fake.AGGREGATES)
+        result = self.library._get_aggregate_pool_attributes(fake.AGGREGATES)
 
         (self.library._client.get_vserver_aggregate_capacities.
             assert_called_once_with(fake.AGGREGATES))
@@ -526,6 +526,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_total = 1.0
         fake_free = 1.0
         fake_used = 1.0
+        fake_aggregate_encryption = False
         fake_pool = copy.deepcopy(fake.POOLS)
         fake_pool.append(fake.FLEXGROUP_POOL)
         self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
@@ -535,8 +536,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_flexgroup_aggr = self.mock_object(
             self.library, '_get_flexgroup_aggr_set',
             mock.Mock(return_value=fake.FLEXGROUP_AGGR_SET))
-        mock_get_aggregate_space = self.mock_object(
-            self.library, '_get_aggregate_space',
+        mock_get_aggregate_pool_attributes = self.mock_object(
+            self.library, '_get_aggregate_pool_attributes',
             mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         mock_get_flexvol_space = self.mock_object(
             self.library, '_get_flexvol_pool_space',
@@ -559,7 +560,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertListEqual(fake_pool, result)
         mock_find_aggr.assert_called_once_with()
         mock_get_flexgroup_aggr.assert_called_once_with()
-        mock_get_aggregate_space.assert_called_once_with(set(fake.AGGREGATES))
+        mock_get_aggregate_pool_attributes.assert_called_once_with(
+            set(fake.AGGREGATES))
         mock_get_flexvol_space.assert_has_calls([
             mock.call(fake.AGGREGATE_CAPACITIES, fake.AGGREGATES[0]),
             mock.call(fake.AGGREGATE_CAPACITIES, fake.AGGREGATES[1])])
@@ -568,10 +570,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                       fake.FLEXGROUP_POOL_OPT[fake.FLEXGROUP_POOL_NAME])])
         mock_get_cluster_name.assert_called_once_with()
         mock_get_pool.assert_has_calls([
-            mock.call(fake.AGGREGATES[0], fake_total, fake_free, fake_used),
-            mock.call(fake.AGGREGATES[1], fake_total, fake_free, fake_used),
+            mock.call(fake.AGGREGATES[0], fake_total, fake_free,
+                      fake_used, fake_aggregate_encryption),
+            mock.call(fake.AGGREGATES[1], fake_total, fake_free,
+                      fake_used, fake_aggregate_encryption),
             mock.call(fake.FLEXGROUP_POOL_NAME, fake_total, fake_free,
-                      fake_used)])
+                      fake_used, fake_aggregate_encryption)])
 
     def test_get_pool_vserver_creds(self):
 
@@ -587,7 +591,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value="compliance"))
         result = self.library._get_pool(
             fake_pool['pool_name'], fake_pool['total_capacity_gb'],
-            fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'])
+            fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'],
+            fake_pool['netapp_aggregate_encryption'])
 
         self.assertEqual(fake_pool, result)
 
@@ -609,7 +614,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library._get_pool(
             fake_pool['pool_name'], fake_pool['total_capacity_gb'],
-            fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'])
+            fake_pool['free_capacity_gb'], fake_pool['allocated_capacity_gb'],
+            fake_pool['netapp_aggregate_encryption'])
 
         self.assertEqual(fake_pool, result)
 
@@ -648,6 +654,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(total_gb, 0.0)
         self.assertEqual(free_gb, 0.0)
         self.assertEqual(used_gb, 0.0)
+
+    def test_get_flexgroup_encryption_status(self):
+
+        flexgroup_encryption_status = (
+            self.library._get_flexgroup_encryption_status(
+                fake.AGGREGATE_ENCRYPTION, fake.FLEXGROUP_POOL_AGGR))
+
+        self.assertEqual(flexgroup_encryption_status, False)
 
     def test_get_flexgroup_aggr_set(self):
 
@@ -1544,6 +1558,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_aggr_flexgroup = self.mock_object(
             self.library, '_get_flexgroup_aggregate_list',
             mock.Mock(return_value=[fake.AGGREGATE]))
+        self.mock_object(self.library, '_is_nae_pool', mock.Mock(
+            return_value=False))
         vserver_client = mock.Mock()
 
         fake_share = (
@@ -1602,7 +1618,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_get_provisioning_options_for_share',
             mock.Mock(return_value=copy.deepcopy(fake.PROVISIONING_OPTIONS)))
         vserver_client = mock.Mock()
-
+        self.mock_object(self.library, '_is_nae_pool', mock.Mock(
+            return_value=False))
         self.library._allocate_container(fake.SHARE_INSTANCE, fake.VSERVER1,
                                          vserver_client, replica=True)
 
@@ -1616,7 +1633,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             language='en-US', dedup_enabled=True, split=True,
             compression_enabled=False, max_files=5000, encrypt=False,
             snapshot_reserve=8, mount_point_name=fake.MOUNT_POINT_NAME,
-            volume_type='dp', adaptive_qos_policy_group=None)
+            volume_type='dp', adaptive_qos_policy_group=None,
+            aggregate_encrypted=True)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
@@ -1817,6 +1835,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         qos = True if fake.QOS_MAX_EXTRA_SPEC in extra_specs else False
         vserver_client = mock.Mock()
         self.library._have_cluster_creds = True
+        self.mock_object(
+            self.library, '_is_nae_pool',
+            mock.Mock(return_value=True))
         mock_get_extra_specs_from_share = self.mock_object(
             share_types, 'get_extra_specs_from_share',
             mock.Mock(return_value=extra_specs))
@@ -7052,6 +7073,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(side_effect=netapp_api.NaApiError))
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_dest_aggr_encryption_value',
+                         mock.Mock(return_value=False))
 
         migration_compatibility = self.library.migration_check_compatibility(
             self.context, fake_share.fake_share_instance(),
@@ -7071,7 +7094,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'destination_backend')
         mock_move_check.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
-            encrypt_destination=False)
+            encrypt_destination=False, dest_aggr_encryption=False)
         self.library._get_vserver.assert_has_calls(
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
@@ -7109,6 +7132,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_dest_aggr_encryption_value',
+                         mock.Mock(return_value=False))
         self.mock_object(self.library, '_get_provisioning_options',
                          mock.Mock(return_value=provisioning_options))
         self.mock_object(self.library, '_get_normalized_qos_specs')
@@ -7143,7 +7168,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'destination_backend')
         mock_move_check.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
-            encrypt_destination=False)
+            encrypt_destination=False, dest_aggr_encryption=False)
         if fpolicy:
             self.library._get_vserver.assert_has_calls(
                 [mock.call(share_server='dst_srv'),
@@ -7179,6 +7204,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move_check = self.mock_object(self.client, 'check_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=True))
+        self.mock_object(self.library, '_get_dest_aggr_encryption_value',
+                         mock.Mock(return_value=True))
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value={'spec1': 'spec-data'}))
         self.mock_object(self.library,
@@ -7209,7 +7236,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_move_check.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
-            encrypt_destination=True)
+            encrypt_destination=True, dest_aggr_encryption=True)
         self.library._get_vserver.assert_has_calls(
             [mock.call(share_server=fake.SHARE_SERVER),
              mock.call(share_server='dst_srv')])
@@ -7262,6 +7289,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move = self.mock_object(self.client, 'start_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_dest_aggr_encryption_value',
+                         mock.Mock(return_value=False))
 
         retval = self.library.migration_start(
             self.context, fake_share.fake_share_instance(),
@@ -7273,7 +7302,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(mock_info_log.called)
         mock_move.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
-            cutover_action='wait', encrypt_destination=False)
+            cutover_action='wait', encrypt_destination=False,
+            dest_aggr_encryption=False)
 
     def test_migration_start_encrypted_destination(self):
         mock_info_log = self.mock_object(lib_base.LOG, 'info')
@@ -7288,6 +7318,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_move = self.mock_object(self.client, 'start_volume_move')
         self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
                          mock.Mock(return_value=True))
+        self.mock_object(self.library, '_get_dest_aggr_encryption_value',
+                         mock.Mock(return_value=True))
 
         retval = self.library.migration_start(
             self.context, fake_share.fake_share_instance(),
@@ -7299,7 +7331,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(mock_info_log.called)
         mock_move.assert_called_once_with(
             fake.SHARE_NAME, fake.VSERVER1, 'destination_pool',
-            cutover_action='wait', encrypt_destination=True)
+            cutover_action='wait', encrypt_destination=True,
+            dest_aggr_encryption=True)
 
     def test_migration_continue_volume_move_failed(self):
         source_snapshots = mock.Mock()
@@ -9819,3 +9852,331 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.AGGR_POOL_NAME
         )
         self.assertTrue(result)
+
+    def test__get_dest_aggr_encryption_value_no_cluster_creds(self):
+        dest_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_api_client_for_backend',
+            mock.Mock(return_value=dest_client))
+        dest_client.check_for_cluster_credentials.return_value = False
+
+        result = self.library._get_dest_aggr_encryption_value(
+            fake.BACKEND_NAME, fake.AGGREGATE)
+        self.assertIsNone(result)
+
+    def test_is_nae_pool_no_cluster_creds(self):
+        self.library._have_cluster_creds = False
+
+        result = self.library._is_nae_pool(fake.POOL_NAME)
+        self.assertIsNone(result)
+
+    def test__get_dest_flexvol_encryption_value_true(self):
+        dest_share = copy.deepcopy(fake.SHARE)
+        dest_share['share_type_id'] = fake.SHARE_TYPE_ID
+        self.mock_object(share_types, 'get_share_type_extra_specs',
+                         mock.Mock(return_value='true'))
+        self.mock_object(share_types, 'parse_boolean_extra_spec',
+                         mock.Mock(return_value=True))
+
+        result = self.library._get_dest_flexvol_encryption_value(dest_share)
+
+        self.assertTrue(result)
+        share_types.get_share_type_extra_specs.assert_called_once_with(
+            fake.SHARE_TYPE_ID, 'netapp_flexvol_encryption')
+
+    def test__get_dest_flexvol_encryption_value_false(self):
+        dest_share = copy.deepcopy(fake.SHARE)
+        dest_share['share_type_id'] = fake.SHARE_TYPE_ID
+        self.mock_object(share_types, 'get_share_type_extra_specs',
+                         mock.Mock(return_value='false'))
+        self.mock_object(share_types, 'parse_boolean_extra_spec',
+                         mock.Mock(return_value=False))
+
+        result = self.library._get_dest_flexvol_encryption_value(dest_share)
+        self.assertFalse(result)
+
+    def test__get_flexgroup_encryption_status_all_encrypted(self):
+        aggr_info = {
+            'aggr1': {'encryption_enabled': True},
+            'aggr2': {'encryption_enabled': True},
+        }
+        aggr_pool = ['aggr1', 'aggr2']
+
+        result = self.library._get_flexgroup_encryption_status(
+            aggr_info, aggr_pool)
+        self.assertTrue(result)
+
+    def test__get_flexgroup_encryption_status_mixed(self):
+        aggr_info = {
+            'aggr1': {'encryption_enabled': True},
+            'aggr2': {'encryption_enabled': False},
+        }
+        aggr_pool = ['aggr1', 'aggr2']
+
+        result = self.library._get_flexgroup_encryption_status(
+            aggr_info, aggr_pool)
+        self.assertFalse(result)
+
+    def test__get_flexgroup_encryption_status_none_encrypted(self):
+        aggr_info = {
+            'aggr1': {'encryption_enabled': False},
+            'aggr2': {'encryption_enabled': False},
+        }
+        aggr_pool = ['aggr1', 'aggr2']
+
+        result = self.library._get_flexgroup_encryption_status(
+            aggr_info, aggr_pool)
+        self.assertFalse(result)
+
+    def test__get_flexgroup_encryption_status_aggr_not_in_info(self):
+        aggr_info = {
+            'aggr1': {'encryption_enabled': True},
+        }
+        aggr_pool = ['aggr1', 'aggr2']
+
+        result = self.library._get_flexgroup_encryption_status(
+            aggr_info, aggr_pool)
+        self.assertFalse(result)
+
+    def test_get_nve_option_true(self):
+        specs = {'netapp_flexvol_encryption': 'true'}
+        result = self.library._get_nve_option(specs)
+        self.assertTrue(result)
+
+    def test_get_nve_option_false(self):
+        specs = {'netapp_flexvol_encryption': 'false'}
+        result = self.library._get_nve_option(specs)
+        self.assertFalse(result)
+
+    def test_get_nve_option_key_missing(self):
+        specs = {}
+        result = self.library._get_nve_option(specs)
+        self.assertFalse(result)
+
+    def test__check_extra_specs_validity_nae_nve_conflict(self):
+        share = copy.deepcopy(fake.SHARE)
+        share['share_type_id'] = fake.SHARE_TYPE_ID
+        extra_specs = {
+            'netapp_flexvol_encryption': 'true',
+            'netapp_aggregate_encryption': 'true',
+        }
+        self.mock_object(self.library,
+                         '_check_boolean_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_string_extra_specs_validity')
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_extra_specs_validity,
+            share, extra_specs)
+
+    def test__check_extra_specs_validity_nae_encryption_support_conflict(self):
+        share = copy.deepcopy(fake.SHARE)
+        share['share_type_id'] = fake.SHARE_TYPE_ID
+        share['encryption_key_ref'] = 'fake_key_ref'
+        extra_specs = {
+            'netapp_aggregate_encryption': 'true',
+        }
+        self.mock_object(self.library,
+                         '_check_boolean_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_string_extra_specs_validity')
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_extra_specs_validity,
+            share, extra_specs)
+
+    def test__check_extra_specs_validity_nae_only(self):
+        share = copy.deepcopy(fake.SHARE)
+        share['share_type_id'] = fake.SHARE_TYPE_ID
+        extra_specs = {
+            'netapp_aggregate_encryption': 'true',
+        }
+        self.mock_object(self.library,
+                         '_check_boolean_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_string_extra_specs_validity')
+
+        # Should not raise
+        self.library._check_extra_specs_validity(share, extra_specs)
+
+    def test__check_extra_specs_validity_nve_only(self):
+        share = copy.deepcopy(fake.SHARE)
+        share['share_type_id'] = fake.SHARE_TYPE_ID
+        extra_specs = {
+            'netapp_flexvol_encryption': 'true',
+        }
+        self.mock_object(self.library,
+                         '_check_boolean_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_string_extra_specs_validity')
+
+        # Should not raise
+        self.library._check_extra_specs_validity(share, extra_specs)
+
+    def test_is_nae_pool_flexvol_encrypted_and_nae_support(self):
+        pool_name = 'aggr1'
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_have_cluster_creds',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library,
+                         '_get_aggregate_pool_attributes',
+                         mock.Mock(
+                             return_value={
+                                 pool_name: {'encryption_enabled': True}}))
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+
+        result = self.library._is_nae_pool(pool_name)
+        self.assertTrue(result)
+
+    def test_is_nae_pool_flexvol_not_encrypted(self):
+        pool_name = 'aggr1'
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+
+        self.mock_object(self.library,
+                         '_get_aggregate_pool_attributes',
+                         mock.Mock(return_value={
+                             pool_name: {'encryption_enabled': False},
+                         }))
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+
+        result = self.library._is_nae_pool(pool_name)
+        self.assertFalse(result)
+
+    def test_is_nae_pool_flexvol_encrypted_but_no_nae_support(self):
+        pool_name = 'aggr1'
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library,
+                         '_get_aggregate_pool_attributes',
+                         mock.Mock(return_value={
+                             pool_name: {'encryption_enabled': True}}))
+        self.library.configuration.netapp_use_legacy_client = True
+        self.library._client.features.NAE_SUPPORT = False
+
+        result = self.library._is_nae_pool(pool_name)
+        self.assertFalse(result)
+
+    def test_is_nae_pool_flexgroup_encrypted_and_nae_support(self):
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_have_cluster_creds',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library,
+                         '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=fake.FLEXGROUP_POOL_AGGR))
+        self.mock_object(self.library,
+                         '_get_aggregate_pool_attributes',
+                         mock.Mock(return_value={
+                             aggr: {'encryption_enabled': True} for aggr
+                             in fake.FLEXGROUP_POOL_AGGR}))
+        self.mock_object(self.library,
+                         '_get_flexgroup_encryption_status',
+                         mock.Mock(return_value=True))
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+
+        result = self.library._is_nae_pool(fake.FLEXGROUP_POOL_NAME)
+        self.assertTrue(result)
+
+    def test_is_nae_pool_flexgroup_not_encrypted(self):
+        self.mock_object(self.library,
+                         '_is_flexgroup_pool',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library,
+                         '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=fake.FLEXGROUP_POOL_AGGR))
+        self.mock_object(self.library,
+                         '_get_aggregate_pool_attributes',
+                         mock.Mock(return_value={
+                             aggr: {'encryption_enabled': False} for aggr
+                             in fake.FLEXGROUP_POOL_AGGR}))
+        self.mock_object(self.library,
+                         '_get_flexgroup_encryption_status',
+                         mock.Mock(return_value=False))
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+
+        result = self.library._is_nae_pool(fake.FLEXGROUP_POOL_NAME)
+        self.assertFalse(result)
+
+    def test_get_nae_option_true(self):
+        specs = {'netapp_aggregate_encryption': 'true'}
+        result = self.library._get_nae_option(specs)
+        self.assertTrue(result)
+
+    def test_get_nae_option_false(self):
+        specs = {'netapp_aggregate_encryption': 'false'}
+        result = self.library._get_nae_option(specs)
+        self.assertFalse(result)
+
+    def test_get_nae_option_key_missing(self):
+        specs = {}
+        result = self.library._get_nae_option(specs)
+        self.assertFalse(result)
+
+    def test__get_dest_aggr_encryption_value_enabled(self):
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+        dest_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_api_client_for_backend',
+            mock.Mock(return_value=dest_client))
+        dest_client.check_for_cluster_credentials.return_value = True
+        dest_client.get_cluster_aggregate_attributes.return_value = {
+            fake.AGGREGATE: {'encryption_enabled': True}
+        }
+        result = self.library._get_dest_aggr_encryption_value(
+            fake.BACKEND_NAME, fake.AGGREGATE)
+        self.assertTrue(result)
+
+    def test__get_dest_aggr_encryption_value_disabled(self):
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+        dest_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_api_client_for_backend',
+            mock.Mock(return_value=dest_client))
+        dest_client.get_cluster_aggregate_attributes.return_value = {
+            fake.AGGREGATE: {'encryption_enabled': False}
+        }
+
+        result = self.library._get_dest_aggr_encryption_value(
+            fake.BACKEND_NAME, fake.AGGREGATE)
+        self.assertFalse(result)
+
+    def test__get_dest_aggr_encryption_value_nae_not_supported(self):
+        self.library.configuration.netapp_use_legacy_client = True
+        self.library._client.features.NAE_SUPPORT = False
+        dest_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_api_client_for_backend',
+            mock.Mock(return_value=dest_client))
+        dest_client.get_cluster_aggregate_attributes.return_value = {
+            fake.AGGREGATE: {'encryption_enabled': True}
+        }
+
+        result = self.library._get_dest_aggr_encryption_value(
+            fake.BACKEND_NAME, fake.AGGREGATE)
+        self.assertFalse(result)
+
+    def test__get_dest_aggr_encryption_value_missing_key(self):
+        self.library.configuration.netapp_use_legacy_client = False
+        self.library._client.features.NAE_SUPPORT = True
+        dest_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_api_client_for_backend',
+            mock.Mock(return_value=dest_client))
+        dest_client.get_cluster_aggregate_attributes.return_value = {
+            fake.AGGREGATE: {}
+        }
+
+        result = self.library._get_dest_aggr_encryption_value(
+            fake.BACKEND_NAME, fake.AGGREGATE)
+        self.assertFalse(result)

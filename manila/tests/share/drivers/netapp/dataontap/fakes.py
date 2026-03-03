@@ -393,6 +393,7 @@ PROVISIONING_OPTIONS = {
     'encrypt': False,
     'hide_snapdir': False,
     'adaptive_qos_policy_group': None,
+    'aggregate_encrypted': True,
 }
 
 PROVISIONING_OPTIONS_WITH_QOS = copy.deepcopy(PROVISIONING_OPTIONS)
@@ -515,6 +516,11 @@ INVALID_EXTRA_SPEC_COMBO = {
 
 INVALID_MAX_FILE_EXTRA_SPEC = {
     'netapp:max_files': -1,
+}
+
+INVALID_NVE_NAE = {
+    'netapp_flexvol_encryption': 'true',
+    'netapp_aggregate_encryption': 'true',
 }
 
 INVALID_TCP_MAX_XFER_SIZE_EXTRA_SPEC = {
@@ -987,6 +993,15 @@ AGGREGATE_CAPACITIES = {
     }
 }
 
+AGGREGATE_ENCRYPTION = {
+    AGGREGATES[0]: {
+        'encryption_enabled': False,
+    },
+    AGGREGATES[1]: {
+        'encryption_enabled': True,
+    }
+}
+
 FLEXGROUP_POOL_AGGR = [AGGREGATES[0], AGGREGATES[1]]
 
 FLEXGROUP_POOL_OPT = {
@@ -1115,6 +1130,7 @@ POOLS = [
         'netapp_snaplock_type': 'compliance',
         'share_replicas_migration_support': True,
         'encryption_support': ['share_server'],
+        'netapp_aggregate_encryption': False,
     },
     {
         'pool_name': AGGREGATES[1],
@@ -1148,6 +1164,7 @@ POOLS = [
         'netapp_snaplock_type': 'compliance',
         'share_replicas_migration_support': True,
         'encryption_support': ['share_server'],
+        'netapp_aggregate_encryption': False,
     },
 ]
 
@@ -1181,6 +1198,7 @@ POOLS_VSERVER_CREDS = [
         'netapp_flexgroup': False,
         'share_replicas_migration_support': True,
         'encryption_support': ['share_server'],
+        'netapp_aggregate_encryption': False,
     },
     {
         'pool_name': AGGREGATES[1],

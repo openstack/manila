@@ -494,10 +494,11 @@ class NetAppRestClient(object):
         return [aggr['name'] for aggr in aggr_list]
 
     @na_utils.trace
-    def get_cluster_aggregate_capacities(self, aggregate_names):
-        """Calculates capacity of one or more aggregates.
+    def get_cluster_aggregate_attributes(self, aggregate_names):
+        """Calculate capacity and encryption status for one or more aggregates.
 
-        Returns dictionary of aggregate capacity metrics.
+        Returns dictionary of aggregate capacity metrics and
+        aggregate encryption status.
         'used' is the actual space consumed on the aggregate.
         'available' is the actual space remaining.
         'size' is the defined total aggregate size, such that
@@ -506,23 +507,26 @@ class NetAppRestClient(object):
         if aggregate_names is not None and len(aggregate_names) == 0:
             return {}
 
-        fields = 'name,space'
+        fields = 'name,space,data_encryption.software_encryption_enabled'
         aggrs = self._get_aggregates(aggregate_names=aggregate_names,
                                      fields=fields)
-        aggr_space_dict = dict()
+        aggregate_info = dict()
         for aggr in aggrs:
             aggr_name = aggr['name']
             aggr_space_attrs = aggr['space']
 
-            aggr_space_dict[aggr_name] = {
+            aggregate_info[aggr_name] = {
                 'available':
                     int(aggr_space_attrs["block_storage"]["available"]),
                 'total':
                     int(aggr_space_attrs["block_storage"]["size"]),
                 'used':
                     int(aggr_space_attrs["block_storage"]["used"]),
+                'encryption_enabled':
+                    aggr.get('data_encryption', {}).get(
+                        'software_encryption_enabled', False),
             }
-        return aggr_space_dict
+        return aggregate_info
 
     @na_utils.trace
     def _get_aggregates(self, aggregate_names=None, fields=None):
@@ -1000,7 +1004,8 @@ class NetAppRestClient(object):
                       snapshot_reserve=None, volume_type='rw',
                       qos_policy_group=None, adaptive_qos_policy_group=None,
                       encrypt=False, mount_point_name=None,
-                      snaplock_type=None, **options):
+                      snaplock_type=None, aggregate_encrypted=None,
+                      **options):
         """Creates a FlexVol volume synchronously."""
 
         # NOTE(nahimsouza): In REST API, both FlexVol and FlexGroup volumes are
@@ -1015,6 +1020,7 @@ class NetAppRestClient(object):
             qos_policy_group=qos_policy_group, encrypt=encrypt,
             adaptive_qos_policy_group=adaptive_qos_policy_group,
             mount_point_name=mount_point_name, snaplock_type=snaplock_type,
+            aggregate_encrypted=aggregate_encrypted,
             **options)
         efficiency_policy = options.get('efficiency_policy', None)
         self.update_volume_efficiency_attributes(
@@ -1036,7 +1042,8 @@ class NetAppRestClient(object):
                             volume_type='rw', qos_policy_group=None,
                             encrypt=False, adaptive_qos_policy_group=None,
                             auto_provisioned=False, mount_point_name=None,
-                            snaplock_type=None, **options):
+                            snaplock_type=None, aggregate_encrypted=None,
+                            **options):
         """Creates FlexGroup/FlexVol volumes.
 
         If the parameter `is_flexgroup` is False, the creation process is
@@ -1057,7 +1064,8 @@ class NetAppRestClient(object):
         body.update(self._get_create_volume_body(
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
-            adaptive_qos_policy_group, mount_point_name, snaplock_type))
+            adaptive_qos_policy_group, mount_point_name, snaplock_type,
+            aggregate_encrypted))
 
         # NOTE(nahimsouza): When a volume is not a FlexGroup, volume creation
         # is made synchronously to replicate old ZAPI behavior. When ZAPI is
@@ -1079,8 +1087,8 @@ class NetAppRestClient(object):
     def _get_create_volume_body(self, volume_name, thin_provisioned,
                                 snapshot_policy, language, snapshot_reserve,
                                 volume_type, qos_policy_group, encrypt,
-                                adaptive_qos_policy_group,
-                                mount_point_name, snaplock_type):
+                                adaptive_qos_policy_group, mount_point_name,
+                                snaplock_type, aggregate_encrypted):
         """Builds the body to volume creation request."""
 
         body = {
@@ -1108,7 +1116,7 @@ class NetAppRestClient(object):
                 raise exception.NetAppException(msg)
             else:
                 body['encryption.enabled'] = 'true'
-        else:
+        elif aggregate_encrypted is False:
             body['encryption.enabled'] = 'false'
 
         if snaplock_type is not None:
@@ -3119,7 +3127,8 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
-                          cutover_action='wait', encrypt_destination=None):
+                          cutover_action='wait', encrypt_destination=None,
+                          dest_aggr_encryption=None):
         """Moves a FlexVol across Vserver aggregates.
 
         Requires cluster-scoped credentials.
@@ -3128,11 +3137,12 @@ class NetAppRestClient(object):
             volume_name, vserver,
             destination_aggregate,
             cutover_action=cutover_action,
-            encrypt_destination=encrypt_destination)
+            encrypt_destination=encrypt_destination,
+            dest_aggr_encryption=dest_aggr_encryption)
 
     @na_utils.trace
     def check_volume_move(self, volume_name, vserver, destination_aggregate,
-                          encrypt_destination=None):
+                          encrypt_destination=None, dest_aggr_encryption=None):
         """Moves a FlexVol across Vserver aggregates.
 
         Requires cluster-scoped credentials.
@@ -3142,14 +3152,16 @@ class NetAppRestClient(object):
             vserver,
             destination_aggregate,
             validation_only=True,
-            encrypt_destination=encrypt_destination)
+            encrypt_destination=encrypt_destination,
+            dest_aggr_encryption=dest_aggr_encryption)
 
     @na_utils.trace
     def _send_volume_move_request(self, volume_name, vserver,
                                   destination_aggregate,
                                   cutover_action='wait',
                                   validation_only=False,
-                                  encrypt_destination=None):
+                                  encrypt_destination=None,
+                                  dest_aggr_encryption=None):
         """Send request to check if vol move is possible, or start it.
 
         :param volume_name: Name of the FlexVol to be moved.
@@ -3178,7 +3190,7 @@ class NetAppRestClient(object):
 
         if encrypt_destination is True:
             body['encryption.enabled'] = 'true'
-        elif encrypt_destination is False:
+        elif dest_aggr_encryption is False:
             body['encryption.enabled'] = 'false'
 
         if validation_only:

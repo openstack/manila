@@ -554,14 +554,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertTrue(mock_create_vserver.called)
         self.assertTrue(check_lif_limit.called)
         if nfs_config_support:
-            mock_get_extra_spec.assert_called_once_with(
+            mock_get_extra_spec.assert_called_with(
                 fake_server_metadata['share_type_id'])
             mock_check_extra_spec.assert_called_once_with(
                 fake.EXTRA_SPEC)
             mock_get_nfs_config.assert_called_once_with(
                 fake.EXTRA_SPEC)
         else:
-            mock_get_extra_spec.assert_not_called()
             mock_check_extra_spec.assert_not_called()
             mock_get_nfs_config.assert_not_called()
 
@@ -631,7 +630,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_validate_share_network_subnets',
                          mock.Mock(side_effect=invalid_subnet_exception))
         self.mock_object(self.library, '_set_network_with_metadata')
-
         self.assertRaises(
             exception.NetworkBadConfigurationException,
             self.library.setup_server,

@@ -1509,13 +1509,18 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     LOG.error(msg)
                     return not_compatible
 
-        # Check 'netapp_flexvol_encryption' and 'revert_to_snapshot_support'
+        """Check 'netapp_flexvol_encryption' and 'revert_to_snapshot_support'
+        and 'netapp_aggregate_encryption'"""
         specs_to_validate = ('netapp_flexvol_encryption',
-                             'revert_to_snapshot_support')
+                             'revert_to_snapshot_support',
+                             'netapp_aggregate_encryption')
+
         for req_spec in shares_request_spec.get('shares_req_spec', []):
             extra_specs = req_spec.get('share_type', {}).get('extra_specs', {})
             for spec in specs_to_validate:
-                if extra_specs.get(spec) and not pools[0][spec]:
+                if (spec in extra_specs and
+                        str(extra_specs.get(spec)).lower() != str(
+                            pools[0].get(spec)).lower()):
                     msg = _("Cannot perform server migration since the "
                             "destination host doesn't support the required "
                             "extra-spec %s.") % spec
