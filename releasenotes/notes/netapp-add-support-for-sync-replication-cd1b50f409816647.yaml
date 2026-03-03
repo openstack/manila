@@ -12,7 +12,7 @@ features:
     - StrictSync - for StrictSync replication policy.
     - MirrorAllSnapshots - for Async replication policy.
 
-    The following operation are supported by Sync/StrictSync replication:
+    The following operations are supported by Sync/StrictSync replication:
     - Create replica
     - Promote replica
     - Delete replica
@@ -30,3 +30,5 @@ features:
     - Metadata set on destination share replica will be used during unplanned
       failover and failback operations.
     - Sync/StrictSync replication policies are supported only for FlexVols.
+    - Promote workflow will now release the snapmirror on source by retaining
+      the snapshots on the source share as per ONTAP best practices.

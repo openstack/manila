@@ -251,8 +251,8 @@ class DataMotionSession(object):
         # 1. Create SnapMirror relationship
         config = get_backend_configuration(dest_backend)
         if is_sync_policy:
-            """skip the schedule setting incase of sync policy type
-            as per NetApp design"""
+            # skip the schedule setting in case of sync policy type
+            # as per NetApp design
             schedule = None
         else:
             schedule = config.netapp_snapmirror_schedule
@@ -291,7 +291,7 @@ class DataMotionSession(object):
         1. Abort snapmirror
         2. Quiesce snapmirror
         3. Delete the snapmirror
-        3. Release snapmirror to clean up snapmirror metadata and snapshots
+        4. Release snapmirror to clean up snapmirror metadata and snapshots
         """
         dest_volume_name, dest_vserver, dest_backend = (
             self.get_backend_info_for_share(dest_share_obj))
@@ -564,7 +564,7 @@ class DataMotionSession(object):
                 snapmirrors = self.get_snapmirrors(
                     orig_source_replica, new_source_replica)
                 policy = (snapmirrors[0].get("policy")
-                          if snapmirrors and len(snapmirrors) > 0
+                          if snapmirrors
                           else None)
                 is_sync_policy = policy in na_utils.SUPPORTED_SYNC_POLICIES
             except netapp_api.NaApiError:
@@ -574,8 +574,8 @@ class DataMotionSession(object):
                        % replica['id'])
                 raise exception.NetAppException(message=msg)
         else:
-            """If the replica is not the original active replica then
-            get the policy from the replica's metadata."""
+            # If the replica is not the original active replica then
+            # get the policy from the replica's metadata.
             policy, is_sync_policy = (
                 self.get_policy_from_share_replica_metadata(replica))
 
@@ -616,8 +616,8 @@ class DataMotionSession(object):
 
         # 3. create
         if is_sync_policy:
-            """skip the schedule setting incase of sync policy type
-            as per NetApp design"""
+            # skip the schedule setting in case of sync policy type
+            # as per NetApp design
             schedule = None
         else:
             schedule = replica_config.netapp_snapmirror_schedule

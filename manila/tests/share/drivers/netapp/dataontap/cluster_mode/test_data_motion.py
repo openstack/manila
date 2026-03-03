@@ -1401,14 +1401,14 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
     def test_get_policy_from_share_replica_metadata_with_sync_policy(self):
         share = copy.deepcopy(fake.SHARE)
         share['metadata'] = {'replication_policy': 'Sync'}
-        policy, is_async_policy = (
+        policy, is_sync_policy = (
             self.dm_session.get_policy_from_share_replica_metadata(share))
         self.assertEqual('Sync', policy)
-        self.assertTrue(is_async_policy)
+        self.assertTrue(is_sync_policy)
 
     def test_get_policy_from_share_replica_metadata_without_metadata(self):
         share = copy.deepcopy(fake.SHARE)
-        policy, is_async_policy = (
+        policy, is_sync_policy = (
             self.dm_session.get_policy_from_share_replica_metadata(share))
         self.assertEqual('MirrorAllSnapshots', policy)
-        self.assertFalse(is_async_policy)
+        self.assertFalse(is_sync_policy)
