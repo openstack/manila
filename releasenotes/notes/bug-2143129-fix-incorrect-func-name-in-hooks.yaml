@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Use functools.wraps in share replica decorators to
+    preserve correct func_name in share manager hooks.
+    `launchpad bug #2143129 <https://bugs.launchpad.net/manila/+bug/2143129>`.
