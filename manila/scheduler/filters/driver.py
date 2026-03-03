@@ -100,6 +100,14 @@ class DriverFilter(base_host.BaseHostFilter):
 
         stats = utils.generate_stats(host_state, filter_properties)
 
-        stats['filter_function'] = filter_function
+        # Set the filter function (share.size) only if share_id
+        # is present in request spec
+        if filter_function is not None and 'share.size' in filter_function:
+            if filter_properties.get('request_spec').get('share_id'):
+                stats['filter_function'] = filter_function
+            else:
+                stats['filter_function'] = None
+        else:
+            stats['filter_function'] = filter_function
 
         return stats
