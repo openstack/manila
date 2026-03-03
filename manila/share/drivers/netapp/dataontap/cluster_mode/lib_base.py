@@ -184,9 +184,9 @@ class NetAppCmodeFileStorageLibrary(object):
     # this can be extended with additional pre-canned policies
     # which requires some changes in data_motion.py module.
     SUPPORTED_REPLICATION_POLICIES = [
-        "Sync",
-        "StrictSync",
-        "MirrorAllSnapshots"
+        na_utils.SYNC_POLICY_NAME,
+        na_utils.STRICT_SYNC_POLICY_NAME,
+        na_utils.MIRROR_ALL_SNAP_POLICY
     ]
 
     def __init__(self, driver_name, **kwargs):
@@ -947,8 +947,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 # 3. Initialize snapmirror relationship with cloned share.
                 src_share_instance['replica_state'] = (
                     constants.REPLICA_STATE_ACTIVE)
-                relationship_type = na_utils.get_relationship_type(
-                    dest_is_flexgroup)
+                relationship_type = na_utils.EXTENDED_DATA_PROTECTION_TYPE
                 src_share_instance["id"] = temp_share['id']
                 dm_session.create_snapmirror(
                     src_share_instance,
@@ -3500,9 +3499,9 @@ class NetAppCmodeFileStorageLibrary(object):
             if (not snapshot_name or
                     not vserver_client.snapshot_exists(snapshot_name,
                                                        share_name)):
-                LOG.debug('Could not find the share snapshot ' +
-                          '%(snap)s on destination site or ' +
-                          'provider_location is not set for ' +
+                LOG.debug('Could not find the share snapshot '
+                          '%(snap)s on destination site or '
+                          'provider_location is not set for '
                           'replica %(replica)s.', {
                               'snap': snapshot_name,
                               'replica': replica['id']})

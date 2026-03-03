@@ -4540,6 +4540,62 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           None, [fake.SHARE, fake.SHARE, fake.SHARE],
                           fake.SHARE, [], [], share_server=None)
 
+    @ddt.data(
+        {'share_snapshots': [mock.sentinel.snapshot], 'should_raise': True},
+        {'share_snapshots': [], 'should_raise': False},
+    )
+    @ddt.unpack
+    def test_create_replica_sync_policy_with_snapshots(
+            self, share_snapshots, should_raise):
+        """Sync replication must be rejected when share snapshots exist."""
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(mock_dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(fake.SHARE_NAME,
+                                                 fake.VSERVER1,
+                                                 fake.BACKEND_NAME)))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(mock_dm_session,
+                         'get_policy_from_share_replica_metadata',
+                         mock.Mock(return_value=('Sync', True)))
+        mock_src_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_src_client))
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_allocate_container')
+        self.mock_object(mock_dm_session, 'get_vserver_from_share',
+                         mock.Mock(return_value=fake.VSERVER1))
+        self.library.message_api = mock.Mock()
+
+        context = mock.Mock()
+
+        if should_raise:
+            self.assertRaises(
+                exception.NetAppException,
+                self.library.create_replica,
+                context, [fake.SHARE], fake.SHARE, [],
+                share_snapshots, share_server=None)
+
+            self.library.message_api.create.assert_called_once_with(
+                context,
+                mock.ANY,
+                context.project_id,
+                resource_type=mock.ANY,
+                resource_id=fake.SHARE['id'],
+                detail=mock.ANY,
+            )
+        else:
+            # With no snapshots the sync-policy check is skipped entirely.
+            self.library.create_replica(
+                context, [fake.SHARE], fake.SHARE, [],
+                share_snapshots, share_server=None)
+            self.library.message_api.create.assert_not_called()
+
     def test_delete_replica(self):
 
         active_replica = fake_replica(
