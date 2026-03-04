@@ -19,7 +19,6 @@ from unittest import mock
 
 import ddt
 from defusedxml import ElementTree as etree
-from eventlet import greenthread
 from oslo_config import cfg
 
 from manila import exception
@@ -386,7 +385,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
             'fakeCreateShareId')
         mock_get_location_path.return_value = None
         mock_private_storage = mock.Mock()
-        self.mock_object(greenthread, 'sleep')
+        self.mock_object(time, 'sleep')
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1',
                        private_storage=mock_private_storage)
@@ -449,7 +448,7 @@ class QnapShareDriverTestCase(QnapShareDriverBaseTestCase):
         mock_get_location_path.return_value = None
         mock_private_storage = mock.Mock()
         self.mock_object(time, 'sleep')
-        self.mock_object(greenthread, 'sleep')
+        self.mock_object(time, 'sleep')
         self._do_setup('http://1.2.3.4:8080', '1.2.3.4', 'admin',
                        'qnapadmin', 'Storage Pool 1',
                        private_storage=mock_private_storage)

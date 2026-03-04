@@ -15,9 +15,9 @@
 """This modules stubs out functions in manila.utils."""
 
 import re
+import time
 from unittest import mock
 
-from eventlet import greenthread
 from oslo_log import log
 
 from manila import exception
@@ -99,7 +99,7 @@ def fake_execute(*cmd_parts, **kwargs):
               "stderr='%(stderr)s'.", {"stdout": stdout, "stderr": stderr})
 
     # Replicate the sleep call in the real function
-    greenthread.sleep(0)
+    time.sleep(0)
     return reply
 
 
