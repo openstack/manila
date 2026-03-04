@@ -4736,15 +4736,18 @@ def export_location_get_all(context, share_id):
 @context_manager.reader
 def export_location_get_by_uuid(
     context, export_location_uuid, ignore_secondary_replicas=False,
+    share_id=None,
 ):
     return _export_location_get_by_uuid(
         context, export_location_uuid,
         ignore_secondary_replicas=ignore_secondary_replicas,
+        share_id=share_id,
     )
 
 
 def _export_location_get_by_uuid(
     context, export_location_uuid, ignore_secondary_replicas=False,
+    share_id=None,
 ):
     query = model_query(
         context,
@@ -4755,6 +4758,13 @@ def _export_location_get_by_uuid(
     ).options(
         orm.joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
     )
+
+    if share_id is not None:
+        query = query.join(
+            models.ShareInstanceExportLocations.share_instance
+        ).filter(
+            models.ShareInstance.share_id == share_id
+        )
 
     if ignore_secondary_replicas:
         replica_state_attr = models.ShareInstance.replica_state

@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Closes a gap where a user can see a share export location belonging to a
+    share from another project if the uuid of the export location is leaked,
+    stolen or (improbably) guessed. See `Launchpad bug 2120921
+    <https://launchpad.net/bugs/2120921>`_ for more details.

@@ -970,11 +970,14 @@ def share_metadata_update_item(context, share_id, item):
 
 def export_location_get_by_uuid(
     context, export_location_uuid, ignore_secondary_replicas=False,
+    share_id=None,
 ):
     """Get specific export location of a share."""
     return IMPL.export_location_get_by_uuid(
         context, export_location_uuid,
-        ignore_secondary_replicas=ignore_secondary_replicas)
+        ignore_secondary_replicas=ignore_secondary_replicas,
+        share_id=share_id,
+    )
 
 
 def export_location_get_all(context, share_id):
