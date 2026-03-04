@@ -32,6 +32,8 @@
             voting: false
         - manila-tox-bandit:
             voting: false
+        - manila-tox-py3-threading:
+            voting: false
         # Test OpenAPI spec generation.
         - codegenerator-openapi-shared-file-system-tips-with-api-ref:
             voting: false
@@ -92,3 +94,12 @@
     vars:
       tox_envlist: bandit
     irrelevant-files: *irrelevant-files
+
+- job:
+    name: manila-tox-py3-threading
+    parent: openstack-tox-py313
+    description: |
+      Run unit tests with the native threading backend
+      (OS_MANILA_DISABLE_EVENTLET_PATCHING=True).
+    vars:
+      tox_envlist: py3-threading
