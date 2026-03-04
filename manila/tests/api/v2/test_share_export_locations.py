@@ -105,25 +105,23 @@ class ShareExportLocationsAPITest(test.TestCase):
 
             show_el = show_result['export_location']
 
-            # Check summary keys in index result
-            # & detail keys in show result
+            # Check summary keys in index result & detail keys in show result
             if role == 'admin':
                 self.assertEqual(len(admin_summary_keys), len(index_el))
                 for key in admin_summary_keys:
                     self.assertIn(key, index_el)
-                    self.assertEqual(len(admin_detail_keys), len(show_el))
+                self.assertEqual(len(admin_detail_keys), len(show_el))
                 for key in admin_detail_keys:
                     self.assertIn(key, show_el)
             else:
                 self.assertEqual(len(summary_keys), len(index_el))
                 for key in summary_keys:
                     self.assertIn(key, index_el)
-                    self.assertEqual(len(detail_keys), len(show_el))
+                self.assertEqual(len(detail_keys), len(show_el))
                 for key in detail_keys:
                     self.assertIn(key, show_el)
 
-            # Ensure keys common to index
-            # & show results have matching values
+            # Ensure keys common to index & show results have matching values
             for key in summary_keys:
                 self.assertEqual(index_el[key], show_el[key])
 
@@ -150,7 +148,7 @@ class ShareExportLocationsAPITest(test.TestCase):
             self.req, self.share['id'], 'inexistent_export_location',
         )
 
-    def test_show_not_authorized(self):
+    def test_show_export_location_wrong_share(self):
         diff_share = db_utils.create_share()
         index_result = self.controller.index(self.req, self.share['id'])
         el_id = index_result['export_locations'][0]['id']
