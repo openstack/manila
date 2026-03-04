@@ -308,6 +308,9 @@ class TestCase(base_test.BaseTestCase):
         svc = service.Service.create(**kwargs)
         svc.start()
         self._services.append(svc)
+        # Ensure timer threads are stopped even if setUp fails (tearDown
+        # won't run, but addCleanup callbacks always do).
+        self.addCleanup(svc.tg.stop)
         return svc
 
     def mock_object(self, obj, attr_name, new_attr=None, **kwargs):

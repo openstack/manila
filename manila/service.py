@@ -250,24 +250,25 @@ class Service(service.Service):
         # Try to shut the connection down, but if we get any sort of
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
-            self.rpcserver.stop()
-        except Exception:
-            pass
-
-        try:
-            db.service_update(context.get_admin_context(),
-                              self.service_id, {'state': 'stopped'})
-        except exception.NotFound:
-            LOG.warning('Service stopped that has no database entry.')
-
-        if self.coordinator:
             try:
-                coordination.LOCK_COORDINATOR.stop()
+                self.rpcserver.stop()
             except Exception:
-                LOG.exception("Unable to stop the Tooz Locking "
-                              "Coordinator.")
+                pass
 
-        super(Service, self).stop(graceful=True)
+            try:
+                db.service_update(context.get_admin_context(),
+                                  self.service_id, {'state': 'stopped'})
+            except Exception:
+                LOG.warning('Service stopped that has no database entry.')
+
+            if self.coordinator:
+                try:
+                    coordination.LOCK_COORDINATOR.stop()
+                except Exception:
+                    LOG.exception("Unable to stop the Tooz Locking "
+                                  "Coordinator.")
+        finally:
+            super(Service, self).stop()
 
     def wait(self):
         if self.rpcserver:
@@ -429,7 +430,7 @@ class WSGIService(service.ServiceBase):
         self.server.wait()
 
     def reset(self):
-        """Reset server greenpool size to default.
+        """Reset server pool size to default.
 
         :returns: None
         """
