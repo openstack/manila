@@ -1,5 +1,37 @@
 ---
 upgrade:
   - |
-    Manila now allows running all services in threading mode instead of using
-    eventlet. For more details, please check the deployment documentation.
+    A new environment variable, ``OS_MANILA_DISABLE_EVENTLET_PATCHING``, can
+    be set to ``1`` before launching the ``manila-scheduler``,
+    ``manila-share``, or ``manila-data`` services. When set, Manila will use
+    Python's native threading instead of eventlet's green threads for
+    concurrency. The ``manila-api`` service is unaffected when deployed behind
+    an external WSGI server (uWSGI, gunicorn, Apache mod_wsgi) since that
+    path already uses native threads.
+
+    This option is being introduced as a **technology preview**. A future
+    release of Manila will remove eventlet entirely and rely on native
+    threads. The preview lets operators and driver vendors validate their
+    deployments ahead of that change. **Do not enable this in production
+    environments yet.** Bug fixes against the threading backend will be
+    backported to the 2026.1 release where possible.
+
+    To try the threading backend, export the variable in the service
+    environment before starting each service::
+
+        export OS_MANILA_DISABLE_EVENTLET_PATCHING=1
+        manila-scheduler
+        # (same for manila-share, manila-data)
+
+    To remove eventlet from the deployed environment, uninstall it after
+    installing Manila and its dependencies::
+
+        pip install manila
+        pip uninstall -y eventlet
+
+    Although eventlet is still listed in ``requirements.txt``, Manila does
+    not import it when ``OS_MANILA_DISABLE_EVENTLET_PATCHING=1`` is set.
+    Removing the package ensures it cannot be imported accidentally. When
+    eventlet is absent and the environment variable is set, the services
+    start normally using the native threading backend provided by
+    oslo.service.
