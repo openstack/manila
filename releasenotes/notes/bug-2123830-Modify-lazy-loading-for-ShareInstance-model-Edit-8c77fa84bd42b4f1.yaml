@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Share Instance get/list API is enhanced to reduce the time required for
+    fetching share instance data. For more details, please check
+    `launchpad bug #2123830 <https://bugs.launchpad.net/manila/+bug/2123830>`_
