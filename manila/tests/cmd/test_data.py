@@ -13,6 +13,7 @@
 #    under the License.
 
 import sys
+from unittest import mock
 
 from manila.cmd import data as manila_data
 from manila import test
@@ -43,4 +44,5 @@ class ManilaCmdDataTestCase(test.TestCase):
             binary='manila-data')
         manila_data.service.wait.assert_called_once_with()
         manila_data.service.serve.assert_called_once_with(
-            manila_data.service.Service.create.return_value)
+            manila_data.service.Service.create.return_value,
+            workers=mock.ANY)

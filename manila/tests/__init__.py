@@ -22,6 +22,4 @@
    :platform: Unix
 """
 
-import eventlet
-
-eventlet.monkey_patch()
+from manila import monkey_patch; monkey_patch.patch()  # noqa

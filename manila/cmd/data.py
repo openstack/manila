@@ -16,9 +16,6 @@
 
 """Starter script for manila data copy service."""
 
-import eventlet
-eventlet.monkey_patch()
-
 import sys
 
 from oslo_config import cfg
@@ -43,7 +40,8 @@ def main():
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     server = service.Service.create(binary='manila-data')
-    service.serve(server)
+    workers = getattr(server, 'workers', None) or 1
+    service.serve(server, workers=workers)
     service.wait()
 
 

@@ -14,6 +14,7 @@
 # under the License.
 
 import sys
+from unittest import mock
 
 from manila.cmd import scheduler as manila_scheduler
 from manila import test
@@ -44,4 +45,5 @@ class ManilaCmdSchedulerTestCase(test.TestCase):
             binary='manila-scheduler', coordination=True)
         manila_scheduler.service.wait.assert_called_once_with()
         manila_scheduler.service.serve.assert_called_once_with(
-            manila_scheduler.service.Service.create.return_value)
+            manila_scheduler.service.Service.create.return_value,
+            workers=mock.ANY)

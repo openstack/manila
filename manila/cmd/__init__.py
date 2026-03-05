@@ -1,0 +1,1 @@
+from manila import monkey_patch; monkey_patch.patch()  # noqa

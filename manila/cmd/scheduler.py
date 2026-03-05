@@ -18,9 +18,6 @@
 
 """Starter script for manila Scheduler."""
 
-import eventlet
-eventlet.monkey_patch()
-
 import sys
 
 from oslo_config import cfg
@@ -34,6 +31,7 @@ from manila import utils
 from manila import version
 
 CONF = cfg.CONF
+LOG = log.getLogger(__name__)
 
 
 def main():
@@ -46,7 +44,8 @@ def main():
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     server = service.Service.create(binary='manila-scheduler',
                                     coordination=True)
-    service.serve(server)
+    workers = getattr(server, 'workers', None) or 1
+    service.serve(server, workers=workers)
     service.wait()
 
 
