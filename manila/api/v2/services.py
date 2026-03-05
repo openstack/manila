@@ -21,6 +21,8 @@ from oslo_utils import strutils
 import webob.exc
 
 from manila.api.openstack import wsgi
+from manila.api.schemas import services as schema
+from manila.api import validation
 from manila.api.views import services as services_views
 from manila.common import constants
 from manila import db
@@ -182,13 +184,13 @@ class ServiceController(ServiceMixin, wsgi.Controller):
 
     @wsgi.Controller.api_version('2.86')
     @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.ensure_shares_request_body)
+    @validation.response_body_schema(schema.ensure_shares_response_body)
     def ensure_shares(self, req, body):
         """Starts ensure shares for a given manila-share binary."""
         context = req.environ['manila.context']
 
-        host = body.get('host', None)
-        if not host:
-            raise webob.exc.HTTPBadRequest('Missing host parameter.')
+        host = body['ensure_shares']['host']
 
         try:
             # The only binary supported is Manila share.
