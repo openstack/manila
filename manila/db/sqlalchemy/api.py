@@ -4759,23 +4759,22 @@ def _export_location_get_by_uuid(
         orm.joinedload(models.ShareInstanceExportLocations._el_metadata_bare),
     )
 
-    if share_id is not None:
-        query = query.join(
-            models.ShareInstanceExportLocations.share_instance
-        ).filter(
-            models.ShareInstance.share_id == share_id
-        )
-
-    if ignore_secondary_replicas:
-        replica_state_attr = models.ShareInstance.replica_state
+    if share_id is not None or ignore_secondary_replicas:
         query = query.join(
             models.ShareInstanceExportLocations.share_instance,
-        ).filter(
-            or_(
-                replica_state_attr == None,  # noqa
-                replica_state_attr == constants.REPLICA_STATE_ACTIVE,
-            )
         )
+        if share_id is not None:
+            query = query.filter(
+                models.ShareInstance.share_id == share_id
+            )
+        if ignore_secondary_replicas:
+            replica_state_attr = models.ShareInstance.replica_state
+            query = query.filter(
+                or_(
+                    replica_state_attr == None,  # noqa
+                    replica_state_attr == constants.REPLICA_STATE_ACTIVE,
+                )
+            )
 
     result = query.first()
     if not result:
