@@ -1035,6 +1035,32 @@ class GaneshaManagerTestCase(test.TestCase):
                 self._manager._remove_rados_object_url_from_index.called)
         self.assertIsNone(ret)
 
+    def test_remove_export_rados_store_removes_index_before_object(self):
+        """Verify index removal happens before object deletion.
+
+        If the process crashes between these two operations, removing the
+        index first ensures only an orphan object remains (harmless),
+        rather than a dangling index entry that breaks Ganesha on restart.
+        """
+        self._manager.ganesha_rados_store_enable = True
+        self.mock_object(self._manager, '_read_export',
+                         mock.Mock(return_value=test_dict_unicode))
+        self.mock_object(self._manager, '_get_export_rados_object_name',
+                         mock.Mock(return_value='fakeobj'))
+
+        call_order = []
+        self.mock_object(
+            self._manager, '_remove_rados_object_url_from_index',
+            mock.Mock(side_effect=lambda *a: call_order.append('index')))
+        self.mock_object(
+            self._manager, '_delete_rados_object',
+            mock.Mock(side_effect=lambda *a: call_order.append('object')))
+        self.mock_object(self._manager, '_remove_export_dbus')
+
+        self._manager.remove_export(test_name)
+
+        self.assertEqual(['index', 'object'], call_order)
+
     def test_get_rados_object(self):
         fakebin = chr(246).encode('utf-8')
 

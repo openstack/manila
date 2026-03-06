@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed a bug in the CephFS NFS (NFS-Ganesha with RADOS) driver where
+    ``remove_export()`` deleted the RADOS export object before removing
+    its index entry. If the index removal subsequently failed, the index
+    would retain a dangling reference to the deleted object, causing
+    errors on future export operations. The order of operations has been
+    reversed so that the index entry is removed first, preventing
+    dangling references.
