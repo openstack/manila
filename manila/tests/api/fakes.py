@@ -293,6 +293,7 @@ def mock_fake_admin_check(context, resource_name, action, *args, **kwargs):
 class FakeResourceViewBuilder(api_common.ViewBuilder):
 
     _collection_name = 'fake_resource'
+    _collection_route_name = 'fake-route-name'
     _detail_version_modifiers = [
         "add_field_xyzzy",
         "add_field_spoon_for_admins",
