@@ -75,11 +75,13 @@ class ServiceManagerTestCase(test.TestCase):
     def test_message_gets_to_manager(self):
         serv = service.Service('test', 'test', 'test', CONF.fake_manager)
         serv.start()
+        self.addCleanup(serv.tg.stop)
         self.assertEqual('manager', serv.test_method())
 
     def test_override_manager_method(self):
         serv = ExtendedService('test', 'test', 'test', CONF.fake_manager)
         serv.start()
+        self.addCleanup(serv.tg.stop)
         self.assertEqual('service', serv.test_method())
 
 
@@ -189,6 +191,7 @@ class ServiceTestCase(test.TestCase):
     def test_report_state_newly_disconnected(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
+        self.addCleanup(serv.tg.stop)
         serv.report_state()
         self.assertTrue(serv.model_disconnected)
         service.db.service_get_by_args.assert_called_once_with(
@@ -211,6 +214,7 @@ class ServiceTestCase(test.TestCase):
     def test_report_state_newly_connected(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
+        self.addCleanup(serv.tg.stop)
         serv.model_disconnected = True
         serv.report_state()
         self.assertFalse(serv.model_disconnected)
@@ -238,6 +242,7 @@ class ServiceTestCase(test.TestCase):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.availability_zone = 'other-zone'
         serv.start()
+        self.addCleanup(serv.tg.stop)
         serv.model_disconnected = True
         serv.report_state()
         self.assertFalse(serv.model_disconnected)
@@ -265,6 +270,7 @@ class ServiceTestCase(test.TestCase):
     def test_report_state_newly_connected_not_found(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
+        self.addCleanup(serv.tg.stop)
         serv.model_disconnected = True
         serv.report_state()
         self.assertFalse(serv.model_disconnected)
@@ -285,6 +291,7 @@ class ServiceTestCase(test.TestCase):
             serv = service.Service(host, binary, topic, CONF.fake_manager)
             serv.manager.is_service_ready = mock.Mock(return_value=False)
             serv.start()
+            self.addCleanup(serv.tg.stop)
             serv.report_state()
 
             serv.manager.is_service_ready.assert_called_once()
@@ -295,6 +302,7 @@ class ServiceTestCase(test.TestCase):
             mock_db.service_get_all.return_value = [service_ref]
             serv = service.Service(host, binary, topic, CONF.fake_manager)
             serv.start()
+            self.addCleanup(serv.tg.stop)
             serv.cleanup_services()
             mock_db.service_destroy.assert_not_called()
 
