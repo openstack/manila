@@ -113,7 +113,7 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         if all_squash_metadata:
             self.mock_client.add_nfs_export_rule.assert_called_once_with(
                 'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False,
-                ['none'])
+                ['none'], anon_user_id='65534')
         else:
             self.mock_client.add_nfs_export_rule.assert_called_once_with(
                 'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False,
@@ -127,6 +127,10 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
             mock.call('fake_export_policy', 'fake_old_export_policy'),
             mock.call('fake_new_export_policy', 'fake_export_policy'),
         ])
+
+        if all_squash_metadata:
+            self.mock_client.set_pcuser_for_volume.assert_called_once_with(
+                fake.SHARE_NAME)
 
     def test_validate_access_rule(self):
 

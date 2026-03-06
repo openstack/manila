@@ -888,6 +888,22 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             '/storage/volumes/', 'patch',
             query=query, body=body)
 
+    def test_set_pcuser_for_volume(self):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        query = {'name': volume['name']}
+
+        body = {
+            'nas.uid': 65534,
+        }
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_pcuser_for_volume(fake.VOLUME_NAMES[0])
+
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes', 'patch',
+            query=query, body=body)
+
     def test_create_nfs_export_policy(self):
 
         body = {'name': fake.EXPORT_POLICY_NAME}
@@ -3997,7 +4013,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_get_nfs_export_rule_indices.assert_called_once_with(
             fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
         mock_add_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, auth_methods)
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False,
+            auth_methods, anon_user_id=None)
         self.assertFalse(mock_update_nfs_export_rule.called)
 
     def test_set_qos_policy_group_for_volume(self):
@@ -7072,7 +7089,8 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                         True,
                                         'fake_auth')
         update.assert_called_once_with(fake.FPOLICY_POLICY_NAME,
-                                       'fake_client', True, 1, 'fake_auth')
+                                       'fake_client', True, 1, 'fake_auth',
+                                       anon_user_id=None)
         remove.assert_called_once_with(fake.FPOLICY_POLICY_NAME, [])
 
     def test__update_snapmirror_no_snapmirrors(self):

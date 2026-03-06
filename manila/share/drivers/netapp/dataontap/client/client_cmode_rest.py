@@ -828,6 +828,20 @@ class NetAppRestClient(object):
                 return
 
     @na_utils.trace
+    def set_pcuser_for_volume(self, volume_name):
+        """Set user to pcuser for the specified volume."""
+        query = {"name": volume_name}
+        body = {'nas.uid': 65534}
+
+        try:
+            self.send_request('/storage/volumes', 'patch', query=query,
+                              body=body)
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_CANNOT_MODITY_OFFLINE_VOLUME:
+                LOG.warning('Cannot modify offline volume: %s', volume_name)
+                raise
+
+    @na_utils.trace
     def create_nfs_export_policy(self, policy_name):
         """Create an NFS export policy."""
         body = {'name': policy_name}
@@ -3244,7 +3258,7 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def _add_nfs_export_rule(self, policy_name, client_match, readonly,
-                             auth_methods):
+                             auth_methods, anon_user_id=None):
         """Add rule to NFS export policy."""
         uuid = self.get_unique_export_policy_id(policy_name)
         body = {
@@ -3253,7 +3267,8 @@ class NetAppRestClient(object):
             'rw_rule': [],
             'superuser': []
         }
-
+        if anon_user_id is not None:
+            body['anonymous_user'] = anon_user_id
         for am in auth_methods:
             body['ro_rule'].append(am)
             body['rw_rule'].append(am)
@@ -3267,7 +3282,7 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def _update_nfs_export_rule(self, policy_name, client_match, readonly,
-                                rule_index, auth_methods):
+                                rule_index, auth_methods, anon_user_id=None):
         """Update rule of NFS export policy."""
         uuid = self.get_unique_export_policy_id(policy_name)
         body = {
@@ -3276,7 +3291,8 @@ class NetAppRestClient(object):
             'rw_rule': [],
             'superuser': []
         }
-
+        if anon_user_id is not None:
+            body['anonymous_user'] = anon_user_id
         for am in auth_methods:
             body['ro_rule'].append(am)
             body['rw_rule'].append(am)
@@ -3979,18 +3995,18 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def add_nfs_export_rule(self, policy_name, client_match, readonly,
-                            auth_methods):
+                            auth_methods, anon_user_id=None):
         """Add rule to NFS export policy."""
         rule_indices = self._get_nfs_export_rule_indices(policy_name,
                                                          client_match)
         if not rule_indices:
             self._add_nfs_export_rule(policy_name, client_match, readonly,
-                                      auth_methods)
+                                      auth_methods, anon_user_id=anon_user_id)
         else:
             # Update first rule and delete the rest
             self._update_nfs_export_rule(
                 policy_name, client_match, readonly, rule_indices.pop(0),
-                auth_methods)
+                auth_methods, anon_user_id=anon_user_id)
             self._remove_nfs_export_rules(policy_name, rule_indices)
 
     @na_utils.trace

@@ -4357,22 +4357,22 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def add_nfs_export_rule(self, policy_name, client_match, readonly,
-                            auth_methods):
+                            auth_methods, anon_user_id=None):
         rule_indices = self._get_nfs_export_rule_indices(policy_name,
                                                          client_match)
         if not rule_indices:
             self._add_nfs_export_rule(policy_name, client_match, readonly,
-                                      auth_methods)
+                                      auth_methods, anon_user_id=anon_user_id)
         else:
             # Update first rule and delete the rest
             self._update_nfs_export_rule(
                 policy_name, client_match, readonly, rule_indices.pop(0),
-                auth_methods)
+                auth_methods, anon_user_id=anon_user_id)
             self._remove_nfs_export_rules(policy_name, rule_indices)
 
     @na_utils.trace
     def _add_nfs_export_rule(self, policy_name, client_match, readonly,
-                             auth_methods):
+                             auth_methods, anon_user_id=None):
         api_args = {
             'policy-name': policy_name,
             'client-match': client_match,
@@ -4380,6 +4380,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'rw-rule': [],
             'super-user-security': [],
         }
+        if anon_user_id is not None:
+            api_args['anonymous-user-id'] = anon_user_id
         for am in auth_methods:
             api_args['ro-rule'].append({'security-flavor': am})
             api_args['rw-rule'].append({'security-flavor': am})
@@ -4392,7 +4394,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def _update_nfs_export_rule(self, policy_name, client_match, readonly,
-                                rule_index, auth_methods):
+                                rule_index, auth_methods, anon_user_id=None):
         api_args = {
             'policy-name': policy_name,
             'rule-index': rule_index,
@@ -4401,6 +4403,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'rw-rule': [],
             'super-user-security': [],
         }
+        if anon_user_id is not None:
+            api_args['anonymous-user-id'] = anon_user_id
         for am in auth_methods:
             api_args['ro-rule'].append({'security-flavor': am})
             api_args['rw-rule'].append({'security-flavor': am})
@@ -4481,6 +4485,37 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
         }
         self.send_request('volume-modify-iter', api_args)
+
+    @na_utils.trace
+    def set_pcuser_for_volume(self, volume_name):
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-security-attributes': {
+                        'volume-security-unix-attributes': {
+                            'user-id': 65534,
+                        },
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def set_qos_policy_group_for_volume(self, volume_name,
