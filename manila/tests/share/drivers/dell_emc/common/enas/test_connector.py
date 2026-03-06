@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
 from unittest import mock
 from urllib import error as url_error
 from urllib import request as url_request
 
-from eventlet import greenthread
 from oslo_concurrency import processutils
 
 from manila import exception
@@ -203,7 +203,7 @@ class CmdConnectorTest(test.TestCase):
     def test_run_ssh_exception(self):
         cmd_list = ['fake', 'cmd']
 
-        self.mock_object(greenthread, 'sleep', mock.Mock())
+        self.mock_object(time, 'sleep', mock.Mock())
 
         sshpool = MockSSHPool()
 
