@@ -406,6 +406,11 @@ class WSGIService(service.ServiceBase):
         :returns: None
 
         """
+        LOG.warning(
+            'The built-in eventlet-based WSGI server is deprecated and '
+            'will be removed in a future release. Deploy the manila-api '
+            'service with an external WSGI server such as uWSGI, '
+            'gunicorn, or Apache mod_wsgi instead.')
         setup_profiler(self.name, self.host)
         if self.manager:
             self.manager.init_host()

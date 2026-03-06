@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    The built-in eventlet-based WSGI server is deprecated and will be removed
+    in a future release. Deploy the manila-api service with an external WSGI
+    server such as uWSGI, gunicorn, or Apache mod_wsgi instead. Refer to the
+    ``manila.wsgi.api:application`` entry point for configuration.
