@@ -185,13 +185,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_start_periodic_tasks')
 
         self.library.check_for_setup_error()
 
         mock_list_non_root_aggregates.assert_called_once_with()
         mock_init_flexgroup.assert_called_once_with(set(fake.AGGREGATES))
         self.assertTrue(self.library.is_flexvol_pool_configured.called)
-        self.assertTrue(self.library._find_matching_aggregates.called)
+        self.assertFalse(self.library._find_matching_aggregates.called)
 
     def test_check_for_setup_error_vserver_creds(self):
         self.library._have_cluster_creds = False

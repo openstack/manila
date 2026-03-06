@@ -149,11 +149,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_start_periodic_tasks')
 
         self.library.check_for_setup_error()
 
         self.assertTrue(self.library.is_flexvol_pool_configured.called)
-        self.assertTrue(self.library._find_matching_aggregates.called)
+        self.assertFalse(self.library._find_matching_aggregates.called)
 
     def test_check_for_setup_error_cluster_creds_vserver_mismatch(self):
         self.library._client.vserver_exists.return_value = True
