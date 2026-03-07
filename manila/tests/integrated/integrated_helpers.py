@@ -17,8 +17,10 @@
 Provides common functionality for integrated unit tests
 """
 
+import os
 import random
 import string
+import unittest
 
 from oslo_log import log
 
@@ -57,6 +59,10 @@ def generate_new_element(items, prefix, numeric=False):
         LOG.debug("Random collision on %s.", candidate)
 
 
+@unittest.skipIf(
+    os.environ.get('OS_MANILA_DISABLE_EVENTLET_PATCHING', '').lower()
+    in ('1', 'true', 'yes'),
+    'WSGIService is not compatible with the threading backend')
 class _IntegratedTestBase(test.TestCase):
     def setUp(self):
         super(_IntegratedTestBase, self).setUp()

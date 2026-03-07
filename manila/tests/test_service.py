@@ -22,6 +22,8 @@ Unit Tests for remote procedure calls using queue
 """
 
 from datetime import timedelta
+import os
+import unittest
 from unittest import mock
 
 import ddt
@@ -320,6 +322,10 @@ class ServiceTestCase(test.TestCase):
                     mock.ANY, service_ref_stopped['id'])
 
 
+@unittest.skipIf(
+    os.environ.get('OS_MANILA_DISABLE_EVENTLET_PATCHING', '').lower()
+    in ('1', 'true', 'yes'),
+    'WSGIService is not compatible with the threading backend')
 class TestWSGIService(test.TestCase):
 
     def setUp(self):
