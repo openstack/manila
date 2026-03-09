@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The NetApp driver now updates the "created_at" timestamp when managing
+    an existing share or snapshot. Previously, the timestamp reflected
+    the manage API request time rather than the actual creation time on the
+    backend. This fix ensures metadata consistency between Manila and the
+    NetApp storage system.

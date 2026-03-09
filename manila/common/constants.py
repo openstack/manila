@@ -414,6 +414,7 @@ class ExtraSpecs(object):
 class AdminOnlyMetadata(object):
     AFFINITY_KEY = "__affinity_same_host"
     ANTI_AFFINITY_KEY = "__affinity_different_host"
+    MANAGED_AT_KEY = "__managed_at"
     PREFERRED_KEY = "preferred"
 
     SCHEDULER_FILTERS = [
@@ -423,4 +424,9 @@ class AdminOnlyMetadata(object):
 
     EXPORT_LOCATION_KEYS = [
         PREFERRED_KEY,
+    ]
+
+    ADMIN_METADATA_KEYS = [
+        *SCHEDULER_FILTERS,
+        MANAGED_AT_KEY
     ]

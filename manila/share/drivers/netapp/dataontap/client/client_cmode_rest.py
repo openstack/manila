@@ -2798,7 +2798,7 @@ class NetAppRestClient(object):
         query = {
             'name': volume_name,
             'fields': 'name,aggregates.name,nas.path,name,type,style,'
-                      'svm.name,qos.policy.name,space.size',
+                      'svm.name,qos.policy.name,space.size,create_time',
             'aggregates.name': aggregate_name
         }
 
@@ -2827,7 +2827,8 @@ class NetAppRestClient(object):
             'owning-vserver-name': res.get('svm', {}).get('name', ''),
             'size': res.get('space', {}).get('size', 0),
             'qos-policy-group-name': (
-                res.get('qos', {}).get('policy', {}).get('name', ''))
+                res.get('qos', {}).get('policy', {}).get('name', '')),
+            'created_at': res.get('create_time')
         }
 
         return volume

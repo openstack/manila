@@ -44,7 +44,7 @@ FLEXVOL_NAME_1 = 'fake_volume_1'
 JUNCTION_PATH = '/%s' % FLEXVOL_NAME
 EXPORT_LOCATION = '%s:%s' % (HOST_NAME, JUNCTION_PATH)
 SNAPSHOT_NAME = 'fake_snapshot'
-SNAPSHOT_ACCESS_TIME = '1466455782'
+SNAPSHOT_ACCESS_TIME = '2016-06-23T09:00:58'
 CONSISTENCY_GROUP_NAME = 'fake_consistency_group'
 SHARE_SIZE = 10
 TENANT_ID = '24cb2448-13d8-4f41-afd9-eff5c4fd2a57'
@@ -118,6 +118,7 @@ FPOLICY_EXT_TO_EXCLUDE_LIST = ['jpg', 'mp3']
 BACKUP_TYPE = "fake_backup_type"
 MOUNT_POINT_NAME = 'fake_mp'
 VOLUME_EFFICIENCY_POLICY_NAME = 'fake_volume_efficiency_policy'
+CREATE_TIME = '2025-11-17T12:34:56+00:00'
 
 JOB_ID = '123'
 JOB_STATE = 'success'
@@ -157,6 +158,7 @@ SHARE = {
     'share_server': None,
     'encrypt': False,
     'share_id': SHARE_ID,
+    'created_at': CREATE_TIME,
 }
 
 SHARE_2 = {
@@ -240,6 +242,7 @@ FLEXVOL_TO_MANAGE = {
     'style': 'flex',
     'size': '1610612736',  # rounds up to 2 GB
     'style-extended': FLEXGROUP_STYLE_EXTENDED,
+    'created_at': CREATE_TIME,
 }
 
 FLEXVOL_WITHOUT_QOS = copy.deepcopy(FLEXVOL_TO_MANAGE)
@@ -752,6 +755,7 @@ SNAPSHOT_TO_MANAGE = {
     'share_id': PARENT_SHARE_ID,
     'status': constants.STATUS_CREATING,
     'provider_location': SNAPSHOT_NAME,
+    'created_at': CREATE_TIME,
 }
 
 CDOT_SNAPSHOT = {

@@ -91,7 +91,8 @@ SNAPSHOT_POLICY_NAME = 'fake_snapshot_policy'
 EXPORT_POLICY_NAME = 'fake_export_policy'
 VOLUME_EFFICIENCY_POLICY_NAME = 'fake_volume_efficiency_policy'
 SHARE_MOUNT_POINT = 'fake_mount_point'
-
+CREATE_TIME_ISO = "2025-11-17T12:34:56+00:00"
+CREATE_TIME_UNIX = '1763382896'
 DELETED_EXPORT_POLICIES = {
     VSERVER_NAME: [
         'deleted_manila_fake_policy_1',
@@ -1778,6 +1779,7 @@ VOLUME_MODIFY_ITER_ERROR_RESPONSE = etree.XML("""
 """ % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
 
 SNAPSHOT_ACCESS_TIME = '1466640058'
+CONVERTED_SNAPSHOT_ACCESS_TIME = '2016-06-23T00:00:58+00:00'
 SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -2448,6 +2450,7 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
           <style>flex</style>
           <type>rw</type>
           <style-extended>%(style-extended)s</style-extended>
+          <creation-time>%(creation-time)s</creation-time>
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
@@ -2471,6 +2474,7 @@ VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
     'size-used': SHARE_USED_SIZE,
     'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
     'style-extended': FLEXVOL_STYLE_EXTENDED,
+    'creation-time': CREATE_TIME_UNIX,
 })
 
 VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
@@ -2487,6 +2491,7 @@ VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
           <style>flex</style>
           <type>rw</type>
           <style-extended>%(style-extended)s</style-extended>
+          <creation-time>%(creation-time)s</creation-time>
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
@@ -2510,6 +2515,7 @@ VOLUME_GET_ITER_FLEXGROUP_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
     'size-used': SHARE_USED_SIZE,
     'qos-policy-group-name': QOS_POLICY_GROUP_NAME,
     'style-extended': FLEXGROUP_STYLE_EXTENDED,
+    'creation-time': CREATE_TIME_UNIX,
 })
 
 VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
@@ -2524,6 +2530,7 @@ VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
           <style>flex</style>
           <type>rw</type>
           <style-extended>%(style-extended)s</style-extended>
+          <creation-time>%(creation-time)s</creation-time>
         </volume-id-attributes>
         <volume-space-attributes>
           <size>%(size)s</size>
@@ -2543,6 +2550,7 @@ VOLUME_GET_ITER_NO_QOS_RESPONSE = etree.XML("""
     'size': SHARE_SIZE,
     'size-used': SHARE_USED_SIZE,
     'style-extended': FLEXVOL_STYLE_EXTENDED,
+    'creation-time': CREATE_TIME_UNIX,
 })
 
 CLONE_CHILD_1 = 'fake_child_1'
@@ -5021,7 +5029,8 @@ FAKE_VOLUME_MANAGE = {
             },
             'snaplock': {
                 'type': "compliance"
-            }
+            },
+            'create_time': CREATE_TIME_ISO,
         }
     ],
     'num_records': 1
