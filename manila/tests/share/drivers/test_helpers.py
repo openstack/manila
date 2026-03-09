@@ -433,6 +433,64 @@ class NFSHelperTestCase(test.TestCase):
              fake_maintenance_path]
         )
 
+    def test_remove_exports(self):
+        local_path = os.path.join(CONF.share_mount_path, self.share_name)
+        exec_result = (
+            '%(path)s\n\t\t1.1.1.1\n'
+            '%(path)s\n\t\t2.2.2.2' % {'path': local_path}
+        )
+
+        def fake_ssh_exec(*args, **kwargs):
+            if args[1] == ['sudo', 'exportfs']:
+                return (exec_result, '')
+            return ('', '')
+
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(side_effect=fake_ssh_exec))
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+
+        self._helper.remove_exports(self.server, self.share_name)
+
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(self.server, ['sudo', 'exportfs']),
+            mock.call(self.server, ['sudo', 'exportfs', '-u',
+                                    ':'.join(['1.1.1.1', local_path])]),
+            mock.call(self.server, ['sudo', 'exportfs', '-u',
+                                    ':'.join(['2.2.2.2', local_path])]),
+        ])
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
+            self.server)
+
+    def test_remove_exports_no_active_exports(self):
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(return_value=('', '')))
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+
+        self._helper.remove_exports(self.server, self.share_name)
+
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server, ['sudo', 'exportfs'])
+        self._helper._sync_nfs_temp_and_perm_files.assert_not_called()
+
+    def test_remove_exports_already_removed(self):
+        local_path = os.path.join(CONF.share_mount_path, self.share_name)
+        exec_result = '%s\n\t\t1.1.1.1' % local_path
+
+        def fake_ssh_exec(*args, **kwargs):
+            if args[1] == ['sudo', 'exportfs']:
+                return (exec_result, '')
+            raise exception.ProcessExecutionError(
+                stderr='could not find export')
+
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(side_effect=fake_ssh_exec))
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+
+        self._helper.remove_exports(self.server, self.share_name)
+
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
+            self.server)
+
 
 @ddt.ddt
 class CIFSHelperIPAccessTestCase(test.TestCase):
