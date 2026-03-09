@@ -5901,6 +5901,8 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
         constants.STATUS_INACTIVE,
         constants.STATUS_ACTIVE,
         constants.STATUS_ERROR,
+        constants.STATUS_CREATING,
+        constants.STATUS_DELETING,
     )
     result = (_share_server_get_query(context)
               .filter_by(is_auto_deletable=True)

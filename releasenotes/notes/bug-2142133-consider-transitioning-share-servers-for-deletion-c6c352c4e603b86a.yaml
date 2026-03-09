@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The function which clean up the share servers that are unused for
+    specified time interval is updated to consider transitioning states like
+    creating, deleting etc. For more details, please check
+    `launchpad bug #2142133 <https://bugs.launchpad.net/manila/+bug/2142133>`_
