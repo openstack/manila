@@ -219,7 +219,33 @@ class NFSHelper(NASHelperBase):
             LOG.error(e.stderr)
 
     def remove_exports(self, server, share_name):
-        """Remove exports."""
+        """Remove NFS exports for the given share.
+
+        Unexports all clients from the share path using exportfs -u before
+        the share is unmounted. This prevents 'device busy' errors during
+        unmount by ensuring no NFS clients hold references to the export.
+        """
+        local_path = os.path.join(self.configuration.share_mount_path,
+                                  share_name)
+        out, __ = self._ssh_exec(server, ['sudo', 'exportfs'])
+        hosts = self.get_host_list(out, local_path)
+        for host in hosts:
+            parsed_host = self._get_parsed_address_or_cidr(host)
+            try:
+                self._ssh_exec(server, ['sudo', 'exportfs', '-u',
+                                        ':'.join((parsed_host, local_path))])
+            except exception.ProcessExecutionError as e:
+                if "could not find" in e.stderr.lower():
+                    LOG.debug("Export %(host)s:%(path)s was already "
+                              "removed.", {'host': parsed_host,
+                                           'path': local_path})
+                else:
+                    LOG.warning("Failed to unexport %(host)s:%(path)s: "
+                                "%(error)s",
+                                {'host': parsed_host, 'path': local_path,
+                                 'error': e.stderr})
+        if hosts:
+            self._sync_nfs_temp_and_perm_files(server)
 
     @nfs_synchronized
     def update_access(self, server, share_name, access_rules, add_rules,
