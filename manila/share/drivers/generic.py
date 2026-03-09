@@ -400,7 +400,18 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                           "'%(server)s'.", log_data)
                 unmount_cmd = ['sudo', 'umount', mount_path, '&&', 'sudo',
                                'rmdir', mount_path]
-                self._ssh_exec(server_details, unmount_cmd)
+                try:
+                    self._ssh_exec(server_details, unmount_cmd)
+                except exception.ProcessExecutionError as e:
+                    if e.stderr and 'is busy' in e.stderr.lower():
+                        LOG.warning("Device '%(path)s' is busy on server "
+                                    "'%(server)s', retrying with lazy "
+                                    "unmount.", log_data)
+                        lazy_cmd = ['sudo', 'umount', '-l', mount_path,
+                                    '&&', 'sudo', 'rmdir', mount_path]
+                        self._ssh_exec(server_details, lazy_cmd)
+                    else:
+                        raise
                 self._remove_mount_permanently(share.id, server_details)
             else:
                 LOG.warning("Mount point '%(path)s' does not exist on "
