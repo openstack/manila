@@ -279,7 +279,7 @@ netapp_provisioning_opts = [
                 default=False,
                 help='This option enables the logical space reporting on a '
                      'newly created vserver and logical space accounting '
-                     'on newly created volumes on this vserver. '),
+                     'on newly created volumes on this vserver.'),
     cfg.StrOpt('netapp_fixed_qos_policy_prefix',
                default='FIXED_QOS',
                help='This option enables user to configure the prefix of '
@@ -288,7 +288,12 @@ netapp_provisioning_opts = [
                default='ADAPTIVE_QOS',
                help='This option enables user to configure the prefix of '
                     'adaptive QoS policies created on vserver.'),
-
+    cfg.BoolOpt('netapp_cifs_smb_signing',
+                default=False,
+                help='This option enable/disable SMB signing that protects '
+                     'the security of the data fabric by making sure that '
+                     'traffic between storage systems and clients is not '
+                     'compromised.')
 ]
 
 netapp_cluster_opts = [

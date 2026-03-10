@@ -468,7 +468,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 security_services,
                 vserver_client,
                 vserver_name,
-                self.configuration.netapp_cifs_aes_encryption)
+                self.configuration.netapp_cifs_aes_encryption,
+                self.configuration.netapp_cifs_smb_signing)
 
     def _get_valid_ipspace_name(self, network_id):
         """Get IPspace name according to network id."""
@@ -2366,7 +2367,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 [new_security_service],
                 vserver_client,
                 vserver_name,
-                self.configuration.netapp_cifs_aes_encryption)
+                self.configuration.netapp_cifs_aes_encryption,
+                self.configuration.netapp_cifs_smb_signing)
             LOG.info("A new security service configuration was added to share "
                      "server '%(share_server_id)s'",
                      {'share_server_id': share_server['id']})

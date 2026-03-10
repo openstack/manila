@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp Driver bug #2126055
+    <https://bugs.launchpad.net/manila/+bug/2126055>_: Enable SMB signing for
+    CIFS server. Config option 'netapp_cifs_smb_signing' is added and operator
+    needs to enable this, because the default is disabled.

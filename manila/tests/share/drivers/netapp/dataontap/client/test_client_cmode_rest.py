@@ -4514,8 +4514,19 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                       'patch', body=fake_body)
         ])
 
-    @ddt.data(fake.CIFS_SECURITY_SERVICE, fake.CIFS_SECURITY_SERVICE_3)
-    def test_configure_active_directory(self, security_service):
+    @ddt.data(
+        {'security_service': fake.CIFS_SECURITY_SERVICE,
+            'aes_encryption': False, 'smb_signing': False},
+        {'security_service': fake.CIFS_SECURITY_SERVICE,
+            'aes_encryption': True, 'smb_signing': False},
+        {'security_service': fake.CIFS_SECURITY_SERVICE_3,
+            'aes_encryption': False, 'smb_signing': True},
+        {'security_service': fake.CIFS_SECURITY_SERVICE_3,
+            'aes_encryption': True, 'smb_signing': True}
+    )
+    @ddt.unpack
+    def test_configure_active_directory(self, security_service,
+                                        aes_encryption, smb_signing):
 
         fake_security = copy.deepcopy(security_service)
 
@@ -4530,20 +4541,27 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
         self.mock_object(self.client, 'configure_cifs_aes_encryption')
+        self.mock_object(self.client, 'configure_cifs_signing')
+        self.mock_object(self.client, 'wait_for_cifs_server')
         self.mock_object(self.client, '_get_cifs_server_name',
                          mock.Mock(return_value='FAKE-VSE-SERVER'))
         self.mock_object(self.client, 'send_request')
 
         self.client.configure_active_directory(fake_security,
                                                fake.VSERVER_NAME,
-                                               False)
+                                               aes_encryption,
+                                               smb_signing)
 
         self.client.configure_dns.assert_called_once_with(
             fake_security, vserver_name=fake.VSERVER_NAME)
         self.client.set_preferred_dc.assert_called_once_with(
             fake_security, fake.VSERVER_NAME)
         self.client.configure_cifs_aes_encryption.assert_called_once_with(
-            fake.VSERVER_NAME, False)
+            fake.VSERVER_NAME, aes_encryption)
+        if smb_signing:
+            self.client.configure_cifs_signing.assert_called_once()
+        else:
+            self.client.configure_cifs_signing.assert_not_called()
         self.client._get_cifs_server_name.assert_called_once_with(
             fake.VSERVER_NAME)
 
@@ -4749,7 +4767,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         ss_copy = copy.deepcopy(security_service)
         self.client.setup_security_services([ss_copy], self.client,
-                                            'fake_vservername', False)
+                                            'fake_vservername', False, False)
         uuid = fake_response.get('records')[0].get('uuid')
         body = {
             'nsswitch.namemap': ['ldap', 'files'],
@@ -4917,6 +4935,22 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(netapp_api.api.NaApiError,
                           self.client.remove_preferred_dcs,
                           fake_ss, fake.FAKE_UUID)
+
+    def test_configure_cifs_signing(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+
+        self.client.configure_cifs_signing(fake.VSERVER_NAME)
+        self.client._get_unique_svm_by_name.assert_called_once_with(
+            fake.VSERVER_NAME)
+
+        body = {
+            'security.smb_signing': True,
+        }
+        self.client.send_request.assert_called_once_with(
+            f'/protocols/cifs/services/{fake.FAKE_UUID}',
+            'patch', body=body)
 
     def test_configure_cifs_aes_encryption_enable(self):
         self.mock_object(self.client, 'send_request')
@@ -7136,6 +7170,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.configure_active_directory,
                           fake.LDAP_AD_SECURITY_SERVICE,
                           fake.VSERVER_NAME,
+                          False,
                           False)
 
     def test__get_unique_svm_by_name_error(self):
@@ -7651,6 +7686,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.configure_active_directory,
                           fake_security,
                           fake.VSERVER_NAME,
+                          False,
                           False)
 
     @ddt.data(fake.CIFS_SECURITY_SERVICE, fake.CIFS_SECURITY_SERVICE_3)
@@ -7670,6 +7706,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.configure_active_directory,
                           fake_security,
                           fake.VSERVER_NAME,
+                          False,
                           False)
 
     def test_snapmirror_restore_vol(self):
