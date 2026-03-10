@@ -721,6 +721,57 @@ class CephFSDriverTestCase(test.TestCase):
 
         self.assertEqual(2, driver.rados_command.call_count)
 
+    def test_delete_share_share_does_not_exist_clone(self):
+        driver.rados_command.side_effect = exception.ShareBackendException(
+            msg="does not exist"
+        )
+
+        clone_status_prefix = "fs clone status"
+
+        clone_status_dict = {
+            "vol_name": self._driver.volname,
+            "clone_name": self._share["id"],
+        }
+
+        self._driver.delete_share(self._context, self._share)
+
+        driver.rados_command.assert_called_once_with(
+            self._driver.rados_client, clone_status_prefix, clone_status_dict)
+
+        self.assertEqual(1, driver.rados_command.call_count)
+
+    def test_delete_share_share_does_not_exist(self):
+        driver.rados_command.side_effect = [
+            driver.rados.Error,
+            exception.ShareBackendException(msg="does not exist")
+        ]
+
+        clone_status_prefix = "fs clone status"
+
+        clone_status_dict = {
+            "vol_name": self._driver.volname,
+            "clone_name": self._share["id"],
+        }
+        delete_share_prefix = "fs subvolume rm"
+
+        delete_share_dict = {
+            "vol_name": self._driver.volname,
+            "sub_name": self._share["id"],
+            "force": True,
+        }
+
+        self._driver.delete_share(self._context, self._share)
+
+        driver.rados_command.assert_has_calls([
+            mock.call(self._driver.rados_client,
+                      clone_status_prefix,
+                      clone_status_dict),
+            mock.call(self._driver.rados_client,
+                      delete_share_prefix,
+                      delete_share_dict)])
+
+        self.assertEqual(2, driver.rados_command.call_count)
+
     def test_extend_share(self):
         extend_share_prefix = "fs subvolume resize"
 

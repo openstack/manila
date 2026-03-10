@@ -772,9 +772,14 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             if status in (CLONE_PENDING, CLONE_INPROGRESS):
                 need_to_cancel_clone = True
         except exception.ShareBackendException as e:
-            # Trying to get clone status on a regular subvolume is expected
-            # to fail.
-            if 'not allowed on subvolume' not in str(e).lower():
+            err_msg = str(e).lower()
+            if 'not allowed on subvolume' in err_msg:
+                # expected for regular subvolumes
+                pass
+            elif 'does not exist' in err_msg:
+                # subvolume already gone, let delete_share handle it
+                raise
+            else:
                 raise exception.ShareBackendException(
                     "Failed to remove share.")
 
@@ -787,32 +792,43 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                    "gr": share['share_group_id']})
 
         clone_name = self._get_subvolume_name(share['id'])
-        if self._need_to_cancel_clone(share, clone_name):
-            try:
-                argdict = {
-                    "vol_name": self.volname,
-                    "clone_name": clone_name,
-                    "force": True,
-                }
-                if share['share_group_id'] is not None:
-                    argdict.update({"group_name": share["share_group_id"]})
+        try:
+            if self._need_to_cancel_clone(share, clone_name):
+                try:
+                    argdict = {
+                        "vol_name": self.volname,
+                        "clone_name": clone_name,
+                        "force": True,
+                    }
+                    if share['share_group_id'] is not None:
+                        argdict.update({"group_name": share["share_group_id"]})
 
-                rados_command(self.rados_client, "fs clone cancel", argdict)
-            except rados.Error:
-                raise exception.ShareBackendException(
-                    "Failed to cancel clone operation.")
+                    rados_command(
+                        self.rados_client, "fs clone cancel", argdict)
+                except rados.Error:
+                    raise exception.ShareBackendException(
+                        "Failed to cancel clone operation.")
 
-        argdict = {
-            "vol_name": self.volname,
-            "sub_name": self._get_subvolume_name(share["id"]),
-            # We want to clean up the share even if the subvolume is
-            # not in a good state.
-            "force": True,
-        }
-        if share['share_group_id'] is not None:
-            argdict.update({"group_name": share["share_group_id"]})
+            argdict = {
+                "vol_name": self.volname,
+                "sub_name": clone_name,
+                # We want to clean up the share even if the subvolume is
+                # not in a good state.
+                "force": True,
+            }
+            if share['share_group_id'] is not None:
+                argdict.update({"group_name": share["share_group_id"]})
 
-        rados_command(self.rados_client, "fs subvolume rm", argdict)
+            rados_command(self.rados_client, "fs subvolume rm", argdict)
+        except exception.ShareBackendException as e:
+            # Couldn't find the subvolume in the backend, means it is already
+            # deleted. As this should be idempotent, we should not fail.
+            if 'does not exist' in str(e).lower():
+                msg = ("Subvolume %(subvolume)s cannot be found on the "
+                       "backend." % {'subvolume': clone_name})
+                LOG.warning(msg)
+                return
+            raise
 
     def update_access(self, context, share, access_rules, add_rules,
                       delete_rules, update_rules, share_server=None):
