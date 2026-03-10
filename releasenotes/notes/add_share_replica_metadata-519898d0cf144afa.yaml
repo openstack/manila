@@ -1,5 +1,5 @@
 ---
 features:
   - |
-    Adds share replica metadata capabilities inlcuding, create,
+    Adds share replica metadata capabilities including, create,
     update all, update single, show, and delete metadata.

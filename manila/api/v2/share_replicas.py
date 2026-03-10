@@ -178,7 +178,7 @@ class ShareReplicationController(wsgi.Controller, metadata.MetadataController,
     def create(self, req, body):  # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body)
 
-    @wsgi.Controller.api_version("2.67") # noqa
+    @wsgi.Controller.api_version("2.67", "2.94") # noqa
     @wsgi.response(202)
     def create(self, req, body): # pylint: disable=function-redefined  # noqa F811
         return self._create(req, body, allow_scheduler_hints=True)
