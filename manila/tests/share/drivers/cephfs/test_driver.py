@@ -917,15 +917,23 @@ class CephFSDriverTestCase(test.TestCase):
             group_delete_prefix, group_delete_dict)
 
     def test_create_share_group_snapshot(self):
-        msg = ("Share group snapshot feature is no longer supported in "
-               "mainline CephFS (existing group snapshots can still be "
-               "listed and deleted).")
-        driver.rados_command.side_effect = exception.ShareBackendException(msg)
+        with mock.patch.object(driver.driver.ShareDriver,
+                               'create_share_group_snapshot',
+                               return_value=(None, [])) as mock_super:
 
-        self.assertRaises(exception.ShareBackendException,
-                          self._driver.create_share_group_snapshot,
-                          self._context, {'share_group_id': 'sgid',
-                                          'id': 'snapid'})
+            snap_dict = {
+                'share_group_id': 'sgid',
+                'id': 'snapid',
+                'share_group_snapshot_members': []
+            }
+
+            result = self._driver.create_share_group_snapshot(
+                self._context, snap_dict)
+
+            self.assertEqual((None, []), result)
+            driver.rados_command.assert_not_called()
+            mock_super.assert_called_once_with(
+                self._context, snap_dict, share_server=None)
 
     def test_delete_share_group_snapshot(self):
         group_snapshot_delete_prefix = "fs subvolumegroup snapshot rm"
@@ -937,7 +945,7 @@ class CephFSDriverTestCase(test.TestCase):
             "force": True,
         }
 
-        self._driver.delete_share_group_snapshot(self._context, {
+        result = self._driver.delete_share_group_snapshot(self._context, {
             'share_group_id': 'sgid',
             'id': 'snapid',
             "force": True,
@@ -946,6 +954,38 @@ class CephFSDriverTestCase(test.TestCase):
         driver.rados_command.assert_called_once_with(
             self._driver.rados_client,
             group_snapshot_delete_prefix, group_snapshot_delete_dict)
+        self.assertEqual((None, []), result)
+
+    def test_delete_share_group_snapshot_fallback_to_generic(self):
+        group_snapshot_delete_prefix = "fs subvolumegroup snapshot rm"
+
+        group_snapshot_delete_dict = {
+            "vol_name": self._driver.volname,
+            "group_name": "sgid",
+            "snap_name": "snapid",
+            "force": True,
+        }
+
+        driver.rados_command.side_effect = exception.ShareBackendException(
+            "CephFS command failed")
+        with mock.patch.object(driver.driver.ShareDriver,
+                               'delete_share_group_snapshot',
+                               return_value=(None, [])) as mock_super:
+            snap_dict = {
+                'share_group_id': 'sgid',
+                'id': 'snapid',
+                'share_group_snapshot_members': []
+            }
+
+            result = self._driver.delete_share_group_snapshot(
+                self._context, snap_dict)
+
+            self.assertEqual((None, []), result)
+            driver.rados_command.assert_called_once_with(
+                self._driver.rados_client,
+                group_snapshot_delete_prefix, group_snapshot_delete_dict)
+            mock_super.assert_called_once_with(
+                self._context, snap_dict, share_server=None)
 
     def test_create_share_from_snapshot(self):
         parent_share = {
