@@ -117,11 +117,14 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
             metadata else False)
 
         # Add new rules to new policy
+        set_volume_user_to_pcuser = False
         for address in addresses:
             readonly = self._is_readonly(new_rules[address])
             if all_squash and not readonly:
                 self._client.add_nfs_export_rule(
-                    temp_new_export_policy_name, address, False, ['none'])
+                    temp_new_export_policy_name, address, False, ['none'],
+                    anon_user_id='65534')
+                set_volume_user_to_pcuser = True
             else:
                 self._client.add_nfs_export_rule(
                     temp_new_export_policy_name, address,
@@ -150,6 +153,10 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
                  {'share': share_name, 'policy': export_policy_name})
         self._client.rename_nfs_export_policy(temp_new_export_policy_name,
                                               export_policy_name)
+
+        if set_volume_user_to_pcuser:
+            LOG.info('Setting user to pcuser for share %s.', share_name)
+            self._client.set_pcuser_for_volume(share_name)
 
     @na_utils.trace
     def _validate_access_rule(self, rule):
