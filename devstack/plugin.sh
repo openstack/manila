@@ -260,16 +260,16 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT use_scheduler_creating_share_from_snapshot $MANILA_USE_SCHEDULER_CREATING_SHARE_FROM_SNAPSHOT
 
     if is_service_enabled neutron; then
-        configure_keystone_authtoken_middleware $MANILA_CONF neutron neutron
+        configure_keystoneauth $MANILA_CONF neutron neutron
     fi
     if is_service_enabled nova; then
-        configure_keystone_authtoken_middleware $MANILA_CONF nova nova
+        configure_keystoneauth $MANILA_CONF nova nova
     fi
     if is_service_enabled cinder; then
-        configure_keystone_authtoken_middleware $MANILA_CONF cinder cinder
+        configure_keystoneauth $MANILA_CONF cinder cinder
     fi
     if is_service_enabled glance; then
-        configure_keystone_authtoken_middleware $MANILA_CONF glance glance
+        configure_keystoneauth $MANILA_CONF glance glance
     fi
     if [ ! $MANILA_ENABLED_BACKENDS ]; then
         # MANILA_ENABLED_BACKENDS is a required option
@@ -277,7 +277,7 @@ function configure_manila {
         exit 1
     fi
     if is_service_enabled barbican; then
-        configure_keystone_authtoken_middleware $MANILA_CONF barbican barbican
+        configure_keystoneauth $MANILA_CONF barbican barbican
         iniset $MANILA_CONF barbican barbican_endpoint_type $BARBICAN_ENDPOINT_TYPE
         iniset $MANILA_CONF barbican auth_endpoint $BARBICAN_KEYSTONE_ENDPOINT
         iniset $MANILA_CONF key_manager backend $KEY_MANAGER_BACKEND
