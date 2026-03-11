@@ -1832,12 +1832,16 @@ def share_replica_metadata_update(context, share_replica_id,
                                           metadata, delete)
 
 
+@require_context
+@require_share_instance_exists
 @context_manager.writer
 def share_replica_metadata_update_item(context, share_replica_id, item):
     return _share_replica_metadata_update(context, share_replica_id,
                                           item, delete=False)
 
 
+@require_context
+@require_share_instance_exists
 @context_manager.reader
 def share_replica_metadata_get_item(context, share_replica_id, key):
 
@@ -1898,7 +1902,7 @@ def _share_replica_metadata_update(context, share_replica_id,
     if metadata is None:
         metadata = {}
 
-        # Fetch all existing metadata once
+    # Fetch all existing metadata once
     existing_meta = {
         m.key: m for m in _share_replica_metadata_get_query(
             context, share_replica_id
