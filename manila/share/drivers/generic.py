@@ -78,6 +78,12 @@ share_opts = [
     cfg.StrOpt('cinder_volume_type',
                help='Name or id of cinder volume type which will be used '
                     'for all volumes created by driver.'),
+    cfg.BoolOpt(
+        'set_zero_reserved_blocks',
+        default=True,
+        help=('If True, sets reserved blocks to 0 on formatted ext volumes '
+              'to ensure full capacity is available to the share.'),
+    ),
 ]
 
 CONF = cfg.CONF
@@ -252,9 +258,20 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _format_device(self, server_details, volume):
         """Formats device attached to the service vm."""
         self._is_device_file_available(server_details, volume)
-        command = ['sudo', 'mkfs.%s' % self.configuration.share_volume_fstype,
+        fstype = self.configuration.share_volume_fstype
+
+        command = ['sudo', 'mkfs.%s' % fstype,
                    volume['mountpoint']]
         self._ssh_exec(server_details, command)
+
+        if fstype.startswith('ext') and getattr(
+                self.configuration, 'set_zero_reserved_blocks', True):
+            tune_cmd = ['sudo', 'tune2fs', '-m', '0', volume['mountpoint']]
+            try:
+                self._ssh_exec(server_details, tune_cmd)
+            except Exception as e:
+                LOG.warning("Failed to set reserved blocks to 0 on %s: %s",
+                            volume['mountpoint'], e)
 
     def _is_device_mounted(self, mount_path, server_details, volume=None):
         """Checks whether volume already mounted or not."""
