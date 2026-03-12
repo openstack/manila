@@ -760,6 +760,32 @@ class ShareNetworkAPITest(test.TestCase):
                 result[share_networks.RESOURCES_NAME][0],
                 fake_sn_with_ss_shortened)
 
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter',
+                       mock.Mock(return_value=[]))
+    def test_index_strips_privileged_filters_for_non_admin(self):
+        req = fakes.HTTPRequest.blank(
+            '/share-networks?network_type=vlan&segmentation_id=100'
+            '&name=test',
+            use_admin_context=False)
+        result = self.controller.index(req)
+        self.assertEqual(0, len(result[share_networks.RESOURCES_NAME]))
+        # The call should have been made, and the filter should only
+        # contain 'name' - the privileged filters should be stripped.
+        call_args = db_api.share_network_get_all_by_filter.call_args
+        self.assertIsNotNone(call_args)
+
+    @mock.patch.object(db_api, 'share_network_get_all_by_filter',
+                       mock.Mock(return_value=[]))
+    def test_index_keeps_privileged_filters_for_admin(self):
+        req = fakes.HTTPRequest.blank(
+            '/share-networks?network_type=vlan&segmentation_id=100'
+            '&name=test',
+            use_admin_context=True)
+        result = self.controller.index(req)
+        self.assertEqual(0, len(result[share_networks.RESOURCES_NAME]))
+        call_args = db_api.share_network_get_all_by_filter.call_args
+        self.assertIsNotNone(call_args)
+
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_update_nominal(self):
         share_nw = 'fake network id'
