@@ -519,9 +519,9 @@ class GaneshaManager(object):
                           "Ignoring errors and continuing operation.")
         finally:
             if self.ganesha_rados_store_enable:
+                self._remove_rados_object_url_from_index(name)
                 self._delete_rados_object(
                     self._get_export_rados_object_name(name))
-                self._remove_rados_object_url_from_index(name)
             else:
                 self._rm_export_file(name)
                 self._mkindex()
