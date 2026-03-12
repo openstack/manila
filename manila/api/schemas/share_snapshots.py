@@ -12,6 +12,7 @@
 import copy
 from oslo_config import cfg
 
+from manila.api.validation import helpers
 from manila.api.validation import parameter_types
 from manila.api.validation import response_types
 
@@ -120,6 +121,13 @@ index_request_query_v279['properties'].update({
     }),
 })
 
+show_request_query = {
+    'type': 'object',
+    'properties': {},
+    'required': [],
+    'additionalProperties': True,
+}
+
 _snapshot_response = {
     'type': 'object',
     'properties': {
@@ -147,3 +155,112 @@ index_response_body = {
     'required': ['snapshots'],
     'additionalProperties': False,
 }
+
+show_snapshot = {
+    'type': 'object',
+    'properties': {
+        'id': {
+            'type': ['string', 'integer'],
+            'description': helpers.description('snapshot_id'),
+        },
+        'status': {
+            'type': 'string',
+            'description': helpers.description('snapshot_status'),
+        },
+        'share_id': {
+            'type': 'string',
+            'description': helpers.description('snapshot_share_id'),
+        },
+        'name': {
+            'type': ['string', 'null'],
+            'description': helpers.description('name'),
+        },
+        'description': {
+            'type': ['string', 'null'],
+            'description': helpers.description('description'),
+        },
+        'created_at': {
+            'type': 'string',
+            'description': helpers.description('created_at'),
+        },
+        'share_proto': {
+            'type': 'string',
+            'description': helpers.description('snapshot_share_protocol'),
+        },
+        'share_size': {
+            'type': ['integer', 'null'],
+            'description': helpers.description('snapshot_share_size'),
+        },
+        'size': {
+            'type': ['integer', 'null'],
+            'description': helpers.description('snapshot_size'),
+        },
+        'links': response_types.links,
+    },
+    'required': [
+        'id', 'status', 'share_id', 'name', 'description',
+        'created_at', 'share_proto', 'share_size', 'size', 'links',
+    ],
+    'additionalProperties': False,
+}
+
+# >= v2.12: provider_location added
+show_snapshot_v212 = copy.deepcopy(show_snapshot)
+show_snapshot_v212['properties'].update({
+    'provider_location': {
+        'type': ['string', 'null'],
+        'description': helpers.description('snapshot_provider_location'),
+    },
+})
+
+# >= v2.17: project_id and user_id added
+show_snapshot_v217 = copy.deepcopy(show_snapshot_v212)
+show_snapshot_v217['properties'].update({
+    'project_id': {
+        'type': 'string',
+        'description': helpers.description('snapshot_project_id'),
+    },
+    'user_id': {
+        'type': 'string',
+        'description': helpers.description('snapshot_user_id'),
+    },
+})
+show_snapshot_v217['required'].extend(['project_id', 'user_id'])
+
+# >= v2.73: metadata added
+show_snapshot_v273 = copy.deepcopy(show_snapshot_v217)
+show_snapshot_v273['properties'].update({
+    'metadata': {
+        'type': 'object',
+        'description': helpers.description('metadata'),
+        'additionalProperties': {'type': 'string'},
+    },
+})
+
+# Base show response
+show_response = {
+    'type': 'object',
+    'properties': {
+        'snapshot': show_snapshot,
+    },
+    'required': ['snapshot'],
+    'additionalProperties': False,
+}
+
+# >= v2.12 show response
+show_response_v212 = copy.deepcopy(show_response)
+show_response_v212['properties'].update({
+    'snapshot': show_snapshot_v212,
+})
+
+# >= v2.17 show response
+show_response_v217 = copy.deepcopy(show_response_v212)
+show_response_v217['properties'].update({
+    'snapshot': show_snapshot_v217,
+})
+
+# >= v2.73 show response
+show_response_v273 = copy.deepcopy(show_response_v217)
+show_response_v273['properties'].update({
+    'snapshot': show_snapshot_v273,
+})

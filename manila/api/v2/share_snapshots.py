@@ -63,21 +63,6 @@ class ShareSnapshotsController(
     def _delete(self, *args, **kwargs):
         return self.share_api.delete_snapshot(*args, **kwargs)
 
-    def show(self, req, id):
-        """Return data about the given snapshot."""
-        context = req.environ['manila.context']
-
-        try:
-            snapshot = self.share_api.get_snapshot(context, id)
-
-            # Snapshot with no instances is filtered out.
-            if snapshot.get('status') is None:
-                raise exc.HTTPNotFound()
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
-
-        return self._view_builder.detail(req, snapshot)
-
     def delete(self, req, id):
         """Delete a snapshot."""
         context = req.environ['manila.context']
@@ -576,6 +561,27 @@ class ShareSnapshotsController(
             req.GET.pop('description~', None)
             req.GET.pop('description', None)
         return self._get_snapshots(req, is_detail=True)
+
+    @wsgi.Controller.api_version("2.0")
+    @validation.request_query_schema(schema.show_request_query)
+    @validation.response_body_schema(schema.show_response, "2.0", "2.11")
+    @validation.response_body_schema(schema.show_response_v212, "2.12", "2.16")
+    @validation.response_body_schema(schema.show_response_v217, "2.17", "2.72")
+    @validation.response_body_schema(schema.show_response_v273, "2.73")
+    def show(self, req, id):
+        """Return data about the given snapshot."""
+        context = req.environ['manila.context']
+
+        try:
+            snapshot = self.share_api.get_snapshot(context, id)
+
+            # Snapshot with no instances is filtered out.
+            if snapshot.get('status') is None:
+                raise exc.HTTPNotFound()
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+
+        return self._view_builder.detail(req, snapshot)
 
     @wsgi.Controller.api_version("2.73")
     @wsgi.Controller.authorize("get_metadata")
