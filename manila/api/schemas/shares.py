@@ -12,6 +12,7 @@
 
 import copy
 
+from manila.api.validation import helpers
 from manila.api.validation import parameter_types
 from manila.common import constants
 
@@ -248,7 +249,9 @@ revert_request_body = {
             'type': 'object',
             'properties': {
                 'snapshot_id': {
-                    'type': 'string', 'format': 'uuid'
+                    'type': 'string',
+                    'format': 'uuid',
+                    'description': helpers.description('snapshot_id_request'),
                 },
             },
             'required': ['snapshot_id'],
