@@ -2699,6 +2699,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 delete_all_rules=True,
                 share_server=share_server
             )
+        except exception.ShareResourceNotFound:
+            LOG.warning("Share replica %s does not exist in the "
+                        "backend.", share_replica_id)
         except Exception as excep:
             with excutils.save_and_reraise_exception() as exc_context:
                 # Set status to 'error' from 'deleting' since
