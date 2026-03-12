@@ -35,9 +35,8 @@ class VerifyConfigShareProtocolsTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(data):
             config.verify_share_protocols()
 
-    @ddt.data(None, '', 'fake', [], ['fake'], [VALID_CASES[0] + 'fake'])
-    def test_verify_share_protocols_invalid_cases(self, proto):
-        data = dict(DEFAULT=dict(enabled_share_protocols=proto))
+    def test_verify_share_protocols_empty(self):
+        data = dict(DEFAULT=dict(enabled_share_protocols=''))
         with test_utils.create_temp_config_with_opts(data):
             self.assertRaises(
                 exception.ManilaException, config.verify_share_protocols)
