@@ -268,7 +268,9 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def create_snapshot(self, context, snapshot, share_server):
         """Is called to create snapshot."""
         LOG.debug(f'Creating snapshot {snapshot["name"]}.')
-        snapshot_path = os.path.join(self._root_dir, snapshot['share_name'])
+        snapshot_path = self._get_container_path(
+            snapshot['share'], check_path=True
+        )
         snap_id = self._powerscale_api.create_snapshot(
             snapshot['name'], snapshot_path)
         result = {}
@@ -337,7 +339,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
         """Is called to remove nfs share."""
         container_path = self._get_container_path(share, check_path=True)
         self._process_dedupe(share, None, True)
-        self._delete_export("NFS", share['name'], container_path)
+        self._delete_export("NFS", share['name'], container_path, None)
         if share.get('mount_point_name'):
             self._delete_nfs_aliases(share['mount_point_name'],
                                      container_path, share['name'])
@@ -370,7 +372,9 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self._process_dedupe(share, None, True)
         if share.get('mount_point_name'):
             share_name = share.get('mount_point_name')
-        self._delete_export("CIFS", share_name, container_path)
+        manage_share_name = share.get('display_name')
+        self._delete_export("CIFS", share_name, container_path,
+                            manage_share_name)
 
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
@@ -388,7 +392,8 @@ class PowerScaleStorageConnection(base.StorageConnection):
                        {'snap': snapshot['name']})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
-        self._delete_export(proto, snap_name, snap_path)
+        manage_snapshot_name = snapshot.get('display_name')
+        self._delete_export(proto, snap_name, snap_path, manage_snapshot_name)
 
     def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
@@ -928,7 +933,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             raise exception.ShareBackendException(msg=msg)
         return {'export_locations': self._get_location({export_path: True})}
 
-    def _delete_export(self, proto, name, path=None):
+    def _delete_export(self, proto, name, path, manage_name):
         if proto == "NFS":
             share_id = self._powerscale_api.lookup_nfs_export(path)
             if share_id is None:
@@ -942,14 +947,24 @@ class PowerScaleStorageConnection(base.StorageConnection):
         elif proto == "CIFS":
             smb_share = self._powerscale_api.lookup_smb_share(name)
             if smb_share is None:
-                LOG.warning('Attempted to delete CIFS export "%s", '
-                            'but it does not exist.', name)
-                return
-            elif smb_share['path'] == path:
-                share_deleted = self._powerscale_api.delete_smb_share(name)
+                if manage_name:
+                    smb_share = self._powerscale_api.lookup_smb_share(
+                        manage_name)
+                    name = manage_name
+                if smb_share is None:
+                    LOG.warning('Attempted to delete CIFS export "%s", '
+                                'but it does not exist.', name)
+                    return
+            if (smb_share['path'] == path or
+                smb_share['path'] == self._get_cifs_manage_name_path(
+                    True, name) or
+                smb_share['path'] == self._get_cifs_manage_name_path(
+                    False, name)):
+                share_deleted = self._powerscale_api.delete_smb_share(
+                    name
+                )
                 if not share_deleted:
-                    message = (_('Error deleting CIFS share: %s') %
-                               name)
+                    message = (_('Error deleting CIFS share: %s') % name)
                     LOG.error(message)
                     raise exception.ShareBackendException(msg=message)
             else:
@@ -957,6 +972,11 @@ class PowerScaleStorageConnection(base.StorageConnection):
                             'failed because the share path '
                             'does not match the expected path.') % name
                 LOG.warning(message)
+
+    def _get_cifs_manage_name_path(self, is_share, manage_name):
+        if is_share:
+            return os.path.join(self._root_dir, manage_name)
+        return os.path.join(self._snapshot_root_dir, manage_name)
 
     def snapshot_update_access(self, context, snapshot,
                                access_rules, add_rules=None,

@@ -2305,7 +2305,7 @@ class ShareManagerTestCase(test.TestCase):
         db_update = self.mock_object(
             self.share_manager.db, 'share_snapshot_instance_update')
         expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
-            snapshot_instance, share)
+            snapshot_instance, share, snapshot=snapshot)
 
         self.assertRaises(exception.NotFound,
                           self.share_manager.create_snapshot,
@@ -2363,7 +2363,7 @@ class ShareManagerTestCase(test.TestCase):
         ]
 
         expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
-            snapshot_instance, share)
+            snapshot_instance, share, snapshot=snapshot)
 
         self.mock_object(
             self.share_manager.driver, 'create_snapshot',
@@ -2422,7 +2422,7 @@ class ShareManagerTestCase(test.TestCase):
         db_destroy_call = self.mock_object(
             self.share_manager.db, 'share_snapshot_instance_delete')
         expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
-            snapshot_instance, share)
+            snapshot_instance, share, snapshot=snapshot)
         mock_exception_log = self.mock_object(manager.LOG, 'exception')
         self.assertRaises(type(exc), self.share_manager.delete_snapshot,
                           self.context, snapshot_id)
@@ -2507,7 +2507,7 @@ class ShareManagerTestCase(test.TestCase):
         expected_exc_count = 1 if quota_error else 0
 
         expected_snapshot_instance_dict = self._get_snapshot_instance_dict(
-            snapshot_instance, share)
+            snapshot_instance, share, snapshot=snapshot)
 
         self.mock_object(self.share_manager.driver, 'delete_snapshot')
         db_update_call = self.mock_object(
@@ -11460,6 +11460,58 @@ class ShareManagerTestCase(test.TestCase):
                 self.share_manager.restore_backup,
                 self.context, backup, target_share_id)
             self.share_manager.driver.restore_backup.assert_not_called()
+
+    @ddt.data("my-friendly-snap", None)
+    def test_delete_snapshot_passes_display_name_to_driver(self, display_name):
+        share_id = "FAKE_SHARE_ID"
+        share = fakes.fake_share(id=share_id)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name="fake_snapshot"
+        )
+        snapshot_kwargs = dict(
+            share_id=share_id,
+            share=share,
+            instance=snapshot_instance,
+            project_id=self.context.project_id,
+            size=1,
+        )
+        if display_name:
+            snapshot_kwargs["display_name"] = display_name
+        snapshot_ref = fakes.fake_snapshot(**snapshot_kwargs)
+
+        self.mock_object(
+            self.share_manager.db, "share_snapshot_get",
+            mock.Mock(return_value=snapshot_ref),
+        )
+        self.mock_object(
+            self.share_manager.db, "share_snapshot_instance_get",
+            mock.Mock(return_value=snapshot_instance),
+        )
+        self.mock_object(
+            self.share_manager.db, "share_get",
+            mock.Mock(return_value=share),
+        )
+        self.mock_object(
+            self.share_manager, "_get_share_server",
+            mock.Mock(return_value=None),
+        )
+        self.mock_object(
+            self.share_manager.db, "share_snapshot_instance_delete",
+        )
+        driver_delete = self.mock_object(
+            self.share_manager.driver, "delete_snapshot",
+        )
+
+        self.share_manager.delete_snapshot(self.context, snapshot_ref["id"])
+
+        driver_delete.assert_called_once_with(
+            mock.ANY, mock.ANY, share_server=None)
+        called_snap_dict = driver_delete.call_args[0][1]
+        if display_name:
+            self.assertEqual(display_name,
+                             called_snap_dict.get("display_name"))
+        else:
+            self.assertNotIn("display_name", called_snap_dict)
 
 
 @ddt.ddt
