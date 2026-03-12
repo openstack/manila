@@ -529,6 +529,37 @@ class GenericShareDriverTestCase(test.TestCase):
             mount_path, self.server)
         generic.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
+    def test_unmount_device_busy_lazy_fallback(self):
+        mount_path = '/fake/mount/path'
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=True))
+        self.mock_object(self._driver, '_remove_mount_permanently')
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
+
+        def fake_ssh_exec(server, cmd):
+            if cmd == ['sudo', 'umount', mount_path, '&&',
+                       'sudo', 'rmdir', mount_path]:
+                raise exception.ProcessExecutionError(
+                    stderr='umount: /fake/mount/path: target is busy')
+            return ('', '')
+
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(side_effect=fake_ssh_exec))
+
+        self._driver._unmount_device(self.share, self.server)
+
+        self._driver._ssh_exec.assert_has_calls([
+            mock.call(self.server,
+                      ['sudo', 'umount', mount_path,
+                       '&&', 'sudo', 'rmdir', mount_path]),
+            mock.call(self.server,
+                      ['sudo', 'umount', '-l', mount_path,
+                       '&&', 'sudo', 'rmdir', mount_path]),
+        ])
+        self._driver._remove_mount_permanently.assert_called_once_with(
+            self.share.id, self.server)
+
     def test_is_device_mounted_true(self):
         volume = {'mountpoint': 'fake_mount_point', 'id': 'fake_id'}
         mount_path = '/fake/mount/path'
