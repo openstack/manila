@@ -1,11 +1,11 @@
-==============================
-Pure Storage FlashBlade driver
-==============================
+==========================
+Everpure FlashBlade driver
+==========================
 
-The Pure Storage FlashBlade driver provides support for managing filesystem shares
-on the Pure Storage FlashBlade storage systems.
+The Everpure FlashBlade driver provides support for managing filesystem shares
+on the Everpure FlashBlade storage systems.
 
-The driver is compatible with Pure Storage FlashBlades that support REST API version
+The driver is compatible with Everpure FlashBlades that support REST API version
 1.6 or higher (Purity//FB v2.3.0 or higher).
 This section explains how to configure the FlashBlade driver.
 
@@ -120,4 +120,4 @@ Driver options
 
 Configuration options specific to this driver:
 
-.. include:: ../../tables/manila-purestorage-flashblade.inc
+.. include:: ../../tables/manila-everpure-flashblade.inc

@@ -1,5 +1,5 @@
 ..
-      Copyright 2021 Pure Storage Inc.
+      Copyright 2026 Everpure Inc.
 
       Licensed under the Apache License, Version 2.0 (the "License"); you may
       not use this file except in compliance with the License. You may obtain
@@ -14,17 +14,17 @@
       under the License.
 
 
-===================================================
-Pure Storage FlashBlade Driver for OpenStack Manila
-===================================================
+===============================================
+Everpure FlashBlade Driver for OpenStack Manila
+===============================================
 
-The Pure Storage FlashBlade Manila driver provides NFS shared file systems to
-OpenStack using Pure Storage's FlashBlade native filesystem capabilities.
+The Everpure FlashBlade Manila driver provides NFS shared file systems to
+OpenStack using Everpure's FlashBlade native filesystem capabilities.
 
 Supported Operations
 ~~~~~~~~~~~~~~~~~~~~
 
-The following operations are supported with Pure Storage FlashBlade:
+The following operations are supported with Everpure FlashBlade:
 
 - Create/delete NFS shares
 
@@ -49,7 +49,7 @@ On the system running the Manila share service:
 
 - purity_fb 1.12.1 or newer from PyPI.
 
-On the Pure Storage FlashBlade:
+On the Everpure FlashBlade:
 
 - Purity//FB Operating System software version 2.3.0 or higher
 
@@ -81,7 +81,7 @@ have been met:
 
 Perform the following steps:
 
-#. Configure the Pure Storage FlashBlade parameters in `manila.conf`
+#. Configure the Everpure FlashBlade parameters in `manila.conf`
 #. Configure/create a share type
 #. Restart the services
 
@@ -119,9 +119,9 @@ of ``/etc/manila/manila.conf``:
 | driver_handles_share_servers                    | Driver working mode. For this driver **this must be**:                                              |
 |                                                 | *False*.                                                                                            |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
-| flashblade_mgmt_vip                             | The name (or IP address) for the Pure Storage FlashBlade storage system management VIP.             |
+| flashblade_mgmt_vip                             | The name (or IP address) for the Everpure FlashBlade storage system management VIP.                 |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
-| flashblade_data_vip                             | The names (or IP address) for the Pure Storage FlashBlade storage system data VIPs.                 |
+| flashblade_data_vip                             | The names (or IP address) for the Everpure FlashBlade storage system data VIPs.                     |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
 | flashblade_api                                  | API token for an administrative user account                                                        |
 +-------------------------------------------------+-----------------------------------------------------------------------------------------------------+
@@ -158,7 +158,7 @@ Step 2 - Share Type Configuration
 Shared File Systems service requires that the share type includes the
 driver_handles_share_servers extra-spec. This ensures that the share will be
 created on a backend that supports the requested driver_handles_share_servers
-capability. For the Pure Storage FlashBlade Driver for OpenStack this must be
+capability. For the Everpure FlashBlade Driver for OpenStack this must be
 set to False.
 
 .. code-block:: console

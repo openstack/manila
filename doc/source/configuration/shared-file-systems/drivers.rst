@@ -37,7 +37,7 @@ Share drivers
    drivers/quobyte-driver.rst
    drivers/windows-smb-driver.rst
    drivers/nexentastor5-driver.rst
-   drivers/purestorage-flashblade-driver.rst
+   drivers/everpure-flashblade-driver.rst
    drivers/vastdata_driver.rst
 
 
