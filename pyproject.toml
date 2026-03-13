@@ -16,7 +16,7 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: OpenStack",
   "Intended Audience :: Information Technology",
-  "Intended Audience :: System Admininstrators",
+  "Intended Audience :: System Administrators",
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python",
