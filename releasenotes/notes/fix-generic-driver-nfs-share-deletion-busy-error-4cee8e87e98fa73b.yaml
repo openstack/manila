@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed a bug in the generic share driver where deleting NFS shares
+    from service VMs could fail with a 'target is busy' error. The
+    NFS exports are now properly unexported via ``exportfs -u`` before
+    the share is unmounted. Additionally, a lazy unmount fallback
+    (``umount -l``) has been added to handle cases where the NFS
+    kernel state has not fully drained at unmount time.
