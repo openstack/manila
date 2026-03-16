@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Reordered ``RequestContext`` initialization so that all context
+    attributes are set before the policy check runs. This allows the
+    context to be serialized for error logging even when there are
+    unexpected errors reading manila's policy file.
+    (`bug #2141596 <https://bugs.launchpad.net/manila/+bug/2141596>`_)
