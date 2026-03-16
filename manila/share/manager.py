@@ -206,6 +206,7 @@ def locked_share_replica_operation(operation):
     promote ReplicaA while deleting ReplicaB, both belonging to the same share.
     """
 
+    @functools.wraps(operation)
     def wrapped(*args, **kwargs):
         share_id = kwargs.get('share_id')
 
@@ -225,6 +226,7 @@ def locked_share_network_operation(operation):
     the id of the share network.
     """
 
+    @functools.wraps(operation)
     def wrapped(*args, **kwargs):
         share_network_id = kwargs.get('share_network_id')
 
