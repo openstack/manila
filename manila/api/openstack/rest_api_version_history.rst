@@ -502,7 +502,7 @@ user documentation.
 ----
   Added qos_type and specs APIs.
 
-2.95
-----
+2.95 (Maximum in 2026.1/Gazpacho)
+---------------------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Replicas.
