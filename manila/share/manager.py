@@ -2585,10 +2585,6 @@ class ShareManager(manager.SchedulerDependentManager):
                         for r in replica_list]
         share_replica = self._get_share_instance_dict(context, share_replica)
 
-        share_replica['metadata'] = (
-            self.db.share_replica_metadata_get(
-                context, share_replica_id) or {})
-
         try:
             replica_ref = self.driver.create_replica(
                 context, replica_list, share_replica,
@@ -2813,14 +2809,7 @@ class ShareManager(manager.SchedulerDependentManager):
         replica_list = [self._get_share_instance_dict(context, r)
                         for r in replica_list]
 
-        for r in replica_list:
-            r['metadata'] = self.db.share_replica_metadata_get(
-                context, r["id"]) or {}
-
         share_replica = self._get_share_instance_dict(context, share_replica)
-        share_replica['metadata'] = (
-            self.db.share_replica_metadata_get(
-                context, share_replica_id) or {})
 
         try:
             updated_replica_list = (
@@ -3028,8 +3017,6 @@ class ShareManager(manager.SchedulerDependentManager):
                         for r in replica_list]
 
         share_replica = self._get_share_instance_dict(context, share_replica)
-        share_replica['metadata'] = (self.db.share_replica_metadata_get(
-            context, share_replica_id) or {})
 
         try:
             replica_state = self.driver.update_replica_state(
@@ -5541,6 +5528,9 @@ class ShareManager(manager.SchedulerDependentManager):
             'availability_zone': share_instance.get('availability_zone'),
             'mount_point_name': share_instance.get('mount_point_name'),
             'qos_type_id': share_instance.get('qos_type_id'),
+            'metadata': {m['key']: m['value']
+                         for m in share_instance.get(
+                'share_instance_metadata', [])},
         }
         if share_instance_ref['share_server']:
             share_instance_ref['share_server'] = self._get_share_server_dict(
