@@ -260,6 +260,7 @@ Request
    - project_id: project_id_path
    - project_id_quota_request_path: project_id_quota_request_path
    - user_id: user_id_query
+   - share_type: share_type_for_quota
    - quota_set: quota_set
    - force: force
    - gigabytes: quota_gigabytes_request
@@ -269,7 +270,6 @@ Request
    - share_networks: quota_share_networks_request
    - share_groups: quota_share_groups_request
    - share_group_snapshots: quota_share_group_snapshots_request
-   - share_type: share_type_for_quota
    - share_replicas: quota_share_replicas_request
    - replica_gigabytes: quota_replica_gigabytes_request
    - per_share_gigabytes: quota_per_share_gigabytes_request
