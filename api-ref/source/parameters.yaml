@@ -166,16 +166,6 @@ share_replica_id_path:
   in: path
   required: true
   type: string
-share_type_for_quota:
-  description: |
-    The name or UUID of the share type. If you specify this
-    parameter in the URI, you show, update, or delete quotas
-    for this share type. This parameter is mutually exclusive with the
-    "user_id" query parameter.
-  in: path
-  required: false
-  type: string
-  min_version: 2.39
 share_type_id:
   description: |
     The UUID of the share type.
@@ -720,6 +710,16 @@ share_server_id_query:
   in: query
   required: false
   type: string
+share_type_for_quota:
+  description: |
+    The name or UUID of the share type. If you specify this
+    parameter in the URI, you show, update, or delete quotas
+    for this share type. This parameter is mutually exclusive with the
+    "user_id" query parameter.
+  in: query
+  required: false
+  type: string
+  min_version: 2.39
 share_type_id_query:
   description: |
     The UUID of a share type to query resources by.
