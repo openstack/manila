@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from manila import context
 from manila import test
 
@@ -70,3 +72,24 @@ class ContextTestCase(test.TestCase):
                           ctxt,
                           'read_deleted',
                           True)
+
+    @mock.patch('manila.policy.check_is_admin')
+    def test_to_dict_safe_when_policy_check_fails(self, mock_check):
+        """Check if to_dict() works despite policy check failures .
+
+        When policy.check_is_admin raises during __init__, oslo.log's
+        formatter calls to_dict() on the partially-initialized context.
+        All attributes accessed by to_dict() must be initialized before
+        the policy check runs.
+        """
+        mock_check.side_effect = AttributeError('policy load failure')
+        self.assertRaises(AttributeError,
+                          context.RequestContext,
+                          '111', '222')
+        try:
+            context.RequestContext('111', '222')
+        except AttributeError:
+            pass
+        current = context.context.get_current()
+        if current and isinstance(current, context.RequestContext):
+            self.assertTrue(current.to_dict())
