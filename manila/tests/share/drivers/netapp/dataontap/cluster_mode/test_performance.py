@@ -382,14 +382,18 @@ class PerformanceLibraryTestCase(test.TestCase):
         expected_aggregate_names = ['aggr1', 'aggr2', 'aggr3']
         self.assertEqual(sorted(expected_aggregate_names), sorted(result))
 
-    def test_get_nodes_for_aggregates(self):
+    def test_get_nodes_for_aggregates_with_owner_node(self):
 
         aggregate_names = ['aggr1', 'aggr2', 'aggr3']
-        aggregate_nodes = ['node1', 'node2', 'node2']
+        owner_nodes = [
+            {'owner_node': 'node1', 'home_node': 'node1'},
+            {'owner_node': 'node2', 'home_node': 'node1'},
+            {'owner_node': 'node2', 'home_node': 'node3'}
+        ]
 
         mock_get_node_for_aggregate = self.mock_object(
             self.zapi_client, 'get_node_for_aggregate',
-            mock.Mock(side_effect=aggregate_nodes))
+            mock.Mock(side_effect=owner_nodes))
 
         result = self.perf_library._get_nodes_for_aggregates(aggregate_names)
 
@@ -397,7 +401,11 @@ class PerformanceLibraryTestCase(test.TestCase):
         result_node_names, result_aggr_node_map = result
 
         expected_node_names = ['node1', 'node2']
-        expected_aggr_node_map = dict(zip(aggregate_names, aggregate_nodes))
+        expected_aggr_node_map = {
+            'aggr1': 'node1',
+            'aggr2': 'node2',
+            'aggr3': 'node2',
+        }
         self.assertEqual(sorted(expected_node_names),
                          sorted(result_node_names))
         self.assertEqual(expected_aggr_node_map, result_aggr_node_map)

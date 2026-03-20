@@ -657,8 +657,55 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                          '_get_aggregates',
                          mock.Mock(return_value=response))
         result = self.client.get_node_for_aggregate(fake.SHARE_AGGREGATE_NAME)
-        expected = 'fake_home_node_name'
+        expected = {
+            'home_node': 'fake_home_node_name',
+            'owner_node': 'fake_owner_node_name',
+        }
         self.assertEqual(expected, result)
+
+    def test_get_owner_node_for_aggregate(self):
+        response = fake.AGGR_GET_OWNER_NODE_FAILOVER_RESPONSE_REST['records']
+        self.mock_object(self.client,
+                         '_get_aggregates',
+                         mock.Mock(return_value=response))
+
+        result = self.client.get_node_for_aggregate(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertEqual({
+            'home_node': fake.NODE_NAMES[0],
+            'owner_node': fake.NODE_NAMES[1],
+        }, result)
+
+    def test_get_owner_node_for_aggregate_no_name(self):
+        result = self.client.get_node_for_aggregate('')
+        self.assertIsNone(result)
+
+    def test_get_owner_node_for_aggregate_none(self):
+        result = self.client.get_node_for_aggregate(None)
+        self.assertIsNone(result)
+
+    @ddt.data(netapp_api.EREST_NOT_AUTHORIZED, None)
+    def test_get_owner_node_for_aggregate_error(self, code):
+        self.mock_object(self.client, '_get_aggregates',
+                         mock.Mock(side_effect=self._mock_api_error(code)))
+        if code:
+            result = self.client.get_node_for_aggregate(
+                fake.SHARE_AGGREGATE_NAME)
+            self.assertIsNone(result)
+        else:
+            self.assertRaises(netapp_api.api.NaApiError,
+                              self.client.get_node_for_aggregate,
+                              fake.SHARE_AGGREGATE_NAME)
+
+    def test_get_owner_node_for_aggregate_not_found(self):
+        self.mock_object(self.client,
+                         '_get_aggregates',
+                         mock.Mock(return_value=[]))
+
+        result = self.client.get_node_for_aggregate(
+            fake.SHARE_AGGREGATE_NAME)
+        self.assertIsNone(result)
 
     @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
               {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']}, )
