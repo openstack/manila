@@ -279,10 +279,13 @@ def check_display_field_length(field, field_name):
 def parse_is_public(is_public):
     """Parse is_public into something usable.
 
-    :returns:
-        - True: API should list public share group types only
-        - False: API should list private share group types only
-        - None: API should list both public and private share group types
+    :rtype: Optional[bool]
+    :returns: True if is_public is None or truthy,
+              False if is_public is falsy,
+              None if is_public is "all"
+
+    :raises: ValueError: if is_public is not a valid boolean string
+
     """
     if is_public is None:
         # preserve default value of showing only public types
