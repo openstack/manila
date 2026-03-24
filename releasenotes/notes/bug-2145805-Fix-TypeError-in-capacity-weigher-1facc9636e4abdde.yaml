@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Manila scheduler capacity weigher is fixed in case provisioned_capacity_gb
+    is None. For more details, please refer to
+    `launchpad bug #2145805 <https://bugs.launchpad.net/manila/+bug/2145805>`_.
