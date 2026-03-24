@@ -51,9 +51,9 @@ class RequestContext(context.RequestContext):
         kwargs.setdefault('user_id', user_id)
         kwargs.setdefault('project_id', project_id)
 
-        super().__init__(is_admin=is_admin, **kwargs)
-
-        self.project_name = project_name
+        # _read_deleted must exist before super().__init__() because the
+        # parent class may access the read_deleted, remote_address, timestamp,
+        # quota_class, service_catalog property during init.
         self.read_deleted = read_deleted
         self.remote_address = remote_address
         if not timestamp:
@@ -68,6 +68,9 @@ class RequestContext(context.RequestContext):
         else:
             self.service_catalog = []
 
+        super().__init__(is_admin=is_admin, **kwargs)
+
+        self.project_name = project_name
         if self.is_admin is None:
             self.is_admin = policy.check_is_admin(self)
         elif self.is_admin and 'admin' not in self.roles:
