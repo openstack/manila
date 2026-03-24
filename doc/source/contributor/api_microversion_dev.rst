@@ -258,13 +258,14 @@ used to modify behaviour based on its value::
         <common code>
 
 The first argument to the matches method is the minimum acceptable version
-and the second is maximum acceptable version. A specified version can be null::
+and the second is the maximum acceptable version. A specified version can be
+null::
 
     null_version = APIVersionRequest()
 
 If the minimum version specified is null then there is no restriction on
-the minimum version, and likewise if the maximum version is null there
-is no restriction the maximum version. Alternatively a one sided comparison
+the minimum version, and likewise, if the maximum version is null there
+is no restriction on the maximum version. Alternatively a one sided comparison
 can be used as in the example above.
 
 Other necessary changes

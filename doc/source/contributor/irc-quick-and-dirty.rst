@@ -21,7 +21,7 @@ channel.
 * Navigate to OFTC's web interface: https://webchat.oftc.net/
 * Here, you'll be able to choose a Nickname and join channels straight away.
 * We recommend picking out a Nickname that's easy to remember. We highly
-  recommend picking this Nicknam as your `Launchpad user ID <https://launchpad
+  recommend picking this Nickname as your `Launchpad user ID <https://launchpad
   .net/>`_ and `OpenDev Gerrit user ID <https://review.opendev.org/>`_. It
   makes things far less confusing!
 * Enter the Nickname you pick in the interface, you don't need to specify
@@ -45,7 +45,7 @@ too.
 * Click on "Create Account"
 * You must pick "matrix.org" as your home server. You may use a sign in
   provider (such as google.com, github.com, gitlab.com) if you have an account
-  with any of these, or, register with your email directly and a set a
+  with any of these, or, register with your email directly and set a
   password.
 * You’ll be asked to accept the terms and conditions of the service.
 * If you are registering an account via email, you will be prompted to verify
@@ -75,6 +75,6 @@ Step 4: Chatting across timezones
 * Be aware that community members may appear "online", but might actually
   not be at their computers. So messages that you send them will not be
   received until they return to their computers.
-* So be sure view `logs of the official OpenStack OFTC channels
+* So be sure to view the `logs of the official OpenStack OFTC channels
   <https://meetings.opendev.org/irclogs/>`_ in case you started a
   conversation that picked up asynchronously.

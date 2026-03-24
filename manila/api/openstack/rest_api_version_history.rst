@@ -360,7 +360,7 @@ user documentation.
 2.64
 ----
   Added 'force' field to extend share api, which can extend share directly
-  without go through share scheduler.
+  without going through share scheduler.
 
 2.65 (Maximum in Xena)
 ----------------------
