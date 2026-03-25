@@ -10,6 +10,10 @@
         "host": "",
         "id": "c9f52e33-d780-41d8-89ba-fc06869f465f",
         "replica_state": null,
-        "created_at": "2017-08-15T20:21:43.493731"
+        "created_at": "2017-08-15T20:21:43.493731",
+        "metadata": {
+            "project": "my_app",
+            "aim": "doc"
+        }
     }
 }

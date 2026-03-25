@@ -3697,6 +3697,20 @@ share_replica_id:
   in: body
   required: true
   type: string
+share_replica_metadata_request:
+  description: |
+    One or more metadata key and value pairs for the replica.
+  in: body
+  required: false
+  type: object
+  min_version: 2.95
+share_replica_metadata_response:
+  description: |
+    One or more metadata key and value pairs for the replica.
+  in: body
+  required: true
+  type: object
+  min_version: 2.95
 share_replica_quiesce_wait_time:
   description: |
     The quiesce wait time in seconds used during replica promote.

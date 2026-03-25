@@ -11,7 +11,11 @@
             "host": "ubuntu@generic3#fake_pool_for_DummyDriver",
             "id": "57f5c47a-0216-4ee0-a517-0460d63301a6",
             "replica_state": "active",
-            "created_at": "2017-08-15T20:20:45.000000"
+            "created_at": "2017-08-15T20:20:45.000000",
+            "metadata": {
+                "project": "my_app",
+                "aim": "doc"
+            }
         },
         {
             "status": "available",
@@ -24,7 +28,11 @@
             "host": "ubuntu@generic2#fake_pool_for_DummyDriver",
             "id": "c9f52e33-d780-41d8-89ba-fc06869f465f",
             "replica_state": "in_sync",
-            "created_at": "2017-08-15T20:21:43.000000"
+            "created_at": "2017-08-15T20:21:43.000000",
+            "metadata": {
+                "project": "my_app",
+                "aim": "doc"
+            }
         }
     ]
 }
