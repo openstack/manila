@@ -1630,7 +1630,7 @@ group_snapshot_id:
     The share group snapshot ID.
   in: body
   required: true
-  type: object
+  type: string
 group_snapshot_links:
   description: |
     The share group snapshot links.
