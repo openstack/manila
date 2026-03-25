@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed a regression where filtering the services list by an invalid or
+    unrecognized status value returned an error instead of an empty list.
+    This was inadvertently introduced by the change that added support for
+    filtering services by the ``ensuring`` status. The previous behavior of
+    returning an empty list for non-matching status filters has been restored.
+    For more details, please refer to
+    `launchpad bug #2146491 <https://bugs.launchpad.net/manila/+bug/2146491>`_.
