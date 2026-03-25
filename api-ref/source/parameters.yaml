@@ -3610,6 +3610,13 @@ share_network_subnet_ip_version:
   in: body
   required: true
   type: integer
+share_network_subnet_metadata:
+  description: |
+    One or more metadata key and value pairs as a dictionary of strings.
+  in: body
+  required: false
+  type: object
+  min_version: 2.78
 share_network_subnet_mtu:
   description: |
     The MTU of a share network subnet.

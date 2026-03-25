@@ -14,7 +14,8 @@
         "cidr": "10.190.5.0/24",
         "network_type": "flat",
         "mtu": 1500,
-        "gateway": "10.190.5.1"
+        "gateway": "10.190.5.1",
+        "metadata": {"key1": "value1"}
     },
     {
         "id": "8ebe964d-ac48-4e43-93ed-b1768148f8f4",
@@ -30,7 +31,8 @@
         "cidr": "172.24.5.0/24",
         "network_type": "flat",
         "mtu": 1500,
-        "gateway": "172.24.5.1"
+        "gateway": "172.24.5.1",
+        "metadata": {"key1": "value1"}
     }
     ]
 }

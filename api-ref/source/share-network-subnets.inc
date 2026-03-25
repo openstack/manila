@@ -90,6 +90,7 @@ Response parameters
    - network_type: share_network_subnet_network_type
    - gateway: share_network_subnet_gateway
    - mtu: share_network_subnet_mtu
+   - metadata: share_network_subnet_metadata
 
 Response example
 ----------------
@@ -147,6 +148,7 @@ Response parameters
    - availability_zone: share_network_subnet_availability_zone
    - share_network_id: share_network_subnet_share_network_id
    - share_network_name: share_network_subnet_share_network_name
+   - metadata: share_network_subnet_metadata
 
 Response example
 ----------------
@@ -215,6 +217,7 @@ Response parameters
    - availability_zone: share_network_subnet_availability_zone
    - share_network_id: share_network_subnet_share_network_id
    - share_network_name: share_network_subnet_share_network_name
+   - metadata: share_network_subnet_metadata
 
 Response example
 ----------------
