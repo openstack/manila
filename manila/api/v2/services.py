@@ -51,31 +51,24 @@ class ServiceMixin(object):
         filters = {}
         filters.update(req.GET)
 
+        # NOTE(carloss): support_filtering_by_ensure's only purpose is to
+        # determine whether this operation is supported or not. No other
+        # validations should depend on it.
+
         if not support_filtering_by_ensure and filters.get('ensuring'):
             filters.pop('ensuring')
 
         status = filters.get('status')
         valid_statuses = [constants.STATUS_DISABLED, constants.STATUS_ENABLED]
         if status and status not in valid_statuses:
-            # NOTE(carloss): we only support 'enabled' and 'disabled' statuses.
-            # This was not an issue while the filtering happened in the API,
-            # but from API version 2.93 the filters were moved to the database
-            # and we need to enforce the correct values.
-            # 'support_filtering_by_ensure' was implemented on 2.93 and is
-            # being used as an API microversion check.
-            if support_filtering_by_ensure:
-                msg = _("Invalid status. Valid statuses are "
-                        "%s.") % valid_statuses
-                raise webob.exc.HTTPBadRequest(msg)
-            else:
-                msg = _("An invalid status was provided. Please choose from "
-                        "one of the valid statuses while filtering services: "
-                        "%s.") % valid_statuses
-                LOG.error(msg)
-                # Prior to API 2.93, we would only return an empty list when
-                # the status was wrong. Re-implement the same behavior so we
-                # don't break any clients.
-                return self._view_builder.detail_list(req, [])
+            # NOTE(carloss): Let's maintain backwards compatibility. If the
+            # status provided doesn't exist, it is not a bad request, only a
+            # user mistake.
+            msg = _("An invalid status was provided. Please choose from "
+                    "one of the valid statuses while filtering services: "
+                    "%s.") % valid_statuses
+            LOG.warning(msg)
+            return self._view_builder.detail_list(req, [])
 
         try:
             services = db.service_get_all_with_filters(context, filters)
