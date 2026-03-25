@@ -1642,7 +1642,7 @@ group_snapshot_members:
     The share group snapshot members.
   in: body
   required: true
-  type: string
+  type: array
 group_snapshot_status_required:
   description: |
     Filters by a share group snapshot status. A valid value is
