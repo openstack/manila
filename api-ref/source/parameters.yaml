@@ -1636,7 +1636,7 @@ group_snapshot_links:
     The share group snapshot links.
   in: body
   required: true
-  type: string
+  type: array
 group_snapshot_members:
   description: |
     The share group snapshot members.
