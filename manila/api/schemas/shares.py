@@ -155,7 +155,7 @@ migration_get_progress_request_body = {
 
 _task_state = {
     'type': ['string', 'null'],
-    'enum': constants.TASK_STATE_STATUSES,
+    'enum': list(constants.TASK_STATE_STATUSES),
 }
 
 reset_task_state_request_body = {
