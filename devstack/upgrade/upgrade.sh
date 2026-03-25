@@ -62,10 +62,6 @@ upgrade_project manila $RUN_DIR $BASE_DEVSTACK_BRANCH $TARGET_DEVSTACK_BRANCH
 # Migrate the database
 $MANILA_BIN_DIR/manila-manage db sync || die $LINENO "DB migration error"
 
-# Overwrite the api-paste.ini
-# TODO(stephenfin): We can remove this in 2026.2 (Hibiscus)
-cp $MANILA_DIR/etc/manila/api-paste.ini $MANILA_API_PASTE_INI
-
 start_manila
 
 # Don't succeed unless the services come up
