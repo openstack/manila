@@ -3826,6 +3826,13 @@ share_server_id:
   in: body
   required: true
   type: string
+share_server_network_allocation_update_support:
+  description: |
+    Whether the share server supports updating its network allocation.
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.70
 share_server_security_service_update_support:
   description: |
     Whether the share server supports its security services being updated after
@@ -3834,6 +3841,13 @@ share_server_security_service_update_support:
   required: true
   type: boolean
   min_version: 2.63
+share_server_share_network_subnet_ids:
+  description: |
+    A list of share network subnet IDs associated with the share server.
+  in: body
+  required: true
+  type: array
+  min_version: 2.70
 share_server_show_identifier:
   description: |
     The identifier of the share server in the back-end storage system.
@@ -3851,6 +3865,14 @@ share_server_show_is_auto_deletable:
   required: true
   type: boolean
   min_version: 2.49
+share_server_source_share_server_id:
+  description: |
+    The UUID of the source share server, if this share server was created
+    as part of a share server migration. ``null`` otherwise.
+  in: body
+  required: true
+  type: string
+  min_version: 2.57
 share_server_status:
   description: |
     The share server status, which can be ``active``,
@@ -3860,6 +3882,17 @@ share_server_status:
   in: body
   required: true
   type: string
+share_server_task_state:
+  description: |
+    For share server migration, the task state of the share server. A valid
+    value is ``null``, ``migration_in_progress``,
+    ``migration_cancel_in_progress``, ``migration_cancelled``,
+    ``migration_driver_starting``, ``migration_driver_in_progress``, or
+    ``migration_phase_1_done``.
+  in: body
+  required: true
+  type: string
+  min_version: 2.57
 share_server_unmanage:
   description: |
     To unmanage a share server, either set this value to ``null`` or {}.
