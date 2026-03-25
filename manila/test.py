@@ -373,42 +373,6 @@ class TestCase(base_test.BaseTestCase):
             else:
                 self.assertEqual(sub_value, super_value)
 
-    def assertIn(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility.  Assert 'a' in 'b'."""
-        try:
-            f = super(TestCase, self).assertIn
-        except AttributeError:
-            self.assertIn(a, b, *args, **kwargs)
-        else:
-            f(a, b, *args, **kwargs)
-
-    def assertNotIn(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility.  Assert 'a' NOT in 'b'."""
-        try:
-            f = super(TestCase, self).assertNotIn
-        except AttributeError:
-            self.assertNotIn(a, b, *args, **kwargs)
-        else:
-            f(a, b, *args, **kwargs)
-
-    def assertIsInstance(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility."""
-        try:
-            f = super(TestCase, self).assertIsInstance
-        except AttributeError:
-            self.assertIsInstance(a, b)
-        else:
-            f(a, b, *args, **kwargs)
-
-    def assertIsNone(self, a, *args, **kwargs):
-        """Python < v2.7 compatibility."""
-        try:
-            f = super(TestCase, self).assertIsNone
-        except AttributeError:
-            self.assertTrue(a is None)
-        else:
-            f(a, *args, **kwargs)
-
     def _dict_from_object(self, obj, ignored_keys):
         if ignored_keys is None:
             ignored_keys = []
