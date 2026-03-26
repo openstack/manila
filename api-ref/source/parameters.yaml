@@ -166,6 +166,12 @@ share_replica_id_path:
   in: path
   required: true
   type: string
+share_server_id_path:
+  description: |
+    The UUID of the share server.
+  in: path
+  required: true
+  type: string
 share_type_id:
   description: |
     The UUID of the share type.

@@ -115,7 +115,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
   - project_id: project_id_path
-  - share_server_id: share_server_id
+  - share_server_id: share_server_id_path
 
 Response parameters
 -------------------
@@ -171,7 +171,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_server_id: share_server_id
+   - share_server_id: share_server_id_path
 
 Response parameters
 -------------------
@@ -218,7 +218,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_server_id: share_server_id
+   - share_server_id: share_server_id_path
 
 
 Manage share server (since API v2.49)
@@ -328,7 +328,7 @@ Request parameters
 .. rest_parameters:: parameters.yaml
 
     - project_id: project_id_path
-    - share_server_id: share_server_id
+    - share_server_id: share_server_id_path
     - force: force
     - unmanage: share_server_unmanage
 
@@ -376,7 +376,7 @@ Request parameters
 .. rest_parameters:: parameters.yaml
 
     - project_id: project_id_path
-    - share_server_id: share_server_id
+    - share_server_id: share_server_id_path
     - status: share_server_status
 
 Request example
