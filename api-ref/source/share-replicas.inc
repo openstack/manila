@@ -107,6 +107,7 @@ Response parameters
 
    - share_id: share_replica_share_id
    - status: share_replica_status
+   - availability_zone: share_replica_az_response
    - cast_rules_to_readonly: share_replica_cast_rules_to_readonly
    - updated_at: updated_at
    - share_network_id: share_network_id
@@ -288,6 +289,7 @@ Response parameters
 
    - share_id: share_replica_share_id
    - status: share_replica_status
+   - availability_zone: share_replica_az_response
    - cast_rules_to_readonly: share_replica_cast_rules_to_readonly
    - updated_at: updated_at
    - share_network_id: share_network_id
@@ -343,6 +345,7 @@ Response parameters
 
    - share_id: share_replica_share_id
    - status: share_replica_status
+   - availability_zone: share_replica_az_response
    - cast_rules_to_readonly: share_replica_cast_rules_to_readonly
    - updated_at: updated_at
    - share_network_id: share_network_id

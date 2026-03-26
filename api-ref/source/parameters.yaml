@@ -3669,6 +3669,12 @@ share_replica_az:
   in: body
   required: false
   type: string
+share_replica_az_response:
+  description: |
+    The availability zone of the share replica.
+  in: body
+  required: true
+  type: string
 share_replica_cast_rules_to_readonly:
   description: |
     If the share replica has its ``cast_rules_to_readonly`` attribute set to
