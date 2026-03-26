@@ -16,24 +16,33 @@
 import json
 import requests
 
+from oslo_log import log
+
 from manila import exception
 from manila.i18n import _
 from manila import utils
 
-
-# Suppress the Insecure request warnings
-requests.packages.urllib3.disable_warnings()  # pylint: disable=no-member
+LOG = log.getLogger(__name__)
 
 
 class HSPRestBackend(object):
-    def __init__(self, hsp_host, hsp_username, hsp_password):
+    def __init__(self, hsp_host, hsp_username, hsp_password,
+                 ssl_cert_verify=True, ssl_cert_path=None):
         self.host = hsp_host
         self.username = hsp_username
         self.password = hsp_password
+        if ssl_cert_verify:
+            self.verify = ssl_cert_path or True
+        else:
+            self.verify = False
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecureRequestWarning)
+            LOG.warning("SSL certificate verification is disabled "
+                        "for backend %s.", hsp_host)
 
     def _send_post(self, url, payload=None):
         resp = requests.post(url, auth=(self.username, self.password),
-                             data=payload, verify=False)
+                             data=payload, verify=self.verify)
 
         if resp.status_code == 202:
             self._wait_job_status(resp.headers['location'], 'COMPLETE')
@@ -44,7 +53,7 @@ class HSPRestBackend(object):
 
     def _send_get(self, url, payload=None):
         resp = requests.get(url, auth=(self.username, self.password),
-                            data=payload, verify=False)
+                            data=payload, verify=self.verify)
 
         if resp.status_code == 200:
             if resp.content == 'null':
@@ -58,7 +67,7 @@ class HSPRestBackend(object):
 
     def _send_delete(self, url, payload=None):
         resp = requests.delete(url, auth=(self.username, self.password),
-                               data=payload, verify=False)
+                               data=payload, verify=self.verify)
 
         if resp.status_code == 202:
             self._wait_job_status(resp.headers['location'], 'COMPLETE')

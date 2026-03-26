@@ -1,0 +1,16 @@
+---
+security:
+  - |
+    The Hitachi HSP share driver previously hardcoded ``verify=False`` on
+    all HTTPS requests to the HSP backend, disabling TLS certificate
+    validation with no option to enable it. This could allow
+    man-in-the-middle attacks on the management network. Two new
+    configuration options have been added to address this:
+    ``hitachi_hsp_ssl_cert_verify`` (default ``True``) and
+    ``hitachi_hsp_ssl_cert_path`` (optional CA bundle path). The global
+    urllib3 warning suppression has also been removed.
+fixes:
+  - |
+    Fixed the Hitachi HSP share driver to support configurable TLS
+    certificate verification instead of hardcoding ``verify=False``.
+    `LP#2146476 <https://bugs.launchpad.net/manila/+bug/2146476>`_

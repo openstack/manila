@@ -41,6 +41,8 @@ class HitachiHSPTestCase(test.TestCase):
         CONF.hitachi_hsp_host = '172.24.47.190'
         CONF.hitachi_hsp_username = 'hsp_user'
         CONF.hitachi_hsp_password = 'hsp_password'
+        CONF.hitachi_hsp_ssl_cert_verify = True
+        CONF.hitachi_hsp_ssl_cert_path = None
         CONF.hitachi_hsp_job_timeout = 300
 
         self.fake_el = [{
