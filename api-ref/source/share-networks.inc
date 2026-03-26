@@ -364,7 +364,7 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id
+   - project_id: project_id_path
    - share_network_id: share_network_id_path
    - security_service_id: security_service_id
 
