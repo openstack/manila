@@ -74,7 +74,7 @@ Request
    - sort_dir: sort_dir
    - name: name_query
    - description: description_query
-   - status: snapshot_status
+   - status: snapshot_status_query
    - share_id: snapshot_share_id
    - size: snapshot_size
    - name~: name_inexact_query
@@ -129,7 +129,7 @@ Request
    - sort_dir: sort_dir
    - name: name_query
    - description: description_query
-   - status: snapshot_status
+   - status: snapshot_status_query
    - share_id: snapshot_share_id
    - size: snapshot_size
    - name~: name_inexact_query

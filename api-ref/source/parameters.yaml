@@ -756,6 +756,15 @@ snapshot_metadata_query:
   required: false
   type: string
   min_version: 2.73
+snapshot_status_query:
+  description: |
+    The snapshot status, which can be ``available``,
+    ``error``, ``creating``, ``deleting``, ``manage_starting``,
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
+    ``error_deleting``.
+  in: query
+  required: false
+  type: string
 sort_dir:
   description: |
     The direction to sort a list of resources. A valid
