@@ -2159,6 +2159,13 @@ name_request:
   in: body
   required: false
   type: string
+network_allocation_update_support:
+  description: |
+    Indicates whether the share server supports network allocation updates.
+  in: body
+  required: false
+  type: boolean
+  min_version: 2.70
 network_type:
   description: |
     The network type. A valid value is ``VLAN``,
@@ -3593,6 +3600,13 @@ share_network_subnet_id_share_server_body:
   required: true
   type: string
   min_version: 2.51
+share_network_subnet_ids:
+  description: |
+    The list of share network subnet IDs associated with the share server.
+  in: body
+  required: false
+  type: array
+  min_version: 2.70
 share_network_subnet_ip_version:
   description: |
     The IP version of the network. A valid value is
@@ -4150,6 +4164,13 @@ source_share_group_snapshot_member_id:
   required: true
   type: string
   min_version: 2.31
+source_share_server_id:
+  description: |
+    The ID of the source share server.
+  in: body
+  required: false
+  type: string
+  min_version: 2.57
 state:
   description: |
     Prior to versions 2.28, the state of all access rules of a given share
@@ -4192,7 +4213,7 @@ task_state:
   type: string
   min_version: 2.5
 task_state_server_migration:
-  description: |
+  description:
     For the share server migration, the migration task state. A valid
     value is ``null``, ``migration_in_progress``,
     ``migration_cancel_in_progress``, ``migration_cancelled``,
@@ -4201,6 +4222,17 @@ task_state_server_migration:
   in: body
   required: true
   type: string
+task_state_share_server:
+  description: |
+    For the share server migration, the migration task state. A valid
+    value is ``null``, ``migration_starting``, ``migration_in_progress``,
+    ``migration_completing``, ``migration_success``, ``migration_error``,
+    ``migration_cancel_in_progress``, ``migration_cancelled``,
+    ``migration_driver_in_progress``, or ``migration_driver_phase1_done``.
+  in: body
+  required: false
+  type: string
+  min_version: 2.57
 timestamp:
   description: |
     The date and time stamp when the API request was issued.

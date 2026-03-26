@@ -80,6 +80,13 @@ Response parameters
    - updated_at: updated_at
    - share_network_subnet_id: share_network_subnet_id_share_server_body
    - security_service_update_support: share_server_security_service_update_support
+   - is_auto_deletable: share_server_show_is_auto_deletable
+   - identifier: share_server_show_identifier
+   - task_state: task_state_share_server
+   - source_share_server_id: source_share_server_id
+   - share_network_subnet_ids: share_network_subnet_ids
+   - network_allocation_update_support: network_allocation_update_support
+   - encryption_key_ref: encryption_key_ref_response
 
 Response example
 ----------------
