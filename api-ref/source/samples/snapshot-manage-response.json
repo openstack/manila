@@ -21,6 +21,9 @@
                 "rel": "bookmark"
             }
         ],
-        "provider_location": "4045fee5-4e0e-408e-97f3-15e25239dbc9"
+        "provider_location": "4045fee5-4e0e-408e-97f3-15e25239dbc9",
+        "metadata": {
+            "key1": "value1"
+        }
     }
 }

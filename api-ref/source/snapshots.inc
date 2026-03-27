@@ -250,6 +250,7 @@ Request
    - description: description_request
    - display_name: display_name_request
    - display_description: display_description_request
+   - metadata: snapshot_metadata
 
 Request example
 ---------------
@@ -274,6 +275,7 @@ Response parameters
    - size: snapshot_size
    - project_id: snapshot_project_id
    - user_id: snapshot_user_id
+   - metadata: snapshot_metadata
 
 Response example
 ----------------
@@ -325,6 +327,7 @@ Request
    - description: description_request
    - display_description: display_description_request
    - driver_options: driver_options
+   - metadata: snapshot_metadata
 
 Request example
 ---------------
@@ -349,6 +352,7 @@ Response parameters
    - size: snapshot_size
    - project_id: snapshot_project_id
    - user_id: snapshot_user_id
+   - metadata: snapshot_metadata
 
 Response example
 ----------------

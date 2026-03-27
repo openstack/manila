@@ -7,6 +7,9 @@
         "driver_options": {
             "opt1": "opt1",
             "opt2": "opt2"
+        },
+        "metadata": {
+            "key1": "value1"
         }
     }
 }
