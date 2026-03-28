@@ -6632,7 +6632,65 @@ def availability_zone_get_all(context):
 
 
 @require_admin_context
-@context_manager.writer
+@context_manager.writer.independent
+def _purge_table_records(context, model, table_name, deleted_age):
+    s_deleted_records = context.session.query(
+        model
+    ).filter(model.deleted_at <= deleted_age)
+    deleted_count = 0
+
+    # delete records one by one,
+    # skip the records which has FK constraints
+    for record in s_deleted_records:
+        try:
+            with context.session.begin_nested():
+                context.session.delete(record)
+                deleted_count += 1
+        except db_exc.DBError:
+            LOG.warning(
+                "Deleting soft-deleted resource %s failed, skipping.",
+                record
+            )
+    if deleted_count != 0:
+        LOG.info(
+            "Deleted %(count)s records in table %(table)s.",
+            {'count': deleted_count, 'table': table_name}
+        )
+
+#####################
+
+
+@require_admin_context
+@context_manager.writer.independent
+def _purge_sec_service_associations(context, deleted_age):
+    """Own transaction: delete stale share-network/security-service assocs."""
+    sec_assoc_to_delete = context.session.query(
+        models.ShareNetworkSecurityServiceAssociation
+    ).join(
+        models.ShareNetwork
+    ).join(
+        models.SecurityService
+    ).filter(
+        or_(
+            models.ShareNetwork.deleted_at <= deleted_age,
+            models.SecurityService.deleted_at <= deleted_age,
+        )
+    ).all()
+
+    for assoc in sec_assoc_to_delete:
+        try:
+            with context.session.begin_nested():
+                context.session.delete(assoc)
+        except db_exc.DBError:
+            LOG.warning(
+                "Deleting association %s failed, skipping.",
+                assoc
+            )
+
+####################
+
+
+@require_admin_context
 def purge_deleted_records(context, age_in_days):
     """Purge soft-deleted records older than(and equal) age from tables."""
 
@@ -6641,6 +6699,10 @@ def purge_deleted_records(context, age_in_days):
         LOG.error(msg)
         raise exception.InvalidParameterValue(msg)
 
+    deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
+
+    _purge_sec_service_associations(context, deleted_age)
+
     metadata = MetaData()
     metadata.reflect(get_engine())
     tables = metadata.sorted_tables
@@ -6648,54 +6710,23 @@ def purge_deleted_records(context, age_in_days):
         msg = 'No tables found, check database connection'
         raise exception.InvalidResults(msg)
 
-    deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
-
-    # Deleting rows in share_network_security_service_association
-    # related to deleted network or security service
-    sec_assoc_to_delete = context.session.query(
-        models.ShareNetworkSecurityServiceAssociation).join(
-        models.ShareNetwork).join(models.SecurityService).filter(
-        or_(models.ShareNetwork.deleted_at <= deleted_age,
-            models.SecurityService.deleted_at <= deleted_age)).all()
-
-    for assoc in sec_assoc_to_delete:
-        with context.session.begin_nested():
-            context.session.delete(assoc)
+    # Build model lookup once
+    model_by_table = {m.__tablename__: m
+                      for m in models.__dict__.values()
+                      if hasattr(m, '__tablename__')}
 
     for table in reversed(tables):
         if 'deleted' not in table.columns.keys():
             continue
 
-        try:
-            mds = [m for m in models.__dict__.values() if
-                   (hasattr(m, '__tablename__') and
-                    m.__tablename__ == str(table))]
-            if len(mds) > 0:
-                # collect all soft-deleted records
-                with context.session.begin_nested():
-                    model = mds[0]
-                    s_deleted_records = context.session.query(
-                        model,
-                    ).filter(model.deleted_at <= deleted_age)
-                deleted_count = 0
-                # delete records one by one,
-                # skip the records which has FK constraints
-                for record in s_deleted_records:
-                    try:
-                        with context.session.begin_nested():
-                            context.session.delete(record)
-                            deleted_count += 1
-                    except db_exc.DBError:
-                        LOG.warning(
-                            ("Deleting soft-deleted resource %s "
-                             "failed, skipping."), record)
-                if deleted_count != 0:
-                    LOG.info("Deleted %(count)s records in "
-                             "table %(table)s.",
-                             {'count': deleted_count, 'table': table})
-        except db_exc.DBError:
-            LOG.warning("Querying table %s's soft-deleted records "
-                        "failed, skipping.", table)
+        table_name = table.name
+        if table_name in model_by_table:
+            try:
+                _purge_table_records(context, model_by_table[table_name],
+                                     table_name, deleted_age)
+            except db_exc.DBError:
+                LOG.warning("Querying table %s's soft-deleted records "
+                            "failed, skipping.", table_name)
 
 
 ####################
