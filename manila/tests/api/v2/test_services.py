@@ -284,23 +284,14 @@ class ServicesTest(test.TestCase):
     def test_services_list_invalid_status(self, status, version):
         req = fakes.HTTPRequest.blank('services?status=%s' % status,
                                       version=version)
+        # We had introduced a regression in API version 2.93, so now we need to
+        # ensure that the behavior is unchanged.
         req.environ['manila.context'] = self.context
-        mock_log_error = self.mock_object(services.LOG, 'error')
-        support_listing_by_ensuring = (
-            api_version.APIVersionRequest(version) >=
-            api_version.APIVersionRequest(FILTERING_BY_ENSURE_VERSION)
-        )
+        mock_log_warning = self.mock_object(services.LOG, 'warning')
 
-        if support_listing_by_ensuring:
-            self.assertRaises(
-                webob.exc.HTTPBadRequest,
-                self.controller.index,
-                req
-            )
-        else:
-            result = self.controller.index(req)
-            self.assertEqual(len(result['services']), 0)
-            mock_log_error.assert_called()
+        result = self.controller.index(req)
+        self.assertEqual(len(result['services']), 0)
+        mock_log_warning.assert_called()
 
     @ddt.data(
         ('services', '2.7', services.ServiceController),
