@@ -350,9 +350,9 @@ class API(object):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
-    def update_port_fixed_ips(self, port_id, fixed_ips):
+    def update_port(self, port_id, port_data):
         try:
-            port_req_body = {'port': fixed_ips}
+            port_req_body = {'port': port_data}
             port = self.client.update_port(
                 port_id, port_req_body).get('port', {})
             return port

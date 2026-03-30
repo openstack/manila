@@ -1195,7 +1195,7 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         # we need to add those to the port and call update.
         if subnets:
             port_fixed_ips.extend([dict(subnet_id=s) for s in subnets])
-            port = self.neutron_api.update_port_fixed_ips(
+            port = self.neutron_api.update_port(
                 port['id'], {'fixed_ips': port_fixed_ips})
 
         return port

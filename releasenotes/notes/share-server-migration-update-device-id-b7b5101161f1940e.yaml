@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed share server migration to properly update port device_id during
+    cutover. When migrating a share server, network ports are now correctly
+    associated with the new share server by updating their device_id. This
+    ensures ports won't be mistakenly deleted and maintains proper network
+    resource tracking.

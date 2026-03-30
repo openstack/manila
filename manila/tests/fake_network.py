@@ -181,7 +181,7 @@ class API(object):
     def show_router(self, *args, **kwargs):
         pass
 
-    def update_port_fixed_ips(self, *args, **kwargs):
+    def update_port(self, *args, **kwargs):
         pass
 
     def router_remove_interface(self, *args, **kwargs):

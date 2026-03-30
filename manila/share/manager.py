@@ -6512,7 +6512,7 @@ class ShareManager(manager.SchedulerDependentManager):
             # source host will be deleted.
             updated_allocations = (
                 self.driver.network_api.cutover_network_allocations(
-                    context, source_share_server))
+                    context, source_share_server, dest_share_server))
             segmentation_id = self.db.share_server_backend_details_get_item(
                 context, dest_share_server['id'], 'segmentation_id')
             alloc_update.update({
