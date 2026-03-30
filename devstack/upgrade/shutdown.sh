@@ -12,6 +12,7 @@ source $BASE_DEVSTACK_DIR/stackrc # needed for status directory
 
 # Locate the manila plugin and get its functions
 MANILA_DEVSTACK_DIR=$(dirname $(dirname $0))
+source $MANILA_DEVSTACK_DIR/settings
 source $MANILA_DEVSTACK_DIR/plugin.sh
 
 set -o xtrace
