@@ -21,6 +21,7 @@ from unittest import mock
 import webob
 
 import ddt
+from oslo_utils import strutils
 from oslo_utils import timeutils
 
 from manila.api.openstack import api_version_request as api_version
@@ -229,6 +230,9 @@ class ServicesTest(test.TestCase):
         )
         if not supports_filtering_by_ensuring and 'ensuring' in filters:
             filters.pop('ensuring')
+        elif 'ensuring' in filters:
+            filters['ensuring'] = strutils.bool_from_string(
+                filters['ensuring'], strict=True)
 
         self.controller.index(req)
 
@@ -286,6 +290,18 @@ class ServicesTest(test.TestCase):
                                       version=version)
         # We had introduced a regression in API version 2.93, so now we need to
         # ensure that the behavior is unchanged.
+        req.environ['manila.context'] = self.context
+        mock_log_warning = self.mock_object(services.LOG, 'warning')
+
+        result = self.controller.index(req)
+        self.assertEqual(len(result['services']), 0)
+        mock_log_warning.assert_called()
+
+    @ddt.data('maybe', 'invalid', '2', 'notabool')
+    def test_services_list_invalid_ensuring(self, ensuring):
+        req = fakes.HTTPRequest.blank(
+            'services?ensuring=%s' % ensuring,
+            version=FILTERING_BY_ENSURE_VERSION)
         req.environ['manila.context'] = self.context
         mock_log_warning = self.mock_object(services.LOG, 'warning')
 

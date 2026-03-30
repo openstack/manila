@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the services list API to return an empty list and log a warning
+    when an invalid value is provided for the ``ensuring`` filter parameter,
+    consistent with how the ``status`` filter parameter is handled.
+    `Bug #2146840 <https://bugs.launchpad.net/manila/+bug/2146840>`_
