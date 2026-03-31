@@ -84,6 +84,7 @@ Request
    - availability_zone: share_replica_az
    - share_network_id: share_replica_share_network_id
    - scheduler_hints: share_replica_scheduler_hints
+   - metadata: share_replica_metadata_request
 
 Request example
 ---------------
@@ -115,6 +116,7 @@ Response parameters
    - id: share_replica_id
    - replica_state: share_replica_replica_state
    - created_at: created_at
+   - metadata: share_replica_metadata_response
 
 
 Response example
@@ -296,6 +298,7 @@ Response parameters
    - id: share_replica_id
    - replica_state: share_replica_replica_state
    - created_at: created_at
+   - metadata: share_replica_metadata_response
 
 Response example
 ----------------
@@ -351,6 +354,7 @@ Response parameters
    - id: share_replica_id
    - replica_state: share_replica_replica_state
    - created_at: created_at
+   - metadata: share_replica_metadata_response
 
 Response example
 ----------------
