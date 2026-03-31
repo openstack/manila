@@ -71,7 +71,7 @@ project_id_path:
     catalog endpoint obtained for the service has the user's project_id
     after the "/v2/" component, for example, the API to retrieve shares is
     *GET /v2/{project_id}/shares*. If the service doesn't yet support API
-    version 2.60, and the project_id is ommitted from the API URL, a
+    version 2.60, and the project_id is omitted from the API URL, a
     Malformed Request error is returned (HTTP 400).
   in: path
   required: false
@@ -777,7 +777,7 @@ sort_key:
 sort_key_backup:
   description: |
     The key to sort a list of share backups. A valid value
-    is ``id``, ``status``, ``size``, ``host``, ``share_id``
+    is ``id``, ``status``, ``size``, ``host``, ``share_id``,
     ``availability_zone``, ``created_at``, ``updated_at``, ``display_name``,
     ``topic``, ``progress`` and ``restore_progress``
   in: query
@@ -796,7 +796,7 @@ sort_key_resource_locks:
   description: |
     The key to sort a list of resource locks. A valid value
     is ``id``, ``resource_id``, ``resource_type``, ``resource_action``,
-    ``user_id``, ``project_id``, ``created_at``, ``updated_act``,
+    ``user_id``, ``project_id``, ``created_at``, ``updated_at``,
     ``lock_context``.
   in: query
   required: false
@@ -1109,7 +1109,7 @@ backup_options_request:
   type: object
 backup_progress:
   description: |
-    The progress of the backup creation in percentange.
+    The progress of the backup creation in percentage.
   in: body
   required: true
   type: string
@@ -1875,23 +1875,23 @@ maxTotalEncryptionKeysOptional:
   type: integer
   min_version: 2.90
 maxTotalReplicaGigabytes:
-    description: |
-      The maximum number of replica gigabytes that are allowed in a project.
-      You cannot create a share, share replica, manage a share or extend a
-      share if it is going to exceed the allowed replica gigabytes quota.
-    in: body
-    required: true
-    type: integer
-    min_version: 2.53
+  description: |
+    The maximum number of replica gigabytes that are allowed in a project.
+    You cannot create a share, share replica, manage a share or extend a
+    share if it is going to exceed the allowed replica gigabytes quota.
+  in: body
+  required: true
+  type: integer
+  min_version: 2.53
 maxTotalReplicaGigabytesOptional:
-    description: |
-      The maximum number of replica gigabytes that are allowed in a project.
-      You cannot create a share, share replica, manage a share or extend a
-      share if it is going to exceed the allowed replica gigabytes quota.
-    in: body
-    required: false
-    type: integer
-    min_version: 2.53
+  description: |
+    The maximum number of replica gigabytes that are allowed in a project.
+    You cannot create a share, share replica, manage a share or extend a
+    share if it is going to exceed the allowed replica gigabytes quota.
+  in: body
+  required: false
+  type: integer
+  min_version: 2.53
 maxTotalShareBackups:
   description: |
     The total maximum number of share backups that
@@ -3658,8 +3658,8 @@ share_new_size:
 share_proto:
   description: |
     The Shared File Systems protocol. A valid value
-    is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS``,
-    ``MAPRFS``, ``CephFS`` supported is starting with API v2.13.
+    is ``NFS``, ``CIFS``, ``GlusterFS``, ``HDFS``, ``CephFS``
+    (supported starting with API v2.13), or ``MAPRFS``.
   in: body
   required: true
   type: string
