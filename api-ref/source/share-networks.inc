@@ -163,6 +163,7 @@ Response parameters
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
@@ -227,6 +228,7 @@ Response parameters
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
@@ -313,6 +315,7 @@ Response parameters
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
@@ -396,6 +399,7 @@ Response parameters
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
@@ -468,6 +472,7 @@ Response parameters
    - gateway: share_network_gateway
    - mtu: share_network_mtu
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
@@ -549,6 +554,7 @@ Response parameters
    - gateway: share_network_gateway
    - mtu: share_network_mtu
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
@@ -673,6 +679,7 @@ Response parameters
    - mtu: share_network_mtu
    - share_network_subnets: share_network_share_network_subnets
    - security_service_update_support: share_network_security_service_update_support
+   - network_allocation_update_support: network_allocation_update_support
    - status: share_network_status
 
 Response example
