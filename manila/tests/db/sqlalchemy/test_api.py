@@ -4349,6 +4349,52 @@ class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
         self.assertEqual(1, len(actual_result))
         self.assertEqual('test2', actual_result[0]['name'])
 
+    def test_az_create_if_not_exist_handles_duplicate(self):
+        """Concurrent services can race to create the same AZ."""
+        az_name = 'test_race_az'
+        # Create the AZ first.
+        with db_api.context_manager.writer.using(self.ctxt):
+            existing_az = db_api._availability_zone_create_if_not_exist(
+                self.ctxt, az_name,
+            )
+        # Call again — this should just return the existing AZ
+        # rather than failing with DBDuplicateEntry.
+        with db_api.context_manager.writer.using(self.ctxt):
+            result = db_api._availability_zone_create_if_not_exist(
+                self.ctxt, az_name,
+            )
+        self.assertEqual(existing_az['id'], result['id'])
+        self.assertEqual(az_name, result['name'])
+
+    def test_az_create_if_not_exist_race_condition(self):
+        """Simulate race: GET misses, INSERT conflicts, retry GET works."""
+        az_name = 'test_race_az'
+        # Pre-create the AZ so the INSERT will conflict.
+        with db_api.context_manager.writer.using(self.ctxt):
+            existing_az = db_api._availability_zone_create_if_not_exist(
+                self.ctxt, az_name,
+            )
+        # Mock _availability_zone_get to miss on first call (simulating
+        # the race window) but succeed on the retry after DBDuplicateEntry.
+        original_get = db_api._availability_zone_get
+        call_count = [0]
+
+        def side_effect(ctx, name):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise exception.AvailabilityZoneNotFound(id=name)
+            return original_get(ctx, name)
+
+        with mock.patch.object(
+            db_api, '_availability_zone_get', side_effect=side_effect,
+        ):
+            with db_api.context_manager.writer.using(self.ctxt):
+                result = db_api._availability_zone_create_if_not_exist(
+                    self.ctxt, az_name,
+                )
+        self.assertEqual(existing_az['id'], result['id'])
+        self.assertEqual(2, call_count[0])
+
 
 @ddt.ddt
 class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
