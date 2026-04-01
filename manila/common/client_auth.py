@@ -23,7 +23,7 @@ from manila.i18n import _
 
 CONF = cfg.CONF
 
-"""Helper class to support keystone v2 and v3 for clients
+"""Helper class to support keystone v3 for clients
 
 Builds auth and session context before instantiation of the actual
 client. In order to build this context a dedicated config group is
