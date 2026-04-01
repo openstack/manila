@@ -82,7 +82,7 @@ Request
    - project_id: project_id_path
    - share_network_id: share_network_id_path
    - share_network_subnet_id: share_network_subnet_id_path
-   - key: metadata_key_request
+   - key: metadata_key_path
 
 Response parameters
 -------------------
@@ -254,4 +254,4 @@ Request
    - project_id: project_id_path
    - share_network_id: share_network_id_path
    - share_network_subnet_id: share_network_subnet_id_path
-   - key: metadata_key_request
+   - key: metadata_key_path
