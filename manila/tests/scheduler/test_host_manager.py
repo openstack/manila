@@ -219,7 +219,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -255,7 +257,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host2@back2#CCC',
@@ -291,7 +295,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 },
             ]
@@ -349,7 +355,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host2@BBB#pool2',
@@ -386,7 +394,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host3@CCC#pool3',
@@ -423,7 +433,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host4@DDD#pool4a',
@@ -460,7 +472,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host4@DDD#pool4b',
@@ -498,6 +512,8 @@ class HostManagerTestCase(test.TestCase):
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
                         'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 },
             ]
@@ -567,7 +583,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -603,7 +621,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 },
             ]
@@ -667,7 +687,9 @@ class HostManagerTestCase(test.TestCase):
                         'share_server_multiple_subnet_support': False,
                         'mount_point_name_support': False,
                         'share_replicas_migration_support': False,
-                        'encryption_support': None
+                        'encryption_support': None,
+                        'goodness_function': None,
+                        'filter_function': None,
                     },
                 },
             ]
@@ -968,6 +990,71 @@ class HostStateTestCase(test.TestCase):
                     "pools: {'Backend1': host: 'host1#Backend1', "
                     "free_capacity_gb: 15000, pools: None}")
         self.assertEqual(expected, result)
+
+    def test_goodness_and_filter_function_propagated_to_pool(self):
+        """Backend-level goodness/filter_function propagated to pools.
+
+        Backend-level goodness_function and filter_function from conf
+        should be propagated to pools that don't declare them explicitly.
+        """
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
+        capability = {
+            'share_backend_name': 'Backend1',
+            'storage_protocol': 'NFS',
+            'goodness_function': '(capabilities.free_capacity_gb / 1000)',
+            'filter_function': 'capabilities.free_capacity_gb > 10',
+            'pools': [
+                {'pool_name': 'pool1',
+                 'total_capacity_gb': 500,
+                 'free_capacity_gb': 230,
+                 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
+                 'reserved_share_extend_percentage': 0,
+                 },
+            ],
+            'timestamp': None,
+        }
+        fake_host = host_manager.HostState('host1')
+        fake_host.update_from_share_capability(capability,
+                                               context=fake_context)
+
+        pool = fake_host.pools['pool1']
+        self.assertEqual(
+            '(capabilities.free_capacity_gb / 1000)',
+            pool.goodness_function)
+        self.assertEqual(
+            'capabilities.free_capacity_gb > 10',
+            pool.filter_function)
+
+    def test_pool_goodness_function_not_overridden(self):
+        """Pool's own goodness_function is not overridden.
+
+        A pool that declares its own goodness_function should not have
+        it overridden by the backend-level value.
+        """
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
+        capability = {
+            'share_backend_name': 'Backend1',
+            'storage_protocol': 'NFS',
+            'goodness_function': 'backend_level_function',
+            'pools': [
+                {'pool_name': 'pool1',
+                 'total_capacity_gb': 500,
+                 'free_capacity_gb': 230,
+                 'reserved_percentage': 0,
+                 'reserved_snapshot_percentage': 0,
+                 'reserved_share_extend_percentage': 0,
+                 'goodness_function': 'pool_level_function',
+                 },
+            ],
+            'timestamp': None,
+        }
+        fake_host = host_manager.HostState('host1')
+        fake_host.update_from_share_capability(capability,
+                                               context=fake_context)
+
+        pool = fake_host.pools['pool1']
+        self.assertEqual('pool_level_function', pool.goodness_function)
 
 
 @ddt.ddt

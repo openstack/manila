@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The scheduler now correctly propagates ``goodness_function`` and
+    ``filter_function`` configured in ``manila.conf`` to pool-level
+    capabilities for drivers that do not declare these values in their
+    pool data structures (e.g. CephFS). Previously, the goodness weigher
+    would always fall back to a rating of 0 for such drivers, ignoring
+    the configured function entirely. (Bug #2074114)
