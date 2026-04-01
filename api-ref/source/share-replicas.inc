@@ -233,7 +233,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_id: share_id
+   - share_id: share_id_replicas_query
 
 Response parameters
 -------------------
