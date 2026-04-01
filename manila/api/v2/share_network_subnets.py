@@ -90,18 +90,22 @@ class ShareNetworkSubnetController(wsgi.Controller,
             shares = db_api.share_instance_get_all_by_share_server(
                 context, share_server['id'])
             if shares:
-                msg = _("Cannot delete share network subnet %(id)s, it has "
+                msg = _("Cannot delete share network subnet %(id)s "
+                        "of share network %(network_id)s, it has "
                         "one or more shares.") % {
-                    'id': share_network_subnet_id}
+                    'id': share_network_subnet_id,
+                    'network_id': share_network_id}
                 LOG.error(msg)
                 raise exc.HTTPConflict(explanation=msg)
 
             share_groups = db_api.share_group_get_all_by_share_server(
                 context, share_server['id'])
             if share_groups:
-                msg = _("Cannot delete share network subnet %(id)s, it has "
+                msg = _("Cannot delete share network subnet %(id)s "
+                        "of share network %(network_id)s, it has "
                         "one or more share groups.") % {
-                            'id': share_network_subnet_id}
+                    'id': share_network_subnet_id,
+                    'network_id': share_network_id}
                 LOG.error(msg)
                 raise exc.HTTPConflict(explanation=msg)
 
@@ -110,10 +114,12 @@ class ShareNetworkSubnetController(wsgi.Controller,
         if not self._all_share_servers_are_auto_deletable(
                 share_network_subnet):
             msg = _("The service cannot determine if there are any "
-                    "non-managed shares on the share network subnet %(id)s,"
-                    "so it cannot be deleted. Please contact the cloud "
-                    "administrator to rectify.") % {
-                'id': share_network_subnet_id}
+                    "non-managed shares on the share network subnet %(id)s "
+                    "of share network %(network_id)s, so it cannot be "
+                    "deleted. Please contact the cloud administrator to "
+                    "rectify.") % {
+                'id': share_network_subnet_id,
+                'network_id': share_network_id}
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
 

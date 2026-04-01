@@ -218,6 +218,39 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             context, self.resource_name, 'delete')
 
+    def test_delete_subnet_with_share_groups_fail(self):
+        req = fakes.HTTPRequest.blank('/subnets/%s' % self.subnet['id'],
+                                      version="2.51")
+        context = req.environ['manila.context']
+        self.subnet['share_servers'] = [self.share_server]
+        mock_network_get = self.mock_object(
+            db_api, 'share_network_get')
+        mock_sns_get = self.mock_object(
+            db_api, 'share_network_subnet_get',
+            mock.Mock(return_value=self.subnet))
+        mock_all_get_all_shares_by_ss = self.mock_object(
+            db_api, 'share_instance_get_all_by_share_server',
+            mock.Mock(return_value=[]))
+        mock_share_group_get = self.mock_object(
+            db_api, 'share_group_get_all_by_share_server',
+            mock.Mock(return_value=[db_utils.create_share_group()]))
+        self.assertRaisesRegex(exc.HTTPConflict,
+                               self.share_network['id'],
+                               self.controller.delete,
+                               req,
+                               self.share_network['id'],
+                               self.subnet['id'])
+        mock_network_get.assert_called_once_with(
+            context, self.share_network['id'])
+        mock_sns_get.assert_called_once_with(
+            context, self.subnet['id'])
+        mock_all_get_all_shares_by_ss.assert_called_once_with(
+            context, self.subnet['share_servers'][0].id)
+        mock_share_group_get.assert_called_once_with(
+            context, self.subnet['share_servers'][0].id)
+        self.mock_policy_check.assert_called_once_with(
+            context, self.resource_name, 'delete')
+
     def _setup_create_test_request_body(self, metadata=False):
         body = {
             'share_network_id': self.share_network['id'],
