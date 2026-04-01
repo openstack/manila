@@ -616,7 +616,7 @@ def _service_get_all_with_filters(context, filters):
 
     ensuring = filters.pop('ensuring', None)
     if ensuring is not None:
-        ensuring = strutils.bool_from_string(ensuring)
+        ensuring = strutils.bool_from_string(ensuring, strict=True)
         filters['ensuring'] = ensuring
 
     legal_filter_keys = ('host', 'binary', 'state', 'topic',

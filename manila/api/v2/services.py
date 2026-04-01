@@ -58,6 +58,17 @@ class ServiceMixin(object):
         if not support_filtering_by_ensure and filters.get('ensuring'):
             filters.pop('ensuring')
 
+        ensuring = filters.get('ensuring')
+        if ensuring is not None:
+            try:
+                filters['ensuring'] = strutils.bool_from_string(
+                    ensuring, strict=True)
+            except ValueError:
+                msg = _("An invalid value was provided for 'ensuring'. "
+                        "Acceptable values are: 'true' or 'false'.")
+                LOG.warning(msg)
+                return self._view_builder.detail_list(req, [])
+
         status = filters.get('status')
         valid_statuses = [constants.STATUS_DISABLED, constants.STATUS_ENABLED]
         if status and status not in valid_statuses:
