@@ -3615,7 +3615,7 @@ share_network_subnet_mtu:
     The MTU of a share network subnet.
   in: body
   required: true
-  type: string
+  type: integer
 share_network_subnet_network_type:
   description: |
     The network type. A valid value is ``VLAN``,
