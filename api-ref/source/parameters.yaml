@@ -3410,6 +3410,12 @@ share_group_links:
   in: body
   required: true
   type: string
+share_group_server_id_response:
+  description: |
+    The UUID of the share server. Only visible to administrators.
+  in: body
+  required: false
+  type: string
 share_group_status:
   description: |
     The share group status, which is ``available``,

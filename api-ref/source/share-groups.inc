@@ -145,6 +145,7 @@ Response parameters
    - share_group_type_id: share_group_type_id_required
    - source_share_group_snapshot_id: source_share_group_snapshot_id_response
    - share_network_id: share_network_id
+   - share_server_id: share_group_server_id_response
    - share_types: share_types_1
    - links: share_group_links
    - availability_zone: availability_zone_id_share_group
@@ -208,6 +209,7 @@ Response parameters
    - links: share_group_links
    - availability_zone: availability_zone_id_share_group
    - consistent_snapshot_support: consistent_snapshot_support
+   - share_server_id: share_group_server_id_response
 
 Response example
 ----------------
@@ -280,6 +282,7 @@ Response parameters
    - links: share_group_links
    - availability_zone: availability_zone_id_share_group
    - consistent_snapshot_support: consistent_snapshot_support
+   - share_server_id: share_group_server_id_response
 
 Response example
 ----------------
@@ -385,6 +388,7 @@ Response parameters
    - description: description
    - project_id: project_id
    - host: share_group_host
+   - share_server_id: share_group_server_id_response
    - share_group_type_id: share_group_type_id_required
    - source_share_group_snapshot_id: source_share_group_snapshot_id
    - share_network_id: share_network_id
