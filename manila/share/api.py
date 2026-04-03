@@ -2051,7 +2051,7 @@ class API(base.Base):
                 raise exception.InvalidInput(reason=msg)
             self._modify_quotas_for_share_migration(context, share,
                                                     new_share_type)
-            qos_type = share_type.get('extra_specs').get(
+            qos_type = share_type.get('extra_specs', {}).get(
                 constants.ExtraSpecs.DEFAULT_QOS_TYPE)
             if qos_type:
                 qos_db = self.db.qos_type_get_by_name_or_id(context, qos_type)
