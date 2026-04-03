@@ -14,6 +14,7 @@
 # under the License.
 
 
+import math
 from unittest import mock
 
 from oslo_log import log
@@ -294,6 +295,9 @@ class PowerStoreTest(test.TestCase):
 
     def test_delete_nfs_share_share_does_not_exist(self):
         self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            None
+        )
         share = {"name": self.SHARE_NAME, "share_proto": "NFS"}
 
         # verify the calling delete on a non-existent share returns and does
@@ -1010,4 +1014,771 @@ class PowerStoreTest(test.TestCase):
 
     def test_get_default_filter_function(self):
         filter = self.storage_connection.get_default_filter_function()
-        self.assertEqual(filter, "share.size >= 3")
+        self.assertEqual(filter, "share.size >= 3 or share.size == 0")
+
+    def test_manage_existing_nfs_success(self):
+        original_name = "fs_external_data"
+        manila_name = self.SHARE_NAME
+        share = {
+            "name": manila_name,
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, original_name)}
+            ],
+        }
+
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = (
+            self.SHARE_SIZE_GB * units.Gi
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+
+        self.assertEqual(self.SHARE_SIZE_GB, result['size'])
+        # Export locations use original backend name (no rename)
+        expected_locations = [
+            {"path": "%s:/%s" % (self.NAS_SERVER_IP, original_name),
+             "metadata": {"preferred": True}}
+        ]
+        self.assertEqual(expected_locations, result['export_locations'])
+        self._mock_powerstore_client.get_nfs_export_id.assert_called_with(
+            original_name
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name. \
+            assert_called_with(original_name)
+        self._mock_powerstore_client.get_filesystem_size.assert_called_with(
+            self.FILESYSTEM_ID
+        )
+
+    def test_manage_existing_cifs_success(self):
+        original_name = "smb_external_data"
+        manila_name = self.SHARE_NAME
+        share = {
+            "name": manila_name,
+            "share_proto": "CIFS",
+            "export_locations": [
+                {"path": "\\\\%s\\%s" % (self.NAS_SERVER_IP, original_name)}
+            ],
+        }
+
+        self._mock_powerstore_client.get_smb_share_id.return_value = (
+            self.SMB_SHARE_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_share_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = (
+            self.SHARE_SIZE_GB * units.Gi
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+
+        self.assertEqual(self.SHARE_SIZE_GB, result['size'])
+        # Export locations use original backend name (no rename)
+        expected_locations = [
+            {"path": "\\\\%s\\%s" % (self.NAS_SERVER_IP, original_name),
+             "metadata": {"preferred": True}}
+        ]
+        self.assertEqual(expected_locations, result['export_locations'])
+        self._mock_powerstore_client.get_smb_share_id.assert_called_with(
+            original_name
+        )
+        self._mock_powerstore_client.get_fsid_from_share_name. \
+            assert_called_with(original_name)
+
+    def test_manage_existing_nfs_export_not_found(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/missing_export" % self.NAS_SERVER_IP}
+            ],
+        }
+        self._mock_powerstore_client.get_nfs_export_id.return_value = None
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_cifs_share_not_found(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "CIFS",
+            "export_locations": [
+                {"path": "\\\\%s\\missing_share" % self.NAS_SERVER_IP}
+            ],
+        }
+        self._mock_powerstore_client.get_smb_share_id.return_value = None
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_nfs_filesystem_not_found(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/fs_data" % self.NAS_SERVER_IP}
+            ],
+        }
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            None
+        )
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_filesystem_size_not_found(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/fs_data" % self.NAS_SERVER_IP}
+            ],
+        }
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = None
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_no_export_path(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_unsupported_protocol(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "GLUSTERFS",
+            "export_locations": [
+                {"path": "10.0.0.1:/vol/share1"}
+            ],
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_manage_existing_nfs_export_location_string_fallback(self):
+        """Test fallback when export_locations contains plain strings."""
+        original_name = "fs_external"
+        manila_name = self.SHARE_NAME
+        share = {
+            "name": manila_name,
+            "share_proto": "NFS",
+            "export_locations": [
+                "%s:/%s" % (self.NAS_SERVER_IP, original_name)
+            ],
+        }
+
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = (
+            5 * units.Gi
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+
+        self.assertEqual(5, result['size'])
+        self._mock_powerstore_client.get_nfs_export_id.assert_called_with(
+            original_name
+        )
+
+    def test_manage_existing_hasattr_export_location(self):
+        """manage_existing handles ORM-like objects with 'path' attribute."""
+        original_name = "fs_orm_style"
+        mock_el = mock.MagicMock()
+        mock_el.__getitem__ = mock.Mock(
+            side_effect=lambda k: "%s:/%s" % (
+                self.NAS_SERVER_IP, original_name)
+            if k == 'path' else None)
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "export_locations": [mock_el],
+        }
+
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = (
+            4 * units.Gi
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+
+        self.assertEqual(4, result['size'])
+        self._mock_powerstore_client.get_nfs_export_id.assert_called_with(
+            original_name
+        )
+
+    def test_manage_existing_export_location_fallback(self):
+        """Test fallback to share['export_location'] when no list."""
+        original_name = "fs_fallback"
+        manila_name = self.SHARE_NAME
+        share = {
+            "name": manila_name,
+            "share_proto": "NFS",
+            "export_location": "%s:/%s" % (self.NAS_SERVER_IP, original_name),
+        }
+
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = (
+            4 * units.Gi
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+
+        self.assertEqual(4, result['size'])
+        self._mock_powerstore_client.get_nfs_export_id.assert_called_with(
+            original_name
+        )
+
+    def test_get_backend_share_name_nfs_from_export_locations(self):
+        """_get_backend_share_name extracts name from NFS export path."""
+        share = {
+            "name": "manila-generated-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "10.0.0.1:/original_backend_name"}
+            ],
+        }
+        result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual("original_backend_name", result)
+
+    def test_get_backend_share_name_cifs_from_export_locations(self):
+        """_get_backend_share_name extracts name from CIFS export path."""
+        share = {
+            "name": "manila-generated-name",
+            "share_proto": "CIFS",
+            "export_locations": [
+                {"path": "\\\\10.0.0.1\\original_smb_share"}
+            ],
+        }
+        result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual("original_smb_share", result)
+
+    def test_get_backend_share_name_fallback_to_share_name(self):
+        """Falls back to share['name'] when no export_locations."""
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+        }
+        result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual(self.SHARE_NAME, result)
+
+    def test_delete_managed_nfs_share(self):
+        """Delete resolves backend name from export_locations."""
+        backend_name = "original_fs"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.delete_filesystem.return_value = True
+
+        self.storage_connection.delete_share(self.mock_context, share, None)
+
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_name
+        )
+
+    def test_extend_managed_nfs_share(self):
+        """Extend resolves backend name from export_locations."""
+        backend_name = "original_fs"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.resize_filesystem.return_value = (
+            True, None
+        )
+
+        self.storage_connection.extend_share(
+            share, self.SHARE_NEW_SIZE_GB, None
+        )
+
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_name
+        )
+
+    def test_update_access_managed_nfs_share(self):
+        """Access update resolves backend name from export_locations."""
+        backend_name = "original_fs"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.set_export_access.return_value = True
+
+        nfs_access = {
+            "access_type": "ip",
+            "access_to": self.RW_HOSTS,
+            "access_level": const.ACCESS_LEVEL_RW,
+            "access_id": "09960614-8574-4e03-89cf-7cf267b0bd08",
+        }
+
+        self.storage_connection.update_access(
+            self.mock_context, share, [nfs_access],
+            add_rules=None, delete_rules=None, share_server=None,
+        )
+
+        self._mock_powerstore_client.get_nfs_export_id.assert_called_with(
+            backend_name
+        )
+
+    def test_create_snapshot_managed_share(self):
+        """Snapshot creation resolves parent share backend name."""
+        backend_name = "original_fs"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "share_name": "manila-name",
+            "share": share,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.create_snapshot.return_value = (
+            self.SNAPSHOT_ID
+        )
+
+        self.storage_connection.create_snapshot(
+            self.mock_context, snapshot, None
+        )
+
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_name
+        )
+
+    def test_get_filesystem_id_nfs_fallback(self):
+        """_get_filesystem_id falls back to NFS export lookup."""
+        backend_name = "original_export"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection._get_filesystem_id(share)
+
+        self.assertEqual(self.FILESYSTEM_ID, result)
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_name
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.\
+            assert_called_with(backend_name)
+
+    def test_get_filesystem_id_cifs_fallback(self):
+        """_get_filesystem_id falls back to SMB share lookup."""
+        backend_name = "original_smb"
+        share = {
+            "name": "manila-name",
+            "share_proto": "CIFS",
+            "export_locations": [
+                {"path": "\\\\%s\\%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_share_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection._get_filesystem_id(share)
+
+        self.assertEqual(self.FILESYSTEM_ID, result)
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_name
+        )
+        self._mock_powerstore_client.get_fsid_from_share_name.\
+            assert_called_with(backend_name)
+
+    def test_delete_managed_nfs_share_fallback(self):
+        """Delete uses NFS export fallback when filesystem name differs."""
+        backend_name = "original_export"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.delete_filesystem.return_value = True
+
+        self.storage_connection.delete_share(self.mock_context, share, None)
+
+        self._mock_powerstore_client.get_fsid_from_export_name.\
+            assert_called_with(backend_name)
+        self._mock_powerstore_client.delete_filesystem.assert_called_with(
+            self.FILESYSTEM_ID
+        )
+
+    def test_extend_managed_nfs_share_fallback(self):
+        """Extend uses NFS export fallback when filesystem name differs."""
+        backend_name = "original_export"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.resize_filesystem.return_value = (
+            True, None
+        )
+
+        self.storage_connection.extend_share(
+            share, self.SHARE_NEW_SIZE_GB, None
+        )
+
+        self._mock_powerstore_client.get_fsid_from_export_name.\
+            assert_called_with(backend_name)
+        expected_quota_size = self.SHARE_NEW_SIZE_GB * units.Gi
+        self._mock_powerstore_client.resize_filesystem.assert_called_once_with(
+            self.FILESYSTEM_ID, expected_quota_size
+        )
+
+    def test_create_snapshot_managed_share_fallback(self):
+        """Snapshot uses NFS export fallback when filesystem name differs."""
+        backend_name = "original_export"
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, backend_name)}
+            ],
+        }
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "share_name": "manila-name",
+            "share": share,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.create_snapshot.return_value = (
+            self.SNAPSHOT_ID
+        )
+
+        self.storage_connection.create_snapshot(
+            self.mock_context, snapshot, None
+        )
+
+        self._mock_powerstore_client.get_fsid_from_export_name.\
+            assert_called_with(backend_name)
+        self._mock_powerstore_client.create_snapshot.assert_called_with(
+            self.FILESYSTEM_ID, self.SNAPSHOT_NAME
+        )
+
+    def test_get_backend_share_name_object_with_path_attr(self):
+        """_get_backend_share_name handles objects with a 'path' attribute."""
+        mock_el = mock.MagicMock()
+        mock_el.__getitem__ = mock.Mock(
+            side_effect=lambda k: "10.0.0.1:/my_export" if k == 'path'
+            else None)
+        share = {
+            "name": "manila-name",
+            "share_proto": "NFS",
+            "export_locations": [mock_el],
+        }
+        result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual("my_export", result)
+
+    def test_get_backend_share_name_str_fallback(self):
+        """_get_backend_share_name uses str() for non-dict non-object els."""
+        share = {
+            "name": "fallback_name",
+            "share_proto": "NFS",
+            "export_locations": [None],
+        }
+        result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual("fallback_name", result)
+
+    def test_get_backend_share_name_exception_fallback(self):
+        """_get_backend_share_name falls back to share name on exception."""
+        share = {
+            "name": "fallback_name",
+            "share_proto": "NFS",
+            "export_locations": True,
+        }
+        result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual("fallback_name", result)
+
+    def test_parse_share_name_from_path_nfs(self):
+        """_parse_share_name_from_path extracts name from NFS path."""
+        result = connection.PowerStoreStorageConnection.\
+            _parse_share_name_from_path(
+                "10.0.0.1:/my_share", "NFS")
+        self.assertEqual("my_share", result)
+
+    def test_parse_share_name_from_path_cifs(self):
+        """_parse_share_name_from_path extracts name from CIFS path."""
+        result = connection.PowerStoreStorageConnection.\
+            _parse_share_name_from_path(
+                "\\\\10.0.0.1\\my_smb_share", "CIFS")
+        self.assertEqual("my_smb_share", result)
+
+    def test_parse_share_name_from_path_unknown_protocol(self):
+        """_parse_share_name_from_path returns empty for unknown protocol."""
+        result = connection.PowerStoreStorageConnection.\
+            _parse_share_name_from_path(
+                "10.0.0.1:/my_share", "GLUSTERFS")
+        self.assertEqual("", result)
+
+    def test_parse_share_name_from_path_no_separator(self):
+        """_parse_share_name_from_path returns empty when no separator."""
+        result = connection.PowerStoreStorageConnection.\
+            _parse_share_name_from_path(
+                "just_a_name", "NFS")
+        self.assertEqual("", result)
+
+    def test_get_export_path_dict(self):
+        """_get_export_path extracts path from dict export location."""
+        share = {
+            "export_locations": [{"path": "10.0.0.1:/share1"}],
+        }
+        result = self.storage_connection._get_export_path(share)
+        self.assertEqual("10.0.0.1:/share1", result)
+
+    def test_get_export_path_hasattr(self):
+        """_get_export_path extracts path from ORM-like object."""
+        mock_el = mock.MagicMock()
+        mock_el.__getitem__ = mock.Mock(
+            side_effect=lambda k: "10.0.0.1:/share2" if k == 'path'
+            else None)
+        share = {"export_locations": [mock_el]}
+        result = self.storage_connection._get_export_path(share)
+        self.assertEqual("10.0.0.1:/share2", result)
+
+    def test_get_export_path_str_fallback(self):
+        """_get_export_path uses str() for plain string elements."""
+        share = {
+            "export_locations": ["10.0.0.1:/share3"],
+        }
+        result = self.storage_connection._get_export_path(share)
+        self.assertEqual("10.0.0.1:/share3", result)
+
+    def test_get_export_path_export_location_fallback(self):
+        """_get_export_path falls back to share['export_location']."""
+        share = {
+            "export_location": "10.0.0.1:/fallback_share",
+        }
+        result = self.storage_connection._get_export_path(share)
+        self.assertEqual("10.0.0.1:/fallback_share", result)
+
+    def test_get_export_path_empty(self):
+        """_get_export_path returns empty string when nothing available."""
+        share = {}
+        result = self.storage_connection._get_export_path(share)
+        self.assertEqual("", result)
+
+    def test_manage_existing_size_rounds_up(self):
+        """manage_existing uses math.ceil so 3.5 GiB reports as 4 GB."""
+        original_name = "fs_fractional"
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "%s:/%s" % (self.NAS_SERVER_IP, original_name)}
+            ],
+        }
+        fractional_bytes = int(3.5 * units.Gi)
+        self._mock_powerstore_client.get_nfs_export_id.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_fsid_from_export_name.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.get_filesystem_size.return_value = (
+            fractional_bytes
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+
+        self.assertEqual(math.ceil(fractional_bytes / units.Gi),
+                         result['size'])
+        self.assertEqual(4, result['size'])
+
+    def test_manage_existing_unparseable_name(self):
+        """manage_existing raises when name cannot be parsed from path."""
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "export_locations": [
+                {"path": "just_a_bare_name_no_separator"}
+            ],
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            driver_options={},
+        )
+
+    def test_get_backend_share_name_exception_logs_debug(self):
+        """_get_backend_share_name logs debug message on exception."""
+        share = {
+            "name": "fallback_name",
+            "share_proto": "NFS",
+            "export_locations": True,
+        }
+        with mock.patch.object(connection.LOG, 'debug') as mock_debug:
+            result = self.storage_connection._get_backend_share_name(share)
+        self.assertEqual("fallback_name", result)
+        mock_debug.assert_called_once()
+
+    def test_resize_filesystem_not_found(self):
+        """_resize_filesystem raises when filesystem cannot be resolved."""
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "id": "fake-share-id",
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+        self._mock_powerstore_client.get_fsid_from_export_name.\
+            return_value = None
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.extend_share,
+            share, self.SHARE_NEW_SIZE_GB, None
+        )

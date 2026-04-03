@@ -40,6 +40,7 @@ The following operations are supported.
 -  Delete a snapshot.
 -  Create a share from a snapshot.
 -  Revert a share to a snapshot.
+-  Manage/Unmanage a share.
 
 
 Driver configuration
@@ -173,6 +174,27 @@ Or you can update already existing share type with command:
             --extra-specs snapshot_support=True \
                 create_share_from_snapshot_support=True \
                 revert_to_snapshot_support=True
+
+
+Manage and unmanage shares
+--------------------------
+
+The driver supports the manage (adopt) and unmanage (abandon) operations
+for existing NFS and CIFS shares on a PowerStore backend.
+
+Managing and unmanaging existing shares is performed using the OpenStack
+dashboard or CLI.
+
+For detailed usage instructions, refer to the Manila administration
+documentation:
+
+:doc:`/admin/shared-file-systems-manage-and-unmanage-share`
+
+.. note::
+
+   * Unmanage does not delete the share on the backend; existing clients
+     remain connected.
+
 
 Known restrictions
 ------------------

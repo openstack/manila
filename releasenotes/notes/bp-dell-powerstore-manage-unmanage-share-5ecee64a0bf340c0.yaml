@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added manage and unmanage share support to the Dell PowerStore
+    Manila driver. This allows administrators to bring existing NFS
+    and CIFS shares on a PowerStore backend under Manila management,
+    or to remove shares from Manila management without deleting them
+    from the backend.
