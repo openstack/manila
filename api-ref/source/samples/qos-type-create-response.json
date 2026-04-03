@@ -7,6 +7,8 @@
             "expected_iops": 2000
         },
         "name": "testing",
-        "description": "qos type description"
+        "description": "qos type description",
+        "created_at": "2026-02-18T05:09:54.000000",
+        "updated_at": null
     }
 }
