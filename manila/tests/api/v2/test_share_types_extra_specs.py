@@ -98,6 +98,7 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
         """to reset notifier drivers left over from other api/contrib tests"""
+        fake_notifier.reset()
         self.addCleanup(fake_notifier.reset)
 
     def test_index(self):
