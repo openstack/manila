@@ -974,7 +974,7 @@ function allow_host_ports_for_share_mounting {
         MANILA_TCP_PORTS=(${MANILA_TCP_PORTS[*]} 6789 6800:7300)
     fi
 
-    if [[ -v MANILA_TCP_PORTS || -v MANILA_UDP_PORTS ]]; then
+    if [[ -n "${MANILA_TCP_PORTS+x}" || -n "${MANILA_UDP_PORTS+x}" ]]; then
         for ipcmd in iptables ip6tables; do
             sudo $ipcmd -N manila-storage
             sudo $ipcmd -I INPUT 1 -j manila-storage
