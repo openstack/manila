@@ -146,6 +146,9 @@ Response parameters
    - updated_at: updated_at
    - progress: backup_progress
    - restore_progress: backup_restore_progress
+   - host: backup_host
+   - topic: backup_topic
+   - backup_type: backup_type
 
 Response example
 ----------------
@@ -199,6 +202,9 @@ Response parameters
    - updated_at: updated_at
    - progress: backup_progress
    - restore_progress: backup_restore_progress
+   - host: backup_host
+   - topic: backup_topic
+   - backup_type: backup_type
 
 Response example
 ----------------
@@ -265,6 +271,9 @@ Response parameters
    - updated_at: updated_at
    - progress: backup_progress
    - restore_progress: backup_restore_progress
+   - host: backup_host
+   - topic: backup_topic
+   - backup_type: backup_type
 
 Response example
 ----------------
@@ -337,6 +346,9 @@ Response parameters
    - updated_at: updated_at
    - progress: backup_progress
    - restore_progress: backup_restore_progress
+   - host: backup_host
+   - topic: backup_topic
+   - backup_type: backup_type
 
 Response example
 ----------------

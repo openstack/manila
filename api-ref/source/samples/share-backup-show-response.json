@@ -10,6 +10,9 @@
         "updated_at": "2023-08-16T13:04:15.000000",
         "availability_zone": null,
         "progress": "100",
-        "restore_progress": "0"
+        "restore_progress": "0",
+        "backup_type": null,
+        "host": null,
+        "topic": null
     }
 }
