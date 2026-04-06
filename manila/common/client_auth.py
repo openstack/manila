@@ -13,6 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+"""Helper class to support keystone v3 for clients
+
+Builds auth and session context before instantiation of the actual
+client. In order to build this context a dedicated config group is
+needed to load all needed parameters dynamically.
+"""
+
 import copy
 
 from keystoneauth1 import loading as ks_loading
@@ -22,15 +29,6 @@ from manila import exception
 from manila.i18n import _
 
 CONF = cfg.CONF
-
-"""Helper class to support keystone v3 for clients
-
-Builds auth and session context before instantiation of the actual
-client. In order to build this context a dedicated config group is
-needed to load all needed parameters dynamically.
-
-
-"""
 
 
 class AuthClientLoader(object):
