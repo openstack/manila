@@ -14,6 +14,7 @@
 # under the License.
 
 import itertools
+import urllib.parse
 
 from barbicanclient import base as client_base
 from castellan.key_manager import barbican_key_manager
@@ -30,6 +31,7 @@ from manila import exception
 
 
 BARBICAN_GROUP = 'barbican'
+SERVICE_TYPE = 'key-manager'
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -190,22 +192,25 @@ class BarbicanUserAppCreds(object):
 
     def create_application_credentials(self, context, secret):
         try:
-            secrets_path = "/key-manager/v1/secrets"
-            return self.client.application_credentials.create(
+            client = self.client
+            secret_href = get_secret_href(context, secret,
+                                          conf=self.conf)
+            secret_path = urllib.parse.urlparse(secret_href).path
+            return client.application_credentials.create(
                 name='manila_barbican_' + uuidutils.generate_uuid(),
-                user=self.client.session.get_user_id(),
+                user=client.session.get_user_id(),
                 roles=[{'name': 'service'}],
                 secret=str(secret),
                 access_rules=[
                     {
-                        "path": secrets_path + "/%s" % secret,
+                        "path": secret_path,
                         "method": "GET",
-                        "service": "key-manager",
+                        "service": SERVICE_TYPE,
                     },
                     {
-                        "path": secrets_path + "/%s/payload" % secret,
+                        "path": secret_path + "/payload",
                         "method": "GET",
-                        "service": "key-manager",
+                        "service": SERVICE_TYPE,
                     }
                 ]
             )

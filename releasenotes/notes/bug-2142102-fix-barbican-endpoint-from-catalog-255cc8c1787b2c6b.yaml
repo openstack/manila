@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue that made the Manila integration with Barbican fail due to
+    an internal endpoint misconfiguration. Manila will now query Keystone for
+    the correct endpoint and use it while making requests.
+    For more details, see `Launchpad bug #2142102 <https://bugs.launchpad.net/manila/+bug/2142102>`_.
