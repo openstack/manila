@@ -5611,7 +5611,7 @@ class ShareManager(manager.SchedulerDependentManager):
                              backup_id)
             except Exception:
                 LOG.warning("Failed to get progress of share %(share)s "
-                            "backing up in share_backup %(backup).",
+                            "backing up in share_backup %(backup)s.",
                             {'share': share_id, 'backup': backup_id})
                 self.db.share_update(
                     context, share_id,
@@ -5748,7 +5748,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                  backup_id)
                 except Exception:
                     LOG.exception("Failed to get progress of share_backup "
-                                  "%(backup)s restoring in share %(share).",
+                                  "%(backup)s restoring in share %(share)s.",
                                   {'share': share_id, 'backup': backup_id})
                     self.db.share_update(
                         context, share_id,
