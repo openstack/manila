@@ -92,3 +92,76 @@ class BarbicanUserAppCredsTestCase(test.TestCase):
             self.app_creds.delete_application_credentials,
             self.context,
             None)
+
+    @mock.patch('manila.keymgr.barbican.get_secret_href')
+    @mock.patch('keystoneclient.v3.client.Client')
+    @mock.patch('keystoneauth1.session.Session')
+    @mock.patch('keystoneauth1.loading.load_auth_from_conf_options')
+    def test_create_application_credentials_success(self, mock_auth,
+                                                    mock_session,
+                                                    mock_ks_client,
+                                                    mock_get_href):
+        fake_secret = 'fake-secret-uuid'
+        fake_href = 'http://barbican:9311/v1/secrets/' + fake_secret
+        fake_cred = mock.Mock()
+
+        mock_get_href.return_value = fake_href
+        mock_client_instance = mock.Mock()
+        mock_client_instance.session.get_user_id.return_value = 'fake-user-id'
+        mock_client_instance.application_credentials.create.return_value = (
+            fake_cred)
+        mock_ks_client.return_value = mock_client_instance
+
+        result = self.app_creds.create_application_credentials(
+            self.context, fake_secret)
+
+        self.assertEqual(fake_cred, result)
+        mock_get_href.assert_called_once_with(
+            self.context, fake_secret, conf=CONF)
+        mock_creds = mock_client_instance.application_credentials
+        mock_creds.create.assert_called_once()
+        args, kwargs = mock_creds.create.call_args
+        access_rules = kwargs['access_rules']
+        self.assertEqual('/v1/secrets/' + fake_secret,
+                         access_rules[0]['path'])
+        self.assertEqual('/v1/secrets/' + fake_secret + '/payload',
+                         access_rules[1]['path'])
+
+    @mock.patch('manila.keymgr.barbican.get_secret_href')
+    @mock.patch('keystoneclient.v3.client.Client')
+    @mock.patch('keystoneauth1.session.Session')
+    @mock.patch('keystoneauth1.loading.load_auth_from_conf_options')
+    def test_create_application_credentials_href_error(
+            self, mock_auth, mock_session, mock_ks_client,
+            mock_get_href):
+        mock_get_href.side_effect = exception.ManilaBarbicanACLError()
+        mock_ks_client.return_value = mock.Mock()
+
+        self.assertRaises(
+            exception.ManilaBarbicanAppCredsError,
+            self.app_creds.create_application_credentials,
+            self.context,
+            'fake-secret-uuid')
+
+    @mock.patch('manila.keymgr.barbican.get_secret_href')
+    @mock.patch('keystoneclient.v3.client.Client')
+    @mock.patch('keystoneauth1.session.Session')
+    @mock.patch('keystoneauth1.loading.load_auth_from_conf_options')
+    def test_create_application_credentials_exception(self, mock_auth,
+                                                      mock_session,
+                                                      mock_ks_client,
+                                                      mock_get_href):
+        fake_secret = 'fake-secret-uuid'
+        fake_href = 'http://barbican:9311/v1/secrets/' + fake_secret
+        mock_get_href.return_value = fake_href
+
+        mock_client_instance = mock.Mock()
+        mock_client_instance.application_credentials.create.side_effect = (
+            Exception("create failed"))
+        mock_ks_client.return_value = mock_client_instance
+
+        self.assertRaises(
+            exception.ManilaBarbicanAppCredsError,
+            self.app_creds.create_application_credentials,
+            self.context,
+            fake_secret)
