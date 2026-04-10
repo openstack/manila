@@ -244,6 +244,20 @@ def create_share_type(**kwargs):
     return _create_db_row(db.share_type_create, share_type, kwargs)
 
 
+def create_qos_type(**kwargs):
+    """Create a qos type object"""
+
+    qos_type = {
+        'name': 'fake_qos_type',
+        'specs': {
+            'key1': 'value1',
+            'key2': 'value2',
+        },
+    }
+
+    return _create_db_row(db.qos_type_create, qos_type, kwargs)
+
+
 def create_share_group_type(**kwargs):
     """Create a share group type object"""
 
