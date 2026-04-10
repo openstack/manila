@@ -44,6 +44,11 @@ class TestClient(test.TestCase):
     CLONE_ID = "64560f05-e677-ec2a-7fcf-1a9efb93188b"
     CLONE_NAME = "powerstore-nfs-share-snap-clone"
     CLUSTER_ID = "0"
+    QOS_RULE_NAME = "manila_qos_rule_gold"
+    QOS_RULE_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    QOS_POLICY_NAME = "manila_qos_policy_gold"
+    QOS_POLICY_ID = "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+    QOS_MAX_BW = 100
 
     CLIENT_OPTIONS = {
         "rest_ip": REST_IP,
@@ -763,3 +768,240 @@ class TestClient(test.TestCase):
             self._mock_url, filesystem_id
         )
         m.get(url, status_code=400)
+
+    # QoS client tests
+
+    @requests_mock.mock()
+    def test_create_file_io_limit_rule(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_create_file_io_limit_rule_response(
+            m, {"id": self.QOS_RULE_ID}
+        )
+        rule_id = self.client.create_file_io_limit_rule(
+            self.QOS_RULE_NAME, self.QOS_MAX_BW)
+        self.assertEqual(rule_id, self.QOS_RULE_ID)
+
+    def _add_create_file_io_limit_rule_response(self, m, json_str):
+        url = "{0}/file_io_limit_rule".format(self._mock_url)
+        m.post(url, status_code=201, json=json_str)
+
+    @requests_mock.mock()
+    def test_create_file_io_limit_rule_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_create_file_io_limit_rule_response_failure(m)
+        rule_id = self.client.create_file_io_limit_rule(
+            self.QOS_RULE_NAME, self.QOS_MAX_BW)
+        self.assertIsNone(rule_id)
+
+    def _add_create_file_io_limit_rule_response_failure(self, m):
+        url = "{0}/file_io_limit_rule".format(self._mock_url)
+        m.post(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_get_file_io_limit_rule_by_name(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_file_io_limit_rule_by_name_response(
+            m, self.QOS_RULE_NAME,
+            [{
+                "id": self.QOS_RULE_ID,
+                "name": self.QOS_RULE_NAME,
+                "max_bw": self.QOS_MAX_BW
+            }]
+        )
+        rule = self.client.get_file_io_limit_rule_by_name(self.QOS_RULE_NAME)
+        self.assertEqual(rule['id'], self.QOS_RULE_ID)
+        self.assertEqual(rule['name'], self.QOS_RULE_NAME)
+        self.assertEqual(rule['max_bw'], self.QOS_MAX_BW)
+
+    def _add_get_file_io_limit_rule_by_name_response(self, m, name, json_str):
+        url = "{0}/file_io_limit_rule?name=eq.{1}".format(
+            self._mock_url, name)
+        m.get(url, status_code=200, json=json_str)
+
+    @requests_mock.mock()
+    def test_get_file_io_limit_rule_by_name_not_found(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_file_io_limit_rule_by_name_empty_response(
+            m, self.QOS_RULE_NAME)
+        rule = self.client.get_file_io_limit_rule_by_name(self.QOS_RULE_NAME)
+        self.assertIsNone(rule)
+
+    def _add_get_file_io_limit_rule_by_name_empty_response(self, m, name):
+        url = "{0}/file_io_limit_rule?name=eq.{1}".format(
+            self._mock_url, name)
+        m.get(url, status_code=200, json=[])
+
+    @requests_mock.mock()
+    def test_modify_file_io_limit_rule(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_modify_file_io_limit_rule_response(m, self.QOS_RULE_ID)
+        result = self.client.modify_file_io_limit_rule(
+            self.QOS_RULE_ID, 200)
+        self.assertTrue(result)
+
+    def _add_modify_file_io_limit_rule_response(self, m, rule_id):
+        url = "{0}/file_io_limit_rule/{1}".format(self._mock_url, rule_id)
+        m.patch(url, status_code=204)
+
+    @requests_mock.mock()
+    def test_modify_file_io_limit_rule_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_modify_file_io_limit_rule_response_failure(
+            m, self.QOS_RULE_ID)
+        result = self.client.modify_file_io_limit_rule(
+            self.QOS_RULE_ID, 200)
+        self.assertFalse(result)
+
+    def _add_modify_file_io_limit_rule_response_failure(self, m, rule_id):
+        url = "{0}/file_io_limit_rule/{1}".format(self._mock_url, rule_id)
+        m.patch(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_delete_file_io_limit_rule(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_delete_file_io_limit_rule_response(m, self.QOS_RULE_ID)
+        result = self.client.delete_file_io_limit_rule(self.QOS_RULE_ID)
+        self.assertTrue(result)
+
+    def _add_delete_file_io_limit_rule_response(self, m, rule_id):
+        url = "{0}/file_io_limit_rule/{1}".format(self._mock_url, rule_id)
+        m.delete(url, status_code=204)
+
+    @requests_mock.mock()
+    def test_delete_file_io_limit_rule_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_delete_file_io_limit_rule_response_failure(
+            m, self.QOS_RULE_ID)
+        result = self.client.delete_file_io_limit_rule(self.QOS_RULE_ID)
+        self.assertFalse(result)
+
+    def _add_delete_file_io_limit_rule_response_failure(self, m, rule_id):
+        url = "{0}/file_io_limit_rule/{1}".format(self._mock_url, rule_id)
+        m.delete(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_create_file_performance_policy(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_create_file_performance_policy_response(
+            m, {"id": self.QOS_POLICY_ID}
+        )
+        policy_id = self.client.create_file_performance_policy(
+            self.QOS_POLICY_NAME, self.QOS_RULE_ID)
+        self.assertEqual(policy_id, self.QOS_POLICY_ID)
+
+    def _add_create_file_performance_policy_response(self, m, json_str):
+        url = "{0}/policy".format(self._mock_url)
+        m.post(url, status_code=201, json=json_str)
+
+    @requests_mock.mock()
+    def test_create_file_performance_policy_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_create_file_performance_policy_response_failure(m)
+        policy_id = self.client.create_file_performance_policy(
+            self.QOS_POLICY_NAME, self.QOS_RULE_ID)
+        self.assertIsNone(policy_id)
+
+    def _add_create_file_performance_policy_response_failure(self, m):
+        url = "{0}/policy".format(self._mock_url)
+        m.post(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_get_policy_by_name(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_policy_by_name_response(
+            m, self.QOS_POLICY_NAME,
+            [{"id": self.QOS_POLICY_ID, "name": self.QOS_POLICY_NAME}]
+        )
+        policy = self.client.get_policy_by_name(self.QOS_POLICY_NAME)
+        self.assertEqual(policy['id'], self.QOS_POLICY_ID)
+
+    def _add_get_policy_by_name_response(self, m, name, json_str):
+        url = "{0}/policy?name=eq.{1}".format(self._mock_url, name)
+        m.get(url, status_code=200, json=json_str)
+
+    @requests_mock.mock()
+    def test_get_policy_by_name_not_found(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_policy_by_name_empty_response(
+            m, self.QOS_POLICY_NAME)
+        policy = self.client.get_policy_by_name(self.QOS_POLICY_NAME)
+        self.assertIsNone(policy)
+
+    def _add_get_policy_by_name_empty_response(self, m, name):
+        url = "{0}/policy?name=eq.{1}".format(self._mock_url, name)
+        m.get(url, status_code=200, json=[])
+
+    @requests_mock.mock()
+    def test_get_policy_filesystems(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_policy_filesystems_response(
+            m, self.QOS_POLICY_ID,
+            {"file_systems_with_qos": [{"id": self.FILESYSTEM_ID}]}
+        )
+        fs_list = self.client.get_policy_filesystems(self.QOS_POLICY_ID)
+        self.assertEqual(len(fs_list), 1)
+        self.assertEqual(fs_list[0]['id'], self.FILESYSTEM_ID)
+
+    def _add_get_policy_filesystems_response(self, m, policy_id, json_str):
+        url = "{0}/policy/{1}?select=file_systems_with_qos(id)".format(
+            self._mock_url, policy_id)
+        m.get(url, status_code=200, json=json_str)
+
+    @requests_mock.mock()
+    def test_get_policy_filesystems_empty(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_policy_filesystems_response(
+            m, self.QOS_POLICY_ID,
+            {"file_systems_with_qos": []}
+        )
+        fs_list = self.client.get_policy_filesystems(self.QOS_POLICY_ID)
+        self.assertEqual(len(fs_list), 0)
+
+    @requests_mock.mock()
+    def test_delete_policy(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_delete_policy_response(m, self.QOS_POLICY_ID)
+        result = self.client.delete_policy(self.QOS_POLICY_ID)
+        self.assertTrue(result)
+
+    def _add_delete_policy_response(self, m, policy_id):
+        url = "{0}/policy/{1}".format(self._mock_url, policy_id)
+        m.delete(url, status_code=204)
+
+    @requests_mock.mock()
+    def test_delete_policy_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_delete_policy_response_failure(m, self.QOS_POLICY_ID)
+        result = self.client.delete_policy(self.QOS_POLICY_ID)
+        self.assertFalse(result)
+
+    def _add_delete_policy_response_failure(self, m, policy_id):
+        url = "{0}/policy/{1}".format(self._mock_url, policy_id)
+        m.delete(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_set_filesystem_performance_policy(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_set_filesystem_performance_policy_response(
+            m, self.FILESYSTEM_ID)
+        result = self.client.set_filesystem_performance_policy(
+            self.FILESYSTEM_ID, self.QOS_POLICY_ID)
+        self.assertTrue(result)
+
+    def _add_set_filesystem_performance_policy_response(self, m, fs_id):
+        url = "{0}/file_system/{1}".format(self._mock_url, fs_id)
+        m.patch(url, status_code=204)
+
+    @requests_mock.mock()
+    def test_set_filesystem_performance_policy_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_set_filesystem_performance_policy_response_failure(
+            m, self.FILESYSTEM_ID)
+        result = self.client.set_filesystem_performance_policy(
+            self.FILESYSTEM_ID, self.QOS_POLICY_ID)
+        self.assertFalse(result)
+
+    def _add_set_filesystem_performance_policy_response_failure(
+            self, m, fs_id):
+        url = "{0}/file_system/{1}".format(self._mock_url, fs_id)
+        m.patch(url, status_code=400)

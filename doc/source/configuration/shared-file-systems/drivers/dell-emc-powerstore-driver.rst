@@ -196,6 +196,62 @@ documentation:
    * Unmanage does not delete the share on the backend; existing clients
      remain connected.
 
+QoS support
+-----------
+
+The PowerStore driver supports QoS (Quality of Service) to enforce bandwidth
+limits on file shares. This feature requires PowerStore API version 4.1.0.0
+or later.
+
+The driver uses Manila's QoS type framework. The supported QoS spec is:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - **Spec Key**
+     - **Description**
+   * - ``max_bw``
+     - Maximum bandwidth in MB/s. Integer value from 1 to 1000000.
+
+To use QoS with PowerStore shares:
+
+#. Create a QoS type:
+
+    .. code-block:: console
+
+        $ openstack share qos type create powerstore_qos max_bw:500
+
+#. Associate the QoS type with a share type via the ``default_qos_type``
+   extra-spec:
+
+    .. code-block:: console
+
+        $ openstack share type set ${share_type_name} \
+            --extra-specs default_qos_type=powerstore_qos
+
+#. Create a share using that share type. The driver will automatically
+   create a file I/O limit rule and performance policy on the PowerStore
+   array and apply it to the filesystem.
+
+When a share is deleted, the driver cleans up the associated performance
+policy and I/O limit rule if no other filesystems reference them.
+
+Updating QoS type specs
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+If an administrator updates the QoS type specs (e.g., changes ``max_bw``
+from 500 to 1000), the updated values are applied on the PowerStore array
+the next time a share is created with that QoS type. Because all shares
+with the same QoS type share a single file I/O limit rule on the array,
+the update takes effect for all existing shares as well.
+
+.. note::
+
+   The update is not applied immediately when the QoS type spec is
+   modified. It is applied when the next share using that QoS type is
+   created. This is consistent with the behavior of other Manila drivers.
+
 
 Manage and unmanage snapshots
 -----------------------------
@@ -228,3 +284,4 @@ The PowerStore driver has the following restrictions.
 - Only user access type is supported for CIFS shares.
 - Only DHSS=False is supported.
 - Modification of CIFS share access is supported in PowerStore 3.5 and above.
+- QoS support requires PowerStore API version 4.1.0.0 or later.

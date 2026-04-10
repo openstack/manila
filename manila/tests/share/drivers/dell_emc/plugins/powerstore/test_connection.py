@@ -21,6 +21,7 @@ from oslo_log import log
 from oslo_utils import units
 
 from manila.common import constants as const
+from manila import coordination
 from manila import exception
 from manila.share.drivers.dell_emc.plugins.powerstore import connection
 from manila import test
@@ -1016,6 +1017,739 @@ class PowerStoreTest(test.TestCase):
     def test_get_default_filter_function(self):
         filter = self.storage_connection.get_default_filter_function()
         self.assertEqual(filter, "share.size >= 3 or share.size == 0")
+
+    # QoS tests
+
+    def test_qos_type_support_flag(self):
+        self.assertTrue(self.storage_connection.qos_type_support)
+
+    def test_generate_qos_rule_name(self):
+        name = self.storage_connection._generate_qos_rule_name(
+            "fake-qos-type-id")
+        self.assertEqual(name, "manila_qos_rule_fake-qos-type-id")
+
+    def test_generate_qos_policy_name(self):
+        name = self.storage_connection._generate_qos_policy_name(
+            "fake-qos-type-id")
+        self.assertEqual(name, "manila_qos_policy_fake-qos-type-id")
+
+    def test_validate_qos_specs_valid(self):
+        specs = {'max_bw': '100'}
+        # Should not raise
+        self.storage_connection._validate_qos_specs(specs)
+
+    def test_validate_qos_specs_empty(self):
+        # Should not raise for empty specs
+        self.storage_connection._validate_qos_specs({})
+
+    def test_validate_qos_specs_missing_max_bw(self):
+        specs = {'some_key': 'value'}
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            specs
+        )
+
+    def test_validate_qos_specs_invalid_max_bw_not_integer(self):
+        specs = {'max_bw': 'abc'}
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            specs
+        )
+
+    def test_validate_qos_specs_max_bw_too_low(self):
+        specs = {'max_bw': '0'}
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            specs
+        )
+
+    def test_validate_qos_specs_max_bw_too_high(self):
+        specs = {'max_bw': '1000001'}
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            specs
+        )
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_new(self, mock_get_lock):
+        """Test creating new rule and policy when none exist."""
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            return_value = "rule-id-123"
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_performance_policy.\
+            return_value = "policy-id-456"
+
+        policy_id = self.storage_connection._get_or_create_qos_policy(
+            "fake-qos-type-id", 100)
+
+        self.assertEqual(policy_id, "policy-id-456")
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            assert_called_with("manila_qos_rule_fake-qos-type-id", 100)
+        self._mock_powerstore_client.create_file_performance_policy.\
+            assert_called_with("manila_qos_policy_fake-qos-type-id",
+                               "rule-id-123")
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_existing(self, mock_get_lock):
+        """Test reusing existing rule and policy."""
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123', 'max_bw': 100}
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+
+        policy_id = self.storage_connection._get_or_create_qos_policy(
+            "fake-qos-type-id", 100)
+
+        self.assertEqual(policy_id, "policy-id-456")
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            assert_not_called()
+        self._mock_powerstore_client.modify_file_io_limit_rule.\
+            assert_not_called()
+        self._mock_powerstore_client.create_file_performance_policy.\
+            assert_not_called()
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_update_rule(self, mock_get_lock):
+        """Test updating existing rule when max_bw changed."""
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123', 'max_bw': 50}
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+
+        policy_id = self.storage_connection._get_or_create_qos_policy(
+            "fake-qos-type-id", 100)
+
+        self.assertEqual(policy_id, "policy-id-456")
+        self._mock_powerstore_client.modify_file_io_limit_rule.\
+            assert_called_with('rule-id-123', 100)
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_rule_creation_failure(
+            self, mock_get_lock):
+        """Test failure when rule creation fails."""
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            return_value = None
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._get_or_create_qos_policy,
+            "fake-qos-type-id", 100
+        )
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_policy_creation_failure(
+            self, mock_get_lock):
+        """Test failure when policy creation fails."""
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            return_value = "rule-id-123"
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_performance_policy.\
+            return_value = None
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._get_or_create_qos_policy,
+            "fake-qos-type-id", 100
+        )
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_create_share_nfs_with_qos(self, mock_qos_specs):
+        """Test creating NFS share with QoS applied."""
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.create_filesystem.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.create_nfs_export.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+        # QoS mocks
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            return_value = "rule-id-123"
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_performance_policy.\
+            return_value = "policy-id-456"
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            return_value = True
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "size": self.SHARE_SIZE_GB,
+                 "qos_type_id": "fake-qos-type-id"}
+        locations = self.storage_connection.create_share(
+            self.mock_context, share, None)
+
+        self.assertEqual(len(locations), 1)
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            assert_called_with(self.FILESYSTEM_ID, "policy-id-456")
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_create_share_qos_apply_failure(self, mock_qos_specs):
+        """Test share creation fails when QoS policy cannot be applied.
+
+        Verifies that the filesystem is cleaned up when QoS application
+        fails during share creation.
+        """
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.create_filesystem.return_value = (
+            self.FILESYSTEM_ID
+        )
+        # QoS mocks - policy creation succeeds but apply fails
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123', 'max_bw': 100}
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            return_value = False
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "size": self.SHARE_SIZE_GB,
+                 "qos_type_id": "fake-qos-type-id"}
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_share,
+            self.mock_context, share, None
+        )
+        # Verify filesystem is cleaned up on QoS failure
+        self._mock_powerstore_client.delete_filesystem.assert_called_with(
+            self.FILESYSTEM_ID)
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_delete_share_with_qos_cleanup(self, mock_qos_specs):
+        """Test share deletion triggers QoS cleanup when unused."""
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.delete_filesystem.return_value = True
+        # QoS cleanup mocks - policy is no longer used
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.get_policy_filesystems.\
+            return_value = []
+        self._mock_powerstore_client.delete_policy.return_value = True
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123'}
+        self._mock_powerstore_client.delete_file_io_limit_rule.\
+            return_value = True
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+        self.storage_connection.delete_share(
+            self.mock_context, share, None)
+
+        self._mock_powerstore_client.delete_policy.assert_called_with(
+            'policy-id-456')
+        self._mock_powerstore_client.delete_file_io_limit_rule.\
+            assert_called_with('rule-id-123')
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_delete_share_qos_still_in_use(self, mock_qos_specs):
+        """Test share deletion skips QoS cleanup when still in use."""
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.delete_filesystem.return_value = True
+        # QoS cleanup mocks - policy is still used by another filesystem
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.get_policy_filesystems.\
+            return_value = [{'id': 'other-fs-id'}]
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+        self.storage_connection.delete_share(
+            self.mock_context, share, None)
+
+        self._mock_powerstore_client.delete_policy.assert_not_called()
+        self._mock_powerstore_client.delete_file_io_limit_rule.\
+            assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_create_share_from_snapshot_with_qos(self, mock_qos_specs):
+        """Test clone from snapshot with QoS applied."""
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+        self._mock_powerstore_client.clone_snapshot.return_value = (
+            self.CLONE_ID
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.create_nfs_export.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+        # QoS mocks
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123', 'max_bw': 100}
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            return_value = True
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "size": self.SHARE_SIZE_GB,
+                 "qos_type_id": "fake-qos-type-id"}
+        snapshot = {"name": self.SNAPSHOT_NAME,
+                    "size": self.SHARE_SIZE_GB}
+
+        locations = self.storage_connection.create_share_from_snapshot(
+            self.mock_context, share, snapshot)
+
+        self.assertEqual(len(locations), 1)
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            assert_called_with(self.CLONE_ID, "policy-id-456")
+
+    def test_update_share_stats_qos_support(self):
+        """Test that stats report qos_type_support."""
+        self._mock_powerstore_client.get_cluster_id.return_value = "0"
+        self._mock_powerstore_client.retreive_cluster_capacity_metrics.\
+            return_value = (100 * units.Gi, 50 * units.Gi)
+
+        stats_dict = {}
+        self.storage_connection.update_share_stats(stats_dict)
+
+        self.assertTrue(stats_dict['qos_type_support'])
+
+    # QoS Validation Tests (U-001 to U-015)
+
+    def test_validate_qos_specs_valid_bw_only(self):
+        """Test QoS spec validation with only max_bw."""
+        qos_specs = {"max_bw": "500"}
+
+        # Should not raise any exception
+        self.storage_connection._validate_qos_specs(qos_specs)
+
+        # Validation should pass (no exception raised)
+
+    def test_validate_qos_specs_empty_specs(self):
+        """Test QoS spec validation with empty specs."""
+        qos_specs = {}
+
+        # Should return None for empty specs (no exception raised)
+        result = self.storage_connection._validate_qos_specs(qos_specs)
+        self.assertIsNone(result)
+
+    def test_validate_qos_specs_negative_bw(self):
+        """Test QoS spec validation with negative max_bw."""
+        qos_specs = {"max_bw": "-1"}
+        # Should raise InvalidQosTypeSpec
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            qos_specs
+        )
+
+    def test_validate_qos_specs_zero_bw(self):
+        """Test QoS spec validation with zero max_bw."""
+        qos_specs = {"max_bw": "0"}
+        # Should raise InvalidQosTypeSpec
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            qos_specs
+        )
+
+    def test_validate_qos_specs_non_numeric_bw(self):
+        """Test QoS spec validation with non-numeric max_bw."""
+        qos_specs = {"max_bw": "invalid"}
+        # Should raise InvalidQosTypeSpec
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            qos_specs
+        )
+
+    def test_validate_qos_specs_unsupported_key(self):
+        """Test QoS spec validation with unsupported key."""
+        qos_specs = {"max_bw": "500", "max_iops": "10000"}
+        # Should raise InvalidQosTypeSpec
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            qos_specs
+        )
+
+    def test_validate_qos_specs_out_of_range_bw_low(self):
+        """Test QoS spec validation with max_bw below range."""
+        qos_specs = {"max_bw": "0"}
+        # Should raise InvalidQosTypeSpec
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            qos_specs
+        )
+
+    def test_validate_qos_specs_out_of_range_bw_high(self):
+        """Test QoS spec validation with max_bw above range."""
+        qos_specs = {"max_bw": "1000001"}
+        # Should raise InvalidQosTypeSpec
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            qos_specs
+        )
+
+    # ----------------------------------------------------------------
+    # Additional QoS tests: edge cases, race conditions, cleanup safety
+    # ----------------------------------------------------------------
+
+    def test_validate_qos_specs_none_input(self):
+        """Test QoS spec validation with None input."""
+        result = self.storage_connection._validate_qos_specs(None)
+        self.assertIsNone(result)
+
+    def test_validate_qos_specs_boundary_min(self):
+        """Test QoS spec validation with minimum valid max_bw (1)."""
+        specs = {'max_bw': '1'}
+        # Should not raise
+        self.storage_connection._validate_qos_specs(specs)
+
+    def test_validate_qos_specs_boundary_max(self):
+        """Test QoS spec validation with maximum valid max_bw (1000000)."""
+        specs = {'max_bw': '1000000'}
+        # Should not raise
+        self.storage_connection._validate_qos_specs(specs)
+
+    def test_validate_qos_specs_float_string(self):
+        """Test QoS spec validation with float string max_bw."""
+        specs = {'max_bw': '100.5'}
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            specs
+        )
+
+    def test_validate_qos_specs_empty_string_max_bw(self):
+        """Test QoS spec validation with empty string max_bw."""
+        specs = {'max_bw': ''}
+        self.assertRaises(
+            exception.InvalidQosTypeSpec,
+            self.storage_connection._validate_qos_specs,
+            specs
+        )
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_lock_key_per_qos_type(
+            self, mock_get_lock):
+        """Test that the lock name is keyed on qos_type_id.
+
+        Each distinct QoS type must acquire a distinct lock so that
+        concurrent creates for different types don't block each other,
+        while concurrent creates for the *same* type are serialised.
+        """
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            return_value = "rule-id-123"
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_performance_policy.\
+            return_value = "policy-id-456"
+
+        self.storage_connection._get_or_create_qos_policy(
+            "fake-qos-type-id", 100)
+
+        expected_lock_name = 'powerstore-qos-fake-qos-type-id'
+        mock_get_lock.assert_called_once_with(expected_lock_name)
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_cleanup_qos_lock_key_per_qos_type(self, mock_get_lock):
+        """Test that _cleanup_qos_on_delete uses the same lock key.
+
+        The create and delete paths must share the same lock name so that
+        a delete cannot race a concurrent create for the same QoS type.
+        """
+        with mock.patch('manila.share.qos_types.get_specs_from_share',
+                        return_value={'max_bw': '100'}):
+            self._mock_powerstore_client.get_policy_by_name.\
+                return_value = {'id': 'policy-id-456'}
+            self._mock_powerstore_client.get_policy_filesystems.\
+                return_value = []
+            self._mock_powerstore_client.delete_policy.return_value = True
+            self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+                return_value = {'id': 'rule-id-123'}
+            self._mock_powerstore_client.delete_file_io_limit_rule.\
+                return_value = True
+
+            share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                     "qos_type_id": "fake-qos-type-id"}
+            self.storage_connection._cleanup_qos_on_delete(share)
+
+        expected_lock_name = 'powerstore-qos-fake-qos-type-id'
+        mock_get_lock.assert_called_once_with(expected_lock_name)
+
+    @mock.patch.object(coordination.LOCK_COORDINATOR, 'get_lock')
+    def test_get_or_create_qos_policy_modify_rule_failure(
+            self, mock_get_lock):
+        """Test failure when modifying existing rule fails."""
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123', 'max_bw': 50}
+        self._mock_powerstore_client.modify_file_io_limit_rule.\
+            return_value = False
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._get_or_create_qos_policy,
+            "fake-qos-type-id", 100
+        )
+        self._mock_powerstore_client.modify_file_io_limit_rule.\
+            assert_called_with('rule-id-123', 100)
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        side_effect=Exception("QoS type not found")
+    )
+    def test_cleanup_qos_get_specs_exception(self, mock_qos_specs):
+        """Test cleanup is safe when get_specs_from_share raises."""
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+
+        # Should not raise - cleanup should be exception-safe
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+        # Backend cleanup methods should not be called
+        self._mock_powerstore_client.get_policy_by_name.assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_cleanup_qos_backend_exception(self, mock_qos_specs):
+        """Test cleanup is safe when backend call raises."""
+        self._mock_powerstore_client.get_policy_by_name.\
+            side_effect = Exception("Connection error")
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+
+        # Should not raise - cleanup should be exception-safe
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={}
+    )
+    def test_cleanup_qos_no_qos_specs(self, mock_qos_specs):
+        """Test cleanup returns early when no QoS specs."""
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS"}
+
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+        self._mock_powerstore_client.get_policy_by_name.assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_cleanup_qos_no_qos_type_id(self, mock_qos_specs):
+        """Test cleanup returns early when share has no qos_type_id."""
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS"}
+
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+        self._mock_powerstore_client.get_policy_by_name.assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_cleanup_qos_policy_not_found(self, mock_qos_specs):
+        """Test cleanup returns early when policy doesn't exist."""
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = None
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+        self._mock_powerstore_client.delete_policy.assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_cleanup_qos_rule_not_found_after_policy_delete(
+            self, mock_qos_specs):
+        """Test cleanup handles missing rule after policy deletion."""
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.get_policy_filesystems.\
+            return_value = []
+        self._mock_powerstore_client.delete_policy.return_value = True
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+        self._mock_powerstore_client.delete_policy.assert_called_with(
+            'policy-id-456')
+        self._mock_powerstore_client.delete_file_io_limit_rule.\
+            assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_cleanup_qos_policy_delete_failure(self, mock_qos_specs):
+        """Test cleanup stops rule deletion when policy delete fails."""
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.get_policy_filesystems.\
+            return_value = []
+        self._mock_powerstore_client.delete_policy.return_value = False
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+
+        self.storage_connection._cleanup_qos_on_delete(share)
+
+        self._mock_powerstore_client.delete_file_io_limit_rule.\
+            assert_not_called()
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_create_share_cifs_with_qos(self, mock_qos_specs):
+        """Test creating CIFS share with QoS applied."""
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.create_filesystem.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.create_smb_share.return_value = (
+            self.SMB_SHARE_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+        self._mock_powerstore_client.get_nas_server_smb_netbios.\
+            return_value = "OPENSTACK"
+        # QoS mocks
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_io_limit_rule.\
+            return_value = "rule-id-123"
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = None
+        self._mock_powerstore_client.create_file_performance_policy.\
+            return_value = "policy-id-456"
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            return_value = True
+
+        share = {"name": self.SHARE_NAME, "share_proto": "CIFS",
+                 "size": self.SHARE_SIZE_GB,
+                 "qos_type_id": "fake-qos-type-id"}
+        locations = self.storage_connection.create_share(
+            self.mock_context, share, None)
+
+        self.assertEqual(len(locations), 1)
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            assert_called_with(self.FILESYSTEM_ID, "policy-id-456")
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        return_value={'max_bw': '100'}
+    )
+    def test_create_share_from_snapshot_qos_failure_cleans_filesystem(
+            self, mock_qos_specs):
+        """Test snapshot clone cleans filesystem on QoS failure."""
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+        self._mock_powerstore_client.clone_snapshot.return_value = (
+            self.CLONE_ID
+        )
+        # QoS mocks - policy creation succeeds but apply fails
+        self._mock_powerstore_client.get_file_io_limit_rule_by_name.\
+            return_value = {'id': 'rule-id-123', 'max_bw': 100}
+        self._mock_powerstore_client.get_policy_by_name.\
+            return_value = {'id': 'policy-id-456'}
+        self._mock_powerstore_client.set_filesystem_performance_policy.\
+            return_value = False
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "size": self.SHARE_SIZE_GB,
+                 "qos_type_id": "fake-qos-type-id"}
+        snapshot = {"name": self.SNAPSHOT_NAME,
+                    "size": self.SHARE_SIZE_GB}
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_share_from_snapshot,
+            self.mock_context, share, snapshot, None
+        )
+        # Verify cloned filesystem is cleaned up on QoS failure
+        self._mock_powerstore_client.delete_filesystem.assert_called_with(
+            self.CLONE_ID)
+
+    @mock.patch(
+        "manila.share.qos_types.get_specs_from_share",
+        side_effect=Exception("QoS type deleted")
+    )
+    def test_delete_share_with_qos_cleanup_exception_safe(
+            self, mock_qos_specs):
+        """Test share deletion succeeds even when QoS cleanup raises."""
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+        self._mock_powerstore_client.delete_filesystem.return_value = True
+
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS",
+                 "qos_type_id": "fake-qos-type-id"}
+
+        # Should not raise - share deletion must succeed despite
+        # QoS cleanup failure
+        self.storage_connection.delete_share(
+            self.mock_context, share, None)
+
+        self._mock_powerstore_client.delete_filesystem.assert_called_with(
+            self.FILESYSTEM_ID)
 
     def test_manage_existing_nfs_success(self):
         original_name = "fs_external_data"

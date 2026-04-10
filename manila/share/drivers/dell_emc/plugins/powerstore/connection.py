@@ -23,21 +23,29 @@ from oslo_log import log
 from oslo_utils import units
 
 from manila.common import constants as const
+from manila import coordination
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base as driver
 from manila.share.drivers.dell_emc.plugins.powerstore import client
+from manila.share import qos_types
 
 """Version history:
     1.0 - Initial version
     1.1 - Add support for manage/unmanage share
     1.2 - Add support for manage/unmanage snapshot
+    2.0 - Added QoS support
 """
-VERSION = "1.2"
+VERSION = "2.0"
 
 CONF = cfg.CONF
 
 LOG = log.getLogger(__name__)
+
+QOS_RULE_NAME_PREFIX = "manila_qos_rule"
+QOS_POLICY_NAME_PREFIX = "manila_qos_policy"
+QOS_MAX_BW_MIN = 1
+QOS_MAX_BW_MAX = 1000000
 
 POWERSTORE_OPTS = [
     cfg.StrOpt('dell_nas_backend_host',
@@ -87,6 +95,7 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         self.shrink_share_support = True
         self.manage_existing_support = True
         self.manage_existing_snapshot_support = True
+        self.qos_type_support = True
 
         # props from super class
         self.driver_handles_share_servers = False
@@ -165,6 +174,8 @@ class PowerStoreStorageConnection(driver.StorageConnection):
 
         In PowerStore, an export (share) belongs to a filesystem.
         This function creates a filesystem and an export.
+        If the share has a QoS type, a QoS policy is applied to the
+        filesystem.
         """
         share_name = share['name']
         size_in_bytes = share['size'] * units.Gi
@@ -175,11 +186,20 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                                                       share_name,
                                                       size_in_bytes)
         if not filesystem_id:
-            message = {
+            message = (
                 _('The filesystem "%(export)s" was not created.') %
-                {'export': share_name}}
+                {'export': share_name})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
+        # apply QoS policy if defined
+        try:
+            self._apply_qos_to_filesystem(share, filesystem_id)
+        except Exception:
+            LOG.error("Failed to apply QoS policy to filesystem "
+                      "for share '%s'. Cleaning up filesystem.",
+                      share_name)
+            self.client.delete_filesystem(filesystem_id)
+            raise
         # create a share
         locations = self._create_share_NFS_CIFS(nas_server_id, filesystem_id,
                                                 share_name,
@@ -320,6 +340,8 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                     {'export': share['name']})
                 LOG.error(message)
                 raise exception.ShareBackendException(msg=message)
+            # Clean up QoS policy and rule if no longer used
+            self._cleanup_qos_on_delete(share)
 
     def extend_share(self, share, new_size, share_server):
         """Is called to extend a share."""
@@ -489,6 +511,213 @@ class PowerStoreStorageConnection(driver.StorageConnection):
 
         return {"size": snapshot_size, "provider_location": provider_location}
 
+    # QoS methods
+
+    @staticmethod
+    def _generate_qos_rule_name(qos_type_id):
+        """Generates the name for a file_io_limit_rule on PowerStore."""
+        return "%s_%s" % (QOS_RULE_NAME_PREFIX, qos_type_id)
+
+    @staticmethod
+    def _generate_qos_policy_name(qos_type_id):
+        """Generates the name for a File_Performance policy on PowerStore."""
+        return "%s_%s" % (QOS_POLICY_NAME_PREFIX, qos_type_id)
+
+    def _validate_qos_specs(self, qos_specs):
+        """Validates that QoS specs contain valid max_bw value.
+
+        :param qos_specs: dict of QoS specs from the QoS type
+        :raises: InvalidQosTypeSpec if specs are invalid
+        """
+        if not qos_specs:
+            return
+
+        max_bw = qos_specs.get('max_bw')
+        if max_bw is None:
+            message = _("QoS spec 'max_bw' is required for "
+                        "PowerStore driver.")
+            raise exception.InvalidQosTypeSpec(reason=message)
+
+        try:
+            max_bw = int(max_bw)
+        except (ValueError, TypeError):
+            message = _("QoS spec 'max_bw' must be a valid integer. "
+                        "Got: %s.") % max_bw
+            raise exception.InvalidQosTypeSpec(reason=message)
+
+        if max_bw < QOS_MAX_BW_MIN or max_bw > QOS_MAX_BW_MAX:
+            message = (_("QoS spec 'max_bw' must be between "
+                         "%(min)s and %(max)s MB/s. Got: %(val)s.") %
+                       {'min': QOS_MAX_BW_MIN,
+                        'max': QOS_MAX_BW_MAX,
+                        'val': max_bw})
+            raise exception.InvalidQosTypeSpec(reason=message)
+
+        unsupported_keys = set(qos_specs.keys()) - {'max_bw'}
+        if unsupported_keys:
+            message = (_("Unsupported QoS spec key(s) for PowerStore "
+                         "driver: %s. Only 'max_bw' is supported.") %
+                       ', '.join(unsupported_keys))
+            raise exception.InvalidQosTypeSpec(reason=message)
+
+    def _get_or_create_qos_policy(self, qos_type_id, max_bw):
+        """Gets or creates the QoS rule and policy on PowerStore.
+
+        Uses idempotent find-or-create pattern protected by a distributed
+        lock keyed on qos_type_id. Multiple shares with the same QoS type
+        share the same rule and policy; the lock serialises concurrent
+        share-create requests for the same type.
+
+        :param qos_type_id: ID of the Manila QoS type
+        :param max_bw: maximum bandwidth in MB/s
+        :return: ID of the File_Performance policy
+        """
+        rule_name = self._generate_qos_rule_name(qos_type_id)
+        policy_name = self._generate_qos_policy_name(qos_type_id)
+
+        @coordination.synchronized('powerstore-qos-{qos_type_id}')
+        def _locked_get_or_create(qos_type_id):
+            # Step 1: Find or create the file_io_limit_rule
+            existing_rule = (
+                self.client.get_file_io_limit_rule_by_name(rule_name))
+            if existing_rule:
+                _rule_id = existing_rule['id']
+                # Update max_bw if it changed
+                if existing_rule.get('max_bw') != max_bw:
+                    LOG.debug("Updating file_io_limit_rule %s with "
+                              "max_bw=%s.", rule_name, max_bw)
+                    if not self.client.modify_file_io_limit_rule(
+                            _rule_id, max_bw):
+                        message = (_("Failed to update file_io_limit_rule "
+                                     "'%(name)s'.") % {'name': rule_name})
+                        raise exception.ShareBackendException(msg=message)
+            else:
+                LOG.debug("Creating file_io_limit_rule %s with "
+                          "max_bw=%s.", rule_name, max_bw)
+                _rule_id = self.client.create_file_io_limit_rule(
+                    rule_name, max_bw)
+                if not _rule_id:
+                    message = (_("Failed to create file_io_limit_rule "
+                                 "'%(name)s'.") % {'name': rule_name})
+                    raise exception.ShareBackendException(msg=message)
+
+            # Step 2: Find or create the File_Performance policy
+            existing_policy = self.client.get_policy_by_name(policy_name)
+            if existing_policy:
+                _policy_id = existing_policy['id']
+            else:
+                LOG.debug("Creating File_Performance policy %s.",
+                          policy_name)
+                _policy_id = self.client.create_file_performance_policy(
+                    policy_name, _rule_id)
+                if not _policy_id:
+                    message = (_("Failed to create File_Performance "
+                                 "policy '%(name)s'.") %
+                               {'name': policy_name})
+                    raise exception.ShareBackendException(msg=message)
+
+            return _policy_id
+
+        return _locked_get_or_create(qos_type_id)
+
+    def _apply_qos_to_filesystem(self, share, filesystem_id):
+        """Applies QoS policy to a filesystem if QoS specs are defined.
+
+        :param share: share dict containing qos_type_id
+        :param filesystem_id: ID of the PowerStore filesystem
+        """
+        qos_specs = qos_types.get_specs_from_share(share)
+        if not qos_specs:
+            return
+
+        self._validate_qos_specs(qos_specs)
+        max_bw = int(qos_specs['max_bw'])
+        qos_type_id = share['qos_type_id']
+
+        LOG.info("Applying QoS policy for QoS type '%(qos_type_id)s' "
+                 "(max_bw=%(max_bw)s MB/s) to filesystem for "
+                 "share '%(share)s'.",
+                 {'qos_type_id': qos_type_id,
+                  'max_bw': max_bw,
+                  'share': share['name']})
+
+        policy_id = self._get_or_create_qos_policy(qos_type_id, max_bw)
+
+        is_success = self.client.set_filesystem_performance_policy(
+            filesystem_id, policy_id)
+        if not is_success:
+            message = (_("Failed to apply QoS policy to filesystem "
+                         "for share '%(share)s'.") %
+                       {'share': share['name']})
+            raise exception.ShareBackendException(msg=message)
+
+    def _cleanup_qos_on_delete(self, share):
+        """Cleans up QoS policy and rule if no longer used by any filesystem.
+
+        The check-then-delete sequence is protected by the same distributed
+        lock used in _get_or_create_qos_policy, preventing a concurrent
+        share-create from observing a partially-deleted policy mid-cleanup.
+
+        :param share: share dict containing qos_type_id
+        """
+        try:
+            qos_specs = qos_types.get_specs_from_share(share)
+        except Exception:
+            LOG.warning("Failed to retrieve QoS specs for share '%s'. "
+                        "Skipping QoS cleanup.", share.get('name'))
+            return
+
+        if not qos_specs:
+            return
+
+        qos_type_id = share.get('qos_type_id')
+        if not qos_type_id:
+            return
+
+        policy_name = self._generate_qos_policy_name(qos_type_id)
+        rule_name = self._generate_qos_rule_name(qos_type_id)
+
+        @coordination.synchronized('powerstore-qos-{qos_type_id}')
+        def _locked_cleanup(qos_type_id):
+            existing_policy = self.client.get_policy_by_name(policy_name)
+            if not existing_policy:
+                return
+
+            _policy_id = existing_policy['id']
+
+            # Check if any other filesystems are still using this policy
+            associated_fs = self.client.get_policy_filesystems(_policy_id)
+            if associated_fs:
+                LOG.debug("QoS policy '%s' still in use by %d "
+                          "filesystem(s). Skipping cleanup.",
+                          policy_name, len(associated_fs))
+                return
+
+            # No filesystems using this policy; safe to delete
+            LOG.info("Cleaning up unused QoS policy '%s' and rule '%s'.",
+                     policy_name, rule_name)
+
+            if not self.client.delete_policy(_policy_id):
+                LOG.warning("Failed to delete QoS policy '%s'.",
+                            policy_name)
+                return
+
+            existing_rule = (
+                self.client.get_file_io_limit_rule_by_name(rule_name))
+            if existing_rule:
+                if not self.client.delete_file_io_limit_rule(
+                        existing_rule['id']):
+                    LOG.warning("Failed to delete file_io_limit_rule "
+                                "'%s'.", rule_name)
+
+        try:
+            _locked_cleanup(qos_type_id)
+        except Exception:
+            LOG.warning("Error during QoS cleanup for share '%s'. "
+                        "Manual cleanup of policy '%s' and rule '%s' "
+                        "may be required.",
+                        share.get('name'), policy_name, rule_name)
+
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
         raise NotImplementedError()
@@ -603,6 +832,7 @@ class PowerStoreStorageConnection(driver.StorageConnection):
             self.reserved_share_extend_percentage)
         stats_dict['max_over_subscription_ratio'] = (
             self.max_over_subscription_ratio)
+        stats_dict['qos_type_support'] = True
 
         cluster_id = self.client.get_cluster_id()
         total, used = self.client.retreive_cluster_capacity_metrics(cluster_id)
@@ -718,11 +948,20 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         filesystem_id = self.client.clone_snapshot(snapshot_id,
                                                    share_name)
         if not filesystem_id:
-            message = {
+            message = (
                 _('The filesystem "%(export)s" was not created.') %
-                {'export': share_name}}
+                {'export': share_name})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
+        # apply QoS policy if defined
+        try:
+            self._apply_qos_to_filesystem(share, filesystem_id)
+        except Exception:
+            LOG.error("Failed to apply QoS policy to cloned filesystem "
+                      "for share '%s'. Cleaning up filesystem.",
+                      share_name)
+            self.client.delete_filesystem(filesystem_id)
+            raise
         # create a share
         nas_server_id = self.client.get_nas_server_id(self.nas_server)
         locations = self._create_share_NFS_CIFS(nas_server_id, filesystem_id,

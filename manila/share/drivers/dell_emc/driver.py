@@ -114,6 +114,8 @@ class EMCShareDriver(driver.ShareDriver):
             self.plugin, 'manage_server_support', False)
         self.get_share_server_network_info_support = getattr(
             self.plugin, 'get_share_server_network_info_support', False)
+        self.qos_type_support = getattr(
+            self.plugin, 'qos_type_support', False)
 
     def manage_existing(self, share, driver_options):
         """manage an existing share"""
