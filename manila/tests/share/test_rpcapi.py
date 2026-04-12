@@ -17,6 +17,7 @@ Unit Tests for manila.share.rpcapi.
 """
 
 import copy
+from unittest import mock
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -549,3 +550,55 @@ class ShareRpcAPITestCase(test.TestCase):
             version='1.29',
             host=self.fake_host,
         )
+
+    def test_manage_share(self):
+        self._test_share_api('manage_share',
+                             rpc_method='cast',
+                             version='1.1',
+                             share=self.fake_share,
+                             driver_options={})
+
+    def test_unmanage_share(self):
+        self._test_share_api('unmanage_share',
+                             rpc_method='cast',
+                             version='1.1',
+                             share=self.fake_share)
+
+    def test_publish_service_capabilities(self):
+        self.mock_object(self.rpcapi.client, 'prepare',
+                         mock.Mock(return_value=self.rpcapi.client))
+        self.mock_object(self.rpcapi.client, 'cast')
+        self.rpcapi.publish_service_capabilities(self.ctxt)
+        self.rpcapi.client.cast.assert_called_once_with(
+            self.ctxt, 'publish_service_capabilities')
+
+    def test_create_share_replica(self):
+        self._test_share_api('create_share_replica',
+                             rpc_method='cast',
+                             version='1.8',
+                             share_replica=self.fake_share_replica,
+                             host='fake_host',
+                             request_spec={},
+                             filter_properties={})
+
+    def test_create_backup(self):
+        fake_backup = {'host': 'fake_host', 'id': 'fake_backup_id'}
+        self._test_share_api('create_backup',
+                             rpc_method='cast',
+                             version='1.26',
+                             backup=fake_backup)
+
+    def test_delete_backup(self):
+        fake_backup = {'host': 'fake_host', 'id': 'fake_backup_id'}
+        self._test_share_api('delete_backup',
+                             rpc_method='cast',
+                             version='1.26',
+                             backup=fake_backup)
+
+    def test_restore_backup(self):
+        fake_backup = {'host': 'fake_host', 'id': 'fake_backup_id'}
+        self._test_share_api('restore_backup',
+                             rpc_method='cast',
+                             version='1.26',
+                             backup=fake_backup,
+                             share_id='fake_share_id')
