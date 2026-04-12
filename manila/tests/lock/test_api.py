@@ -559,3 +559,44 @@ class ResourceLockApiTest(test.TestCase):
         )
         policy.check_policy.assert_called_once_with(
             self.ctxt, 'resource_lock', 'delete', lock)
+
+    def test_get(self):
+        self.mock_object(self.lock_api.db, 'resource_lock_get',
+                         mock.Mock(return_value='fake_lock'))
+
+        result = self.lock_api.get(
+            self.ctxt, 'd767d3cd-1187-404a-a91f-8b172e0e768e')
+
+        self.assertEqual('fake_lock', result)
+        self.lock_api.db.resource_lock_get.assert_called_once_with(
+            self.ctxt, 'd767d3cd-1187-404a-a91f-8b172e0e768e')
+
+    def test__check_resource_state_for_locking_invalid_status(self):
+        resource = {'status': constants.STATUS_DELETING}
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.lock_api._check_resource_state_for_locking,
+            'delete',
+            resource,
+        )
+
+    def test__check_resource_state_for_locking_soft_deleted(self):
+        resource = {'status': constants.STATUS_AVAILABLE,
+                    'is_soft_deleted': True}
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.lock_api._check_resource_state_for_locking,
+            'delete',
+            resource,
+        )
+
+    def test__check_resource_state_for_locking_valid(self):
+        resource = {'status': constants.STATUS_AVAILABLE,
+                    'is_soft_deleted': False}
+
+        result = self.lock_api._check_resource_state_for_locking(
+            'delete', resource)
+
+        self.assertIsNone(result)
