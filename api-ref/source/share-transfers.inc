@@ -60,7 +60,6 @@ Response Parameters
    - name: transfer_name
    - resource_type: transfer_resource_type
    - resource_id: transfer_resource_id
-   - auth_key: auth_key
    - source_project_id: project_id
    - destination_project_id: destination_project_id
    - accepted: accepted
@@ -149,9 +148,14 @@ Response Parameters
 
    - transfers: transfers
    - id: transfer_id_in_body
+   - created_at: created_at
+   - name: transfer_name
    - resource_type: transfer_resource_type
    - resource_id: transfer_resource_id
-   - name: transfer_name
+   - source_project_id: project_id
+   - destination_project_id: destination_project_id
+   - accepted: accepted
+   - expires_at: transfer_expires_at_body
    - links: links
 
 
@@ -283,4 +287,3 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - transfer_id: transfer_id
-
