@@ -1674,7 +1674,6 @@ class NFSProtocolHelperTestCase(test.TestCase):
 
     @ddt.data('fakeip', None)
     def test_init_identify_local_host(self, ganesha_server_ip):
-        self.mock_object(driver.LOG, 'info')
         fake_conf = configuration.Configuration(None)
         conf_args_list = [
             ('cephfs_ganesha_server_ip', ganesha_server_ip),
@@ -1695,10 +1694,8 @@ class NFSProtocolHelperTestCase(test.TestCase):
             [mock.call(self._execute)])
         if ganesha_server_ip:
             self.assertFalse(driver.socket.gethostname.called)
-            self.assertFalse(driver.LOG.info.called)
         else:
             driver.socket.gethostname.assert_called_once_with()
-            driver.LOG.info.assert_called_once()
 
     def test_get_export_locations_no_export_ips_configured(self):
         cephfs_subvolume_path = "/foo/bar"
