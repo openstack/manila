@@ -1035,6 +1035,19 @@ function setup_ipv6 {
     # Enabling interface is needed due to NEUTRON_CREATE_INITIAL_NETWORKS=False
     sudo ip link set $PUBLIC_BRIDGE up
 
+    # Allocate a separate IPv6 address on the public network for FRR's BGP
+    # identity so that FRR and os-ken (neutron BGP speaker) have distinct
+    # addresses - required for BGP peering on a single-host devstack.
+    local frr_bgp_ipv6=$(openstack --os-cloud devstack-admin port create \
+        frr-bgp-peer --network $PUBLIC_NETWORK_NAME \
+        --fixed-ip subnet=$IPV6_PUBLIC_SUBNET_NAME \
+        -c fixed_ips -f value | grep -oE '[0-9a-f]+:[:0-9a-f]+')
+    sudo ip -6 addr add "$frr_bgp_ipv6"/$SUBNETPOOL_SIZE_V6 dev $PUBLIC_BRIDGE
+
+    # Diagnostic: show kernel source address selection for connections to FRR
+    echo "=== Source address for connections to FRR ($frr_bgp_ipv6) ==="
+    ip -6 route get $frr_bgp_ipv6
+
     if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
         for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
             iniset $MANILA_CONF $backend_name lvm_share_export_ips $public_gateway_ipv4,$public_gateway_ipv6
@@ -1049,10 +1062,14 @@ function setup_ipv6 {
         iniset $MANILA_CONF DEFAULT data_node_access_ips $public_gateway_ipv4
     fi
 
-    # install Quagga for setting up the host routes dynamically
-    install_package quagga
+    # install FRR for setting up the host routes dynamically
+    install_package frr
 
-    # set Quagga daemons
+    # Remove the default integrated config so FRR reads per-daemon
+    # config files (bgpd.conf, zebra.conf) in traditional mode.
+    sudo rm -f /etc/frr/frr.conf
+
+    # set FRR daemons
     (
     echo "zebra=yes"
     echo "bgpd=yes"
@@ -1062,61 +1079,67 @@ function setup_ipv6 {
     echo "ripngd=no"
     echo "isisd=no"
     echo "babeld=no"
-    ) | sudo tee /etc/quagga/daemons > /dev/null
+    # Explicitly listen on all addresses (IPv4+IPv6); Debian's default
+    # daemons file restricts bgpd to 127.0.0.1 which blocks IPv6 peering.
+    echo 'zebra_options="  -A 127.0.0.1 -s 90000000"'
+    echo 'bgpd_options="   -A ::"'
+    ) | sudo tee /etc/frr/daemons > /dev/null
 
-    # set Quagga zebra.conf
+    # set FRR zebra.conf
     (
     echo "hostname dsvm"
     echo "password openstack"
-    echo "log file /var/log/quagga/zebra.log"
-    ) | sudo tee /etc/quagga/zebra.conf > /dev/null
+    echo "log syslog informational"
+    echo "log file $DEST/logs/frr/zebra.log"
+    ) | sudo tee /etc/frr/zebra.conf > /dev/null
 
-    # set Quagga vtysh.conf
+    # set FRR vtysh.conf
     (
     echo "service integrated-vtysh-config"
-    echo "username quagga nopassword"
-    ) | sudo tee /etc/quagga/vtysh.conf > /dev/null
+    ) | sudo tee /etc/frr/vtysh.conf > /dev/null
 
-    # set Quagga bgpd.conf
+    # set FRR bgpd.conf
+    # Use "bgp listen range" with a peer-group instead of a static neighbor
+    # so FRR accepts BGP connections from any address in the public subnet.
+    # This avoids source-address-matching issues on single-host devstack
+    # where os-ken and FRR share the same network namespace.
+    local public_subnet_cidr=$(openstack --os-cloud devstack-admin \
+        subnet show $IPV6_PUBLIC_SUBNET_NAME -c cidr -f value)
     (
-    echo "log file /var/log/quagga/bgpd.log"
-    echo "bgp multiple-instance"
+    echo "log syslog informational"
+    echo "log file $DEST/logs/frr/bgpd.log"
     echo "router bgp 200"
     echo " bgp router-id 1.2.3.4"
-    echo " neighbor $public_gateway_ipv6 remote-as 100"
-    echo " neighbor $public_gateway_ipv6 passive"
-    echo " address-family ipv6"
-    echo "  neighbor $public_gateway_ipv6 activate"
-    echo "line vty"
+    echo " no bgp ebgp-requires-policy"
+    echo " timers bgp 10 30"
+    echo " neighbor OSKEN peer-group"
+    echo " neighbor OSKEN remote-as 100"
+    echo " neighbor OSKEN timers 10 30"
+    echo " bgp listen range $public_subnet_cidr peer-group OSKEN"
+    echo " address-family ipv6 unicast"
+    echo "  neighbor OSKEN activate"
+    echo " exit-address-family"
+    echo "!"
     echo "debug bgp events"
     echo "debug bgp filters"
     echo "debug bgp fsm"
     echo "debug bgp keepalives"
     echo "debug bgp updates"
-    ) | sudo tee /etc/quagga/bgpd.conf > /dev/null
+    ) | sudo tee /etc/frr/bgpd.conf > /dev/null
 
-    # Quagga logging
-    sudo mkdir -p /var/log/quagga
-    sudo touch /var/log/quagga/zebra.log
-    sudo touch /var/log/quagga/bgpd.log
-    sudo chown -R quagga:quagga /var/log/quagga
+    # FRR logging — write directly under $DEST/logs so Zuul collects them
+    sudo mkdir -p $DEST/logs/frr
+    sudo chown frr:frr $DEST/logs/frr
 
+    sudo systemctl enable frr
+    sudo systemctl restart frr
 
-    GetOSVersion
-    QUAGGA_SERVICES="zebra bgpd"
-    if [[ is_ubuntu && "$os_CODENAME" == "xenial" ]]; then
-        # In Ubuntu Xenial, the services bgpd and zebra are under
-        # one systemd unit: quagga
-        QUAGGA_SERVICES="quagga"
-    elif is_fedora; then
-        # Disable SELinux rule that conflicts with Zebra
-        sudo setsebool -P zebra_write_config 1
-    fi
-    sudo systemctl enable $QUAGGA_SERVICES
-    sudo systemctl restart $QUAGGA_SERVICES
-
-    # log the systemd status
-    sudo systemctl status $QUAGGA_SERVICES
+    # log the systemd status and BGP diagnostics
+    sudo systemctl status frr
+    sleep 2
+    sudo ss -tlnp '( sport = 179 )'
+    sudo vtysh -c "show bgp summary"
+    sudo cat /etc/frr/bgpd.conf
 
     # This will fail with mutltiple default routes and is not needed in CI
     # but may be useful when developing with devstack locally
@@ -1132,10 +1155,12 @@ function setup_ipv6 {
 }
 
 function setup_bgp_for_ipv6 {
-    public_gateway_ipv6=$(openstack --os-cloud devstack-admin subnet show ipv6-public-subnet -c gateway_ip -f value)
+    # FRR's separate BGP identity address (allocated in setup_ipv6)
+    local frr_bgp_ipv6=$(openstack --os-cloud devstack-admin port show \
+        frr-bgp-peer -c fixed_ips -f value | grep -oE '[0-9a-f]+:[:0-9a-f]+')
     openstack --os-cloud devstack-admin bgp speaker create --ip-version 6 --local-as 100 bgpspeaker
     openstack --os-cloud devstack-admin bgp speaker add network bgpspeaker $PUBLIC_NETWORK_NAME
-    openstack --os-cloud devstack-admin bgp peer create --peer-ip $public_gateway_ipv6 --remote-as 200 bgppeer
+    openstack --os-cloud devstack-admin bgp peer create --peer-ip $frr_bgp_ipv6 --remote-as 200 bgppeer
     openstack --os-cloud devstack-admin bgp speaker add peer bgpspeaker bgppeer
 }
 
