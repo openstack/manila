@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Dell PowerScale driver `bug #2148531
+    <https://bugs.launchpad.net/manila/+bug/2148531>`_: Fixed thin provisioning
+    feature flag that was accidentally removed during a rebase. The
+    ``thin_provisioning`` capability is now correctly reported by the PowerScale
+    driver, allowing proper scheduling and capacity management for
+    thin-provisioned shares.
