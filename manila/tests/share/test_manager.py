@@ -2612,10 +2612,12 @@ class ShareManagerTestCase(test.TestCase):
     def test_do_deferred_snapshot_deletion(self):
         instance_1 = db_utils.create_share_instance(
             share_id='fake_id',
-            share_type_id='fake_type_id')
+            share_type_id='fake_type_id',
+            host='fake_host')
         instance_2 = db_utils.create_share_instance(
             share_id='fake_id',
-            share_type_id='fake_type_id')
+            share_type_id='fake_type_id',
+            host='fake_host2')
         share = db_utils.create_share(
             id='fake_id',
             instances=[instance_1, instance_2])
@@ -2636,7 +2638,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db,
                          'share_snapshot_instance_update')
         self.share_manager.do_deferred_snapshot_deletion(self.context)
-        self.assertEqual(2, mock_delete_snapshot.call_count)
+        self.assertEqual(1, mock_delete_snapshot.call_count)
 
     def test_do_deferred_snapshot_deletion_exception(self):
         instance_1 = db_utils.create_share_instance(

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed a race condition in deferred snapshot deletion where a share manager
+    could attempt to delete snapshot instances belonging to shares hosted on a
+    different manager node. The ``do_deferred_snapshot_deletion`` method now
+    filters snapshot instances by the current host, preventing cross-host
+    interference. See `bug #2068043
+    <https://bugs.launchpad.net/manila/+bug/2068043>`_ for details.

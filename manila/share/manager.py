@@ -4243,7 +4243,11 @@ class ShareManager(manager.SchedulerDependentManager):
         ctxt = ctxt.elevated()
         snapshot_instances = (
             self.db.share_snapshot_instance_get_all_with_filters(
-                ctxt, {'statuses': constants.STATUS_ERROR_DEFERRED_DELETING}))
+                ctxt, {
+                    'host': self.host,
+                    'statuses': constants.STATUS_ERROR_DEFERRED_DELETING
+                }
+            ))
 
         for snapshot_instance in snapshot_instances:
             snapshot_instance_id = snapshot_instance['id']
