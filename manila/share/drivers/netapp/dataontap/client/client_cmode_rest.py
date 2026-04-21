@@ -132,6 +132,10 @@ class NetAppRestClient(object):
         self.features.add_feature('SVM_MIGRATE', supported=True)
         self.features.add_feature('UNIFIED_AGGR', supported=True)
 
+        ontap_9_14_1 = (
+            self.get_ontap_version(cached=True)['version-tuple'] >= (9, 14, 1))
+        self.features.add_feature('VOLUME_TAGS', supported=ontap_9_14_1)
+
     def __getattr__(self, name):
         """If method is not implemented for REST, try to call the ZAPI."""
         LOG.debug("The %s call is not supported for REST, falling back to "
@@ -1019,7 +1023,7 @@ class NetAppRestClient(object):
                       qos_policy_group=None, adaptive_qos_policy_group=None,
                       encrypt=False, mount_point_name=None,
                       snaplock_type=None, aggregate_encrypted=None,
-                      **options):
+                      volume_tags=None, **options):
         """Creates a FlexVol volume synchronously."""
 
         # NOTE(nahimsouza): In REST API, both FlexVol and FlexGroup volumes are
@@ -1035,6 +1039,7 @@ class NetAppRestClient(object):
             adaptive_qos_policy_group=adaptive_qos_policy_group,
             mount_point_name=mount_point_name, snaplock_type=snaplock_type,
             aggregate_encrypted=aggregate_encrypted,
+            volume_tags=volume_tags,
             **options)
         efficiency_policy = options.get('efficiency_policy', None)
         self.update_volume_efficiency_attributes(
@@ -1057,7 +1062,7 @@ class NetAppRestClient(object):
                             encrypt=False, adaptive_qos_policy_group=None,
                             auto_provisioned=False, mount_point_name=None,
                             snaplock_type=None, aggregate_encrypted=None,
-                            **options):
+                            volume_tags=None, **options):
         """Creates FlexGroup/FlexVol volumes.
 
         If the parameter `is_flexgroup` is False, the creation process is
@@ -1079,7 +1084,7 @@ class NetAppRestClient(object):
             volume_name, thin_provisioned, snapshot_policy, language,
             snapshot_reserve, volume_type, qos_policy_group, encrypt,
             adaptive_qos_policy_group, mount_point_name, snaplock_type,
-            aggregate_encrypted))
+            aggregate_encrypted, volume_tags))
 
         # NOTE(nahimsouza): When a volume is not a FlexGroup, volume creation
         # is made synchronously to replicate old ZAPI behavior. When ZAPI is
@@ -1102,7 +1107,8 @@ class NetAppRestClient(object):
                                 snapshot_policy, language, snapshot_reserve,
                                 volume_type, qos_policy_group, encrypt,
                                 adaptive_qos_policy_group, mount_point_name,
-                                snaplock_type, aggregate_encrypted):
+                                snaplock_type, aggregate_encrypted,
+                                volume_tags=None):
         """Builds the body to volume creation request."""
 
         body = {
@@ -1123,6 +1129,8 @@ class NetAppRestClient(object):
             body['qos.policy.name'] = qos_policy_group
         if adaptive_qos_policy_group is not None:
             body['qos.policy.name'] = adaptive_qos_policy_group
+        if volume_tags and self.features.VOLUME_TAGS:
+            body['_tags'] = volume_tags
 
         if encrypt is True:
             if not self.features.FLEXVOL_ENCRYPTION:
@@ -3005,7 +3013,8 @@ class NetAppRestClient(object):
                       compression_enabled=False, max_files=None,
                       qos_policy_group=None, hide_snapdir=None,
                       autosize_attributes=None,
-                      adaptive_qos_policy_group=None, **options):
+                      adaptive_qos_policy_group=None, volume_tags=None,
+                      **options):
         """Update backend volume for a share as necessary.
 
         :param aggregate_name: either a list or a string. List for aggregate
@@ -3022,6 +3031,7 @@ class NetAppRestClient(object):
         :param hide_snapdir: hide snapshot directory.
         :param autosize_attributes: autosize for the volume.
         :param adaptive_qos_policy_group: name of the adaptive QoS policy.
+        :param volume_tags: list of key:value tag strings (ONTAP 9.14.1+).
         """
 
         body = {
@@ -3042,6 +3052,9 @@ class NetAppRestClient(object):
 
         if language:
             body['language'] = language
+
+        if volume_tags and self.features.VOLUME_TAGS:
+            body['_tags'] = volume_tags
 
         if max_files:
             body['files'] = {'maximum': max_files}

@@ -4816,6 +4816,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                         'type': None,
                         'style': None,
                         'style-extended': None,
+                        'instance-uuid': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -4848,6 +4849,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                if is_flexgroup
                                else fake.FLEXVOL_STYLE_EXTENDED),
             'snaplock-type': 'compliance',
+            'instance-uuid': None,
         }
         self.client.send_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
@@ -4883,6 +4885,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                         'type': None,
                         'style': None,
                         'style-extended': None,
+                        'instance-uuid': None,
                     },
                     'volume-space-attributes': {
                         'size': None,
@@ -4913,10 +4916,40 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'adaptive-qos-policy-group-name': None,
             'style-extended': fake.FLEXVOL_STYLE_EXTENDED,
             'snaplock-type': "compliance",
+            'instance-uuid': None,
         }
         self.client.send_request.assert_has_calls([
             mock.call('volume-get-iter', volume_get_iter_args)])
         self.assertDictEqual(expected, result)
+
+    def test_set_volume_tags(self):
+        volume = {
+            'aggregate': fake.SHARE_AGGREGATE_NAME,
+            'name': fake.SHARE_NAME,
+            'instance-uuid': fake.FAKE_VOLUME_UUID,
+        }
+        self.mock_object(self.client, 'get_volume',
+                         mock.Mock(return_value=volume))
+        mock_send = self.mock_object(self.client, 'send_request')
+        self.client.features.add_feature('VOLUME_TAGS', supported=True)
+
+        self.client.set_volume_tags(fake.SHARE_NAME, fake.VOLUME_TAGS)
+
+        self.client.get_volume.assert_called_once_with(fake.SHARE_NAME)
+        expected_api_args = self.client._format_request(
+            {'_tags': fake.VOLUME_TAGS},
+            url_params={'volume_uuid': fake.FAKE_VOLUME_UUID})
+        mock_send.assert_called_once_with(
+            'volume-modify-tags', api_args=expected_api_args, use_zapi=False)
+
+    def test_set_volume_tags_exception_logs_warning(self):
+        self.mock_object(self.client, 'get_volume',
+                         mock.Mock(side_effect=Exception('fake error')))
+        mock_log = self.mock_object(client_cmode.LOG, 'warning')
+
+        self.client.set_volume_tags(fake.SHARE_NAME, fake.VOLUME_TAGS)
+
+        mock_log.assert_called_once()
 
     def test_get_volume_not_found(self):
 

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp Driver bug #2114885
+    <https://bugs.launchpad.net/manila/+bug/2114885>_: Added volume tags
+    during volume creation and modification on ONTAP 9.14.1 and later via
+    REST API. Tags include share_id, project_id, share_name, share_type_name
+    and share_protocol as key:value pairs using the ONTAP _tags REST field.

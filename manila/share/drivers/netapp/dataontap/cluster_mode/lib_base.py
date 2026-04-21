@@ -397,6 +397,25 @@ class NetAppCmodeFileStorageLibrary(object):
         return self.configuration.netapp_volume_name_template % {
             'share_id': share_id.replace('-', '_')}
 
+    def _generate_volume_tags(self, share):
+        """Generate volume tags from share metadata as key:value strings."""
+        if share.get('share_type'):
+            share_type_name = share.get('share_type').get('name')
+        else:
+            share_type_name = share.get('share_type_name')
+
+        def _tag(key, value):
+            tag = '%s:%s' % (key, value)
+            return tag[:200]
+
+        return [
+            _tag('share_id', share.get('share_id')),
+            _tag('share_name', share.get('display_name')),
+            _tag('project', share.get('project_id')),
+            _tag('share_type', share_type_name),
+            _tag('protocol', share.get('share_proto')),
+        ]
+
     def _get_backend_snapshot_name(self, snapshot_id):
         """Get snapshot name according to snapshot name template."""
         return 'share_snapshot_' + snapshot_id.replace('-', '_')
@@ -1232,6 +1251,7 @@ class NetAppCmodeFileStorageLibrary(object):
                             set_qos=True):
         """Create new share on aggregate."""
         share_name = self._get_backend_share_name(share['id'])
+        volume_tags = self._generate_volume_tags(share)
 
         # Get Data ONTAP aggregate name as pool name.
         pool_name = share_utils.extract_host(share['host'], level='pool')
@@ -1272,6 +1292,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 share['size'],
                 self.configuration.netapp_volume_snapshot_reserve_percent,
                 mount_point_name=mount_point_name,
+                volume_tags=volume_tags,
                 **provisioning_options)
         else:
             vserver_client.create_volume(
@@ -1279,6 +1300,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 snapshot_reserve=self.configuration.
                 netapp_volume_snapshot_reserve_percent,
                 mount_point_name=mount_point_name,
+                volume_tags=volume_tags,
                 **provisioning_options)
 
         if hide_snapdir:
@@ -1327,7 +1349,7 @@ class NetAppCmodeFileStorageLibrary(object):
                                 size, snapshot_reserve, dedup_enabled=False,
                                 compression_enabled=False, max_files=None,
                                 mount_point_name=None, snaplock_type=None,
-                                **provisioning_options):
+                                volume_tags=None, **provisioning_options):
         """Create a FlexGroup share using async API with job."""
 
         start_timeout = (
@@ -1335,6 +1357,7 @@ class NetAppCmodeFileStorageLibrary(object):
         job_info = self.wait_for_start_create_flexgroup(
             start_timeout, vserver_client, aggr_list, share_name, size,
             snapshot_reserve, mount_point_name, snaplock_type,
+            volume_tags=volume_tags,
             **provisioning_options)
 
         if not job_info['jobid'] or job_info['error-code']:
@@ -1344,6 +1367,11 @@ class NetAppCmodeFileStorageLibrary(object):
         timeout = self.configuration.netapp_flexgroup_volume_online_timeout
         self.wait_for_flexgroup_deployment(vserver_client, job_info['jobid'],
                                            timeout)
+
+        if volume_tags:
+            vserver_client.modify_volume(aggr_list, share_name,
+                                         volume_tags=volume_tags)
+
         efficiency_policy = provisioning_options.get('efficiency_policy', None)
 
         vserver_client.update_volume_efficiency_attributes(
@@ -1370,6 +1398,7 @@ class NetAppCmodeFileStorageLibrary(object):
                                         snapshot_reserve,
                                         mount_point_name,
                                         snaplock_type,
+                                        volume_tags=None,
                                         **provisioning_options):
         """Wait for starting create FlexGroup volume succeed.
 
@@ -1385,6 +1414,7 @@ class NetAppCmodeFileStorageLibrary(object):
         :param snapshot_reserve: snapshot reserve option.
         :param mount_point_name: junction_path_name.
         :param snaplock_type: SnapLock type
+        :param volume_tags: list of key:value tag strings for the volume.
         :param provisioning_options: other provision not required options.
         """
 
@@ -1399,6 +1429,7 @@ class NetAppCmodeFileStorageLibrary(object):
                     aggr_list, share_name, size,
                     is_flexgroup=True,
                     snapshot_reserve=snapshot_reserve,
+                    volume_tags=volume_tags,
                     auto_provisioned=self._is_flexgroup_auto,
                     mount_point_name=mount_point_name,
                     snaplock_type=snaplock_type,
@@ -2173,6 +2204,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Clones existing share."""
         share_name = self._get_backend_share_name(share['id'])
         parent_share_name = self._get_backend_share_name(snapshot['share_id'])
+        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        volume_tags = self._generate_volume_tags(share)
         if snapshot.get('provider_location') is None:
             parent_snapshot_name = snapshot_name_func(self, snapshot['id'])
         else:
@@ -2193,6 +2226,10 @@ class NetAppCmodeFileStorageLibrary(object):
             share_name, parent_share_name, parent_snapshot_name,
             mount_point_name=mount_point_name,
             **provisioning_options)
+
+        vserver_client.modify_volume(aggregate_name, share_name,
+                                     volume_tags=volume_tags,
+                                     **provisioning_options)
 
         if share['size'] > snapshot['size']:
             vserver_client.set_volume_size(share_name, share['size'])
@@ -2652,8 +2689,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         share_name = self._get_backend_share_name(share['id'])
         mount_point_name = share.get('mount_point_name')
-
-        # Rename & remount volume on new path.
+        volume_tags = self._generate_volume_tags(share)
         vserver_client.unmount_volume(volume_name)
         vserver_client.set_volume_name(volume_name, share_name)
         vserver_client.mount_volume(share_name, mount_point_name)
@@ -2690,6 +2726,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Modify volume to match extra specs.
         vserver_client.modify_volume(aggregate_name, share_name,
+                                     volume_tags=volume_tags,
                                      **provisioning_options)
 
         # Update fpolicy to include the new share name and remove the old one.
@@ -4902,6 +4939,7 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_backend_share_name(share['id'])
         aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        volume_tags = self._generate_volume_tags(share)
 
         extra_specs = share_types.get_extra_specs_from_share(share)
         provisioning_options = self._get_provisioning_options_for_share(
@@ -4920,6 +4958,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         try:
             vserver_client.modify_volume(aggregate_name, share_name,
+                                         volume_tags=volume_tags,
                                          **provisioning_options)
         except netapp_api.NaApiError:
             LOG.warning('update share %(share)s on aggregate %(aggr)s with '

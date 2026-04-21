@@ -82,6 +82,14 @@ LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 SHARE_TYPE_ID = '26e89a5b-960b-46bb-a8cf-0778e653098f'
 SHARE_TYPE_ID_2 = '2a06887e-25b5-486e-804a-d84c2d806feb'
 SHARE_TYPE_NAME = 'fake_share_type'
+SHARE_DISPLAY_NAME = 'fake_share_display_name'
+VOLUME_TAGS = [
+    'share_id:%s' % SHARE_ID,
+    'share_name:%s' % SHARE_DISPLAY_NAME,
+    'project:%s' % TENANT_ID,
+    'share_type:%s' % SHARE_TYPE_NAME,
+    'protocol:fake',
+]
 IPSPACE = 'fake_ipspace'
 IPSPACE_ID = '27d38c27-3e8b-4d7d-9d91-fcf295e3ac8f'
 MTU = 1234
@@ -208,9 +216,11 @@ SHARE_INSTANCE = {
     'project_id': TENANT_ID,
     'mount_point_name': MOUNT_POINT_NAME,
     'name': SHARE_INSTANCE_NAME,
+    'display_name': SHARE_DISPLAY_NAME,
     'size': SHARE_SIZE,
     'share_proto': 'fake',
     'share_type_id': SHARE_TYPE_ID,
+    'share_type_name': SHARE_TYPE_NAME,
     'share_network_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0',
     'share_server_id': '7e6a2cc8-871f-4b1d-8364-5aad0f98da86',
     'replica_state': constants.REPLICA_STATE_ACTIVE,

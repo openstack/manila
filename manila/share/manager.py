@@ -5546,6 +5546,16 @@ class ShareManager(manager.SchedulerDependentManager):
             share_instance_ref['share_server'] = self._get_share_server_dict(
                 context, share_instance_ref['share_server']
             )
+        if share_instance.get('share_type'):
+            share_instance_ref['share_type_name'] = share_instance.get(
+                'share_type').get('name')
+        elif share_instance.get('share_type_id'):
+            try:
+                share_type = share_types.get_share_type(
+                    context, share_instance.get('share_type_id'))
+                share_instance_ref['share_type_name'] = share_type.get('name')
+            except exception.ShareTypeNotFound:
+                share_instance_ref['share_type_name'] = None
         share_instance_ref['export_locations'] = [
             self._get_export_location_dict(context, el) for
             el in share_instance.get('export_locations') or []
