@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Improved share replica replication efficiency by avoiding redundant
+    database lookups for replica metadata.
+    For more details, please refer to
+    `Launchpad bug #2144676 <https://bugs.launchpad.net/manila/+bug/2144676>`_.

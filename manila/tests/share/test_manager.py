@@ -559,39 +559,49 @@ class ShareManagerTestCase(test.TestCase):
 
     def _setup_init_mocks(self, setup_access_rules=True):
         share_type = db_utils.create_share_type()
+        ctx = context.get_admin_context()
+
+        def _get_instance(share):
+            return db.share_instance_get(ctx, share.instance['id'])
+
         instances = [
-            db_utils.create_share(id='fake_id_1',
-                                  share_type_id=share_type['id'],
-                                  status=constants.STATUS_AVAILABLE,
-                                  display_name='fake_name_1').instance,
-            db_utils.create_share(id='fake_id_2',
-                                  share_type_id=share_type['id'],
-                                  status=constants.STATUS_ERROR,
-                                  display_name='fake_name_2').instance,
-            db_utils.create_share(id='fake_id_3',
-                                  share_type_id=share_type['id'],
-                                  status=constants.STATUS_AVAILABLE,
-                                  display_name='fake_name_3').instance,
-            db_utils.create_share(
+            _get_instance(db_utils.create_share(
+                id='fake_id_1',
+                share_type_id=share_type['id'],
+                status=constants.STATUS_AVAILABLE,
+                display_name='fake_name_1')),
+            _get_instance(db_utils.create_share(
+                id='fake_id_2',
+                share_type_id=share_type['id'],
+                status=constants.STATUS_ERROR,
+                display_name='fake_name_2')),
+            _get_instance(db_utils.create_share(
+                id='fake_id_3',
+                share_type_id=share_type['id'],
+                status=constants.STATUS_AVAILABLE,
+                display_name='fake_name_3')),
+            _get_instance(db_utils.create_share(
                 id='fake_id_4',
                 share_type_id=share_type['id'],
                 status=constants.STATUS_MIGRATING,
                 task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS,
-                display_name='fake_name_4').instance,
-            db_utils.create_share(id='fake_id_5',
-                                  share_type_id=share_type['id'],
-                                  status=constants.STATUS_AVAILABLE,
-                                  display_name='fake_name_5').instance,
-            db_utils.create_share(
+                display_name='fake_name_4')),
+            _get_instance(db_utils.create_share(
+                id='fake_id_5',
+                share_type_id=share_type['id'],
+                status=constants.STATUS_AVAILABLE,
+                display_name='fake_name_5')),
+            _get_instance(db_utils.create_share(
                 id='fake_id_6',
                 share_type_id=share_type['id'],
                 status=constants.STATUS_MIGRATING,
                 task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS,
-                display_name='fake_name_6').instance,
-            db_utils.create_share(
-                id='fake_id_7', share_type_id=share_type['id'],
+                display_name='fake_name_6')),
+            _get_instance(db_utils.create_share(
+                id='fake_id_7',
+                share_type_id=share_type['id'],
                 status=constants.STATUS_CREATING_FROM_SNAPSHOT,
-                display_name='fake_name_7').instance,
+                display_name='fake_name_7')),
         ]
 
         instances[4]['access_rules_status'] = (
@@ -932,6 +942,9 @@ class ShareManagerTestCase(test.TestCase):
             'export_locations': share_instance.get('export_locations') or [],
             'mount_point_name': share_instance.get('mount_point_name'),
             'qos_type_id': share_instance.get('qos_type_id'),
+            'metadata': {m['key']: m['value']
+                         for m in share_instance.get(
+                'share_instance_metadata', [])},
         }
         return share_instance_ref
 
