@@ -2150,7 +2150,9 @@ def update_share_instance_quota_usages(context, instance_id):
 
 def _set_instances_share_data(instances):
     instances = instances.options(
-        orm.joinedload(models.ShareInstance.share)).all()
+        orm.joinedload(models.ShareInstance.share),
+        orm.joinedload(models.ShareInstance.share_instance_metadata),
+    ).all()
     instances = [s for s in instances if s.share]
     for s in instances:
         s.set_share_data(s.share)
