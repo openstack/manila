@@ -273,8 +273,12 @@ class API(object):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
+    @utils.retry(retry_param=ks_exec.ConnectFailure, retries=5)
     def list_extensions(self):
-        extensions_list = self.client.list_extensions().get('extensions')
+        try:
+            extensions_list = self.client.list_extensions().get('extensions')
+        except ks_exec.ConnectFailure as e:
+            raise e
         return {ext['name']: ext for ext in extensions_list}
 
     def _has_port_binding_extension(self):
