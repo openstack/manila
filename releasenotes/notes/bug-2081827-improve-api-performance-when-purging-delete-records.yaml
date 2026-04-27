@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Improved the ``purge_deleted_records`` database cleanup logic to
+    process each table in an independent transaction instead of a
+    single long-running transaction. This reduces the duration of
+    table locks during purge.
