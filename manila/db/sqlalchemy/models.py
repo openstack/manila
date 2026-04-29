@@ -1081,7 +1081,6 @@ class ShareNetworkSubnet(BASE, ManilaBase):
     share_servers = orm.relationship(
         "ShareServer",
         secondary="share_server_share_network_subnet_mappings",
-        backref="share_network_subnets",
         lazy='immediate',
         primaryjoin="and_(ShareNetworkSubnet.id == "
                     "%(cls_name)s.share_network_subnet_id, "
@@ -1090,7 +1089,8 @@ class ShareNetworkSubnet(BASE, ManilaBase):
         secondaryjoin='and_('
                       'ShareServer.id == '
                       'ShareServerShareNetworkSubnetMapping.share_server_id,'
-                      'ShareServerShareNetworkSubnetMapping.deleted == 0)'
+                      'ShareServerShareNetworkSubnetMapping.deleted == 0)',
+        back_populates="share_network_subnets",
     )
 
     _availability_zone = orm.relationship(
@@ -1215,6 +1215,22 @@ class ShareServer(BASE, ManilaBase):
                     'ShareServerShareNetworkSubnetMapping.share_server_id,'
                     'ShareServerShareNetworkSubnetMapping.deleted == 0)')
 
+    share_network_subnets = orm.relationship(
+        "ShareNetworkSubnet",
+        secondary="share_server_share_network_subnet_mappings",
+        lazy='joined',
+        primaryjoin="and_("
+                    "ShareServer.id == "
+                    "ShareServerShareNetworkSubnetMapping.share_server_id, "
+                    "ShareServerShareNetworkSubnetMapping.deleted == 0)",
+        secondaryjoin=(
+            "and_("
+            "ShareNetworkSubnet.id == "
+            "ShareServerShareNetworkSubnetMapping.share_network_subnet_id, "
+            "ShareNetworkSubnet.deleted == 'False')"),
+        back_populates="share_servers",
+    )
+
     @property
     def backend_details(self):
         return {model['key']: model['value']
@@ -1229,6 +1245,25 @@ class ShareServer(BASE, ManilaBase):
     def share_network_id(self):
         return (self.share_network_subnets[0]['share_network_id']
                 if self.share_network_subnets else None)
+
+    @property
+    def share_network(self):
+        try:
+            return self.share_network_subnets[0]['share_network']
+        except (IndexError, KeyError, AttributeError):
+            return None
+
+    @property
+    def project_id(self):
+        if not self.share_network:
+            return ''
+        return self.share_network['project_id']
+
+    @property
+    def share_network_name(self):
+        if not self.share_network:
+            return ''
+        return self.share_network['name'] or self.share_network['id']
 
     _extra_keys = ['backend_details', 'share_network_subnet_ids']
 
