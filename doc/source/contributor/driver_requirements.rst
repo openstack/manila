@@ -260,26 +260,10 @@ created shares are available and being serviced correctly. The driver can
 implement this function by checking shares' status and performing maintenance
 operations if needed, such as re-exporting.
 
+Share Groups (experimental: Ocata, graduated: API v2.55)
+--------------------------------------------------------
 
-Manila experimental features since Mitaka
-=========================================
-
-Some features are initially released as experimental and can be accessed by
-including specific additional HTTP Request headers. Those features are not
-recommended for production cloud environments while in experimental stage.
-
-Share Migration
----------------
-
-Shares can be migrated between different backends and pools. Manila implements
-migration using an approach that works for any manufacturer, but driver vendors
-can implement a better optimized migration function for when migration involves
-backends or pools related to the same vendor.
-
-Share Groups (since Ocata)
---------------------------
-
-The share groups provides the ability to manage a group of shares together.
+The share groups feature provides the ability to manage a group of shares together.
 This feature is implemented at the manager level, every driver gets this feature
 by default. If a driver wants to override the default behavior to support
 additional functionalities such as consistent group snapshot, the driver
@@ -322,8 +306,8 @@ is used as an example vendor prefix:
 
   for more information please see :doc:`../admin/group_capabilities_and_extra_specs`
 
-Share Replication
------------------
+Share Replication (experimental: Mitaka, graduated: API v2.56)
+--------------------------------------------------------------
 
 Replicas of shares can be created for either data protection (for disaster
 recovery) or for load sharing. In order to utilize this feature, drivers must
@@ -332,6 +316,26 @@ necessary methods.
 
 More details can be found at: :doc:`../admin/shared-file-systems-share-replication`
 
+Manila experimental features
+============================
+
+Some features are currently released as experimental and can be accessed by
+including specific additional HTTP Request headers. Those features are not
+recommended for production cloud environments while in experimental stage.
+
+Share Migration (since API v2.22)
+---------------------------------
+
+Shares can be migrated between different backends and pools. Manila implements
+migration using an approach that works for any manufacturer, but driver vendors
+can implement a better optimized migration function for when migration involves
+backends or pools related to the same vendor.
+
+More details can be found at: :doc:`../admin/shared-file-systems-share-migration`
+
+.. note::
+   Share migration APIs are currently being graduated from experimental status.
+
 Update "used_size" of shares
 ----------------------------
 Drivers can update, for all the shares created on a particular backend, the
@@ -339,9 +343,25 @@ consumed space in GiB. While the polling interval for drivers to update this
 information is configurable, drivers can choose to submit cached information
 as necessary, but specify a time at which this information was "gathered_at".
 
-Share Server Migration (Since Victoria)
----------------------------------------
+Share Server Migration (since API v2.57)
+----------------------------------------
 
-Shares servers can be migrated between different backends. Driver vendors
+Share servers can be migrated between different backends. Driver vendors
 need to implement the share server migration functions in order to migrate
 share servers in an efficient way.
+
+More details can be found at: :doc:`../admin/shared-file-systems-share-server-migration`
+
+Share Backups (since API v2.80)
+-------------------------------
+
+Share backups provide the capability to create point-in-time backups of shares,
+restore backups to new or existing shares, and delete backups. This feature is
+valuable for archival and disaster recovery scenarios.
+
+Manila implements a generic NFS-based backup approach through the manila data
+service, where backups can be stored on NFS paths mounted on control nodes.
+Driver vendors may also implement optimized backup mechanisms specific to their
+storage backend.
+
+More details can be found at: :doc:`../admin/shared-file-systems-share-backup-management`

@@ -17,13 +17,14 @@ manage their snapshots and access rules. Three replication types are currently
 supported and they vary in the semantics associated with the primary share and
 the secondary copies.
 
-.. important::
+.. note::
 
-   **Share replication** is an **experimental** Shared File Systems API in
-   the Mitaka release. Contributors can change or remove the experimental
-   part of the Shared File Systems API in further releases without maintaining
-   backward compatibility. Experimental APIs have an
-   ``X-OpenStack-Manila-API-Experimental: true`` header in their HTTP requests.
+   **Share replication** APIs were introduced in the Mitaka release and
+   graduated from experimental status in API version 2.56. Starting from
+   version 2.56, these APIs are stable and no longer require the
+   ``X-OpenStack-Manila-API-Experimental`` header. For API versions 2.11
+   through 2.55, the experimental header is still required for backward
+   compatibility.
 
 
 Replication types supported

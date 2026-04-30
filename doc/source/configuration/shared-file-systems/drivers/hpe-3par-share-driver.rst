@@ -102,9 +102,8 @@ Operations not supported
 
 -  Manage and unmanage
 
--  Manila Experimental APIs (consistency groups, replication, and migration)
-   were added in Mitaka but have not yet been implemented by the HPE 3PAR
-   File Persona driver.
+-  Consistency groups, replication, and migration were added in Mitaka but have
+   not yet been implemented by the HPE 3PAR File Persona driver.
 
 Requirements
 ~~~~~~~~~~~~

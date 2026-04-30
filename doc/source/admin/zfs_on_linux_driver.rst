@@ -53,7 +53,7 @@ The following operations are supported:
 * Create share from snapshot
 * Extend share
 * Shrink share
-* Replication (experimental):
+* Replication:
    * Create/update/delete/promote replica operations are supported
 * Share migration (experimental)
 

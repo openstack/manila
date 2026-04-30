@@ -64,7 +64,7 @@ The following operations are supported:
 
 - Shrink a share.
 
-- Share replication (experimental):
+- Share replication:
 
   - Create, update, delete, and promote replica operations are supported.
 
