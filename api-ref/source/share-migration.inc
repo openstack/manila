@@ -3,7 +3,7 @@
 Share Migration (since API v2.22)
 =================================
 
-The Share Migration API is an administrator-only experimental API that allows
+The Share Migration API is an administrator-only API that allows
 the invoker to select a destination pool to migrate a share to,
 while still allowing clients to access the source
 "share instance" during migration.
@@ -62,7 +62,8 @@ Possible use cases for data migration include:
 
 .. note::
 
-    Share Migration APIs are `experimental APIs <#experimental-apis>`_ .
+    Share Migration APIs are no longer considered experimental since
+    API version ``2.96``.
 
 
 Start Migration
@@ -71,6 +72,9 @@ Start Migration
 .. rest_method:: POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
+
+.. versionchanged:: 2.96
+   Share Migration APIs are no longer experimental since API version ``2.96``.
 
 Initiates share migration. This API will initiate the share data copy to the
 new host. The copy operation is non-disruptive.
@@ -120,6 +124,9 @@ Complete Migration
 
 .. versionadded:: 2.22
 
+.. versionchanged:: 2.96
+   Share Migration APIs are no longer experimental since API version ``2.96``.
+
 Completes share migration. This API will initiate the switch-over from the
 source to destination share. This operation can be disruptive.
 
@@ -159,6 +166,9 @@ Migration Get Process
 .. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
+
+.. versionchanged:: 2.96
+   Share Migration APIs are no longer experimental since API version ``2.96``.
 
 Response codes
 --------------
@@ -211,6 +221,9 @@ Cancel Migration
 .. rest_method::  POST /v2/shares/{share_id}/action
 
 .. versionadded:: 2.22
+
+.. versionchanged:: 2.96
+   Share Migration APIs are no longer experimental since API version ``2.96``.
 
 Response codes
 --------------
