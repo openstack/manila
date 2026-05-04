@@ -39,6 +39,15 @@ hitachi_hsp_opts = [
                required=True,
                secret=True,
                help="HSP password for the username provided."),
+    cfg.BoolOpt('hitachi_hsp_ssl_cert_verify',
+                default=True,
+                help="If set to False the https client will not validate "
+                     "the SSL certificate of the backend endpoint."),
+    cfg.StrOpt('hitachi_hsp_ssl_cert_path',
+               help="Can be used to specify a non default path to a "
+                    "CA_BUNDLE file or directory with certificates of "
+                    "trusted CAs, which will be used to validate the "
+                    "backend."),
 ]
 
 
@@ -60,7 +69,9 @@ class HitachiHSPDriver(driver.ShareDriver):
         self.hsp = rest.HSPRestBackend(
             self.hsp_host,
             self.configuration.safe_get('hitachi_hsp_username'),
-            self.configuration.safe_get('hitachi_hsp_password')
+            self.configuration.safe_get('hitachi_hsp_password'),
+            self.configuration.safe_get('hitachi_hsp_ssl_cert_verify'),
+            self.configuration.safe_get('hitachi_hsp_ssl_cert_path'),
         )
 
     def _update_share_stats(self, data=None):

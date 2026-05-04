@@ -49,7 +49,8 @@ class HitachiHSPRestTestCase(test.TestCase):
 
         self._driver = rest.HSPRestBackend(self.hitachi_hsp_host,
                                            self.hitachi_hsp_username,
-                                           self.hitachi_hsp_password)
+                                           self.hitachi_hsp_password,
+                                           ssl_cert_verify=True)
 
     @ddt.data(202, 500)
     def test__send_post(self, code):
@@ -61,6 +62,10 @@ class HitachiHSPRestTestCase(test.TestCase):
                              mock.Mock())
             self._driver._send_post('fake_url')
 
+            requests.post.assert_called_once_with(
+                'fake_url',
+                auth=(self.hitachi_hsp_username, self.hitachi_hsp_password),
+                data=None, verify=True)
             rest.HSPRestBackend._wait_job_status.assert_called_once_with(
                 'fake_location', 'COMPLETE')
         else:
@@ -77,6 +82,10 @@ class HitachiHSPRestTestCase(test.TestCase):
 
         if code == 200:
             result = self._driver._send_get('fake_url')
+            requests.get.assert_called_once_with(
+                'fake_url',
+                auth=(self.hitachi_hsp_username, self.hitachi_hsp_password),
+                data=None, verify=True)
             if content == 'null':
                 self.assertIsNone(result)
             else:
@@ -95,6 +104,10 @@ class HitachiHSPRestTestCase(test.TestCase):
                              mock.Mock())
             self._driver._send_delete('fake_url')
 
+            requests.delete.assert_called_once_with(
+                'fake_url',
+                auth=(self.hitachi_hsp_username, self.hitachi_hsp_password),
+                data=None, verify=True)
             rest.HSPRestBackend._wait_job_status.assert_called_once_with(
                 'fake_location', 'COMPLETE')
         else:
@@ -307,6 +320,38 @@ class HitachiHSPRestTestCase(test.TestCase):
                               self._driver.get_cluster)
 
         rest.HSPRestBackend._send_get.assert_called_once_with(url)
+
+    def test_ssl_cert_verify_default(self):
+        backend = rest.HSPRestBackend(
+            self.hitachi_hsp_host, self.hitachi_hsp_username,
+            self.hitachi_hsp_password)
+        self.assertTrue(backend.verify)
+
+    def test_ssl_cert_verify_enabled(self):
+        backend = rest.HSPRestBackend(
+            self.hitachi_hsp_host, self.hitachi_hsp_username,
+            self.hitachi_hsp_password, ssl_cert_verify=True)
+        self.assertTrue(backend.verify)
+
+    def test_ssl_cert_verify_with_path(self):
+        backend = rest.HSPRestBackend(
+            self.hitachi_hsp_host, self.hitachi_hsp_username,
+            self.hitachi_hsp_password, ssl_cert_verify=True,
+            ssl_cert_path='/fake/ca_bundle.pem')
+        self.assertEqual('/fake/ca_bundle.pem', backend.verify)
+
+    @mock.patch('manila.share.drivers.hitachi.hsp.rest.LOG')
+    @mock.patch('requests.packages.urllib3.disable_warnings')
+    def test_ssl_cert_verify_disabled(self, mock_disable_warnings,
+                                      mock_log):
+        backend = rest.HSPRestBackend(
+            self.hitachi_hsp_host, self.hitachi_hsp_username,
+            self.hitachi_hsp_password, ssl_cert_verify=False)
+        self.assertFalse(backend.verify)
+        mock_disable_warnings.assert_called_once()
+        mock_log.warning.assert_called_once_with(
+            "SSL certificate verification is disabled "
+            "for backend %s.", self.hitachi_hsp_host)
 
     @ddt.data('COMPLETE', 'ERROR', 'RUNNING')
     def test__wait_job_status(self, stat):
