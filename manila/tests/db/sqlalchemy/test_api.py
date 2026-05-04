@@ -595,6 +595,22 @@ class ShareDatabaseAPITestCase(test.TestCase):
         else:
             self.assertNotIn('share_proto', instance)
 
+    def test_share_instance_get_all_by_host_with_metadata(self):
+        share = db_utils.create_share()
+        metadata = {'foo': 'bar', 'baz': 'quux'}
+        db_api.share_replica_metadata_update(
+            self.ctxt, share.instance['id'],
+            metadata=metadata, delete=False)
+
+        instances = db_api.share_instance_get_all_by_host(
+            self.ctxt, 'fake_host', with_share_data=True)
+
+        self.assertEqual(1, len(instances))
+        instance = instances[0]
+        meta = {m['key']: m['value']
+                for m in instance['share_instance_metadata']}
+        self.assertEqual(metadata, meta)
+
     def test_share_instance_get_all_by_host_not_found_exception(self):
         db_utils.create_share()
         instances = db_api.share_instance_get_all_by_host(

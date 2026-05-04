@@ -9273,6 +9273,13 @@ class ShareManagerTestCase(test.TestCase):
             x for x in instances
             if x['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT
         ]
+        metadata = {'key1': 'val1'}
+        db.share_replica_metadata_update(
+            self.context, instances_creating_from_snap[0]['id'],
+            metadata=metadata, delete=False)
+        instances_creating_from_snap[0] = db.share_instance_get(
+            self.context, instances_creating_from_snap[0]['id'],
+            with_share_data=True)
         self.mock_object(self.share_manager, 'driver')
         self.mock_object(self.share_manager.db,
                          'share_instance_get_all_by_host',
@@ -9282,6 +9289,7 @@ class ShareManagerTestCase(test.TestCase):
         instances_dict = [
             self.share_manager._get_share_instance_dict(self.context, si)
             for si in instances_creating_from_snap]
+        self.assertEqual(metadata, instances_dict[0]['metadata'])
 
         self.share_manager.periodic_share_status_update(self.context)
         mock_update_share_status.assert_has_calls([
