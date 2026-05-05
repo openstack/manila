@@ -102,7 +102,8 @@ The commands to interact with the share backup API are:
      $ openstack share backup create --help # to see the help of all the
      available options
 
-     $ openstack share backup create --name manila_backup1 25a6f80e-306e-4bb8-ad27-cf6800955228
+     $ openstack share backup create \
+         --name manila_backup1 25a6f80e-306e-4bb8-ad27-cf6800955228
      +-------------------+--------------------------------------+
      | Field             | Value                                |
      +-------------------+--------------------------------------+
@@ -165,7 +166,8 @@ The commands to interact with the share backup API are:
 
   .. code-block:: console
 
-     $ openstack share backup set c2022366-0701-44d2-b48b-aa95a666efa5 --name "new_name" --description "backup_taken_on_march_21"
+     $ openstack share backup set c2022366-0701-44d2-b48b-aa95a666efa5 \
+         --name "new_name" --description "backup_taken_on_march_21"
 
   .. note::
      This command has no output.
@@ -251,7 +253,8 @@ below for user reference.
      | 8a9b3ce0-23bb-4923-b8ce-d0dd1f56b2b8 | test4 | 983c6dd5-ef93-4c73-9359-ef02fe3bbce7 | available |
      +--------------------------------------+-------+--------------------------------------+-----------+
 
-     $ openstack share backup create --name test5 --backup-options backup_type=eng_data_backup source_share
+     $ openstack share backup create --name test5 \
+         --backup-options backup_type=eng_data_backup source_share
      +-------------------+--------------------------------------+
      | Field             | Value                                |
      +-------------------+--------------------------------------+

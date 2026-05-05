@@ -5,7 +5,7 @@ Share snapshots
 ===============
 
 The Shared File Systems service provides a snapshot mechanism to help users
-restore data by running the :command:`manila snapshot-create` command.
+restore data by running the :command:`openstack share snapshot create` command.
 
 To export a snapshot, create a share from it, then mount the new share
 to an instance. Copy files from the attached share into the archive.
@@ -22,111 +22,132 @@ Create a snapshot from the share:
 
 .. code-block:: console
 
-   $ manila snapshot-create Share1 --name Snapshot1 --description "Snapshot of Share1"
+   $ openstack share snapshot create Share1 --name Snapshot1 \
+       --description "Snapshot of Share1"
    +-------------+--------------------------------------+
-   | Property    | Value                                |
+   | Field       | Value                                |
    +-------------+--------------------------------------+
-   | status      | creating                             |
+   | id          | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
    | share_id    | aca648eb-8c03-4394-a5cc-755066b7eb66 |
-   | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
+   | share_size  | 1                                    |
+   | created_at  | 2026-03-31T05:27:38.188948           |
+   | status      | creating                             |
+   | name        | Snapshot1                            |
    | description | Snapshot of Share1                   |
-   | created_at  | 2015-09-25T05:27:38.000000           |
    | size        | 1                                    |
    | share_proto | NFS                                  |
-   | id          | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
+   | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
    | project_id  | cadd7139bc3148b8973df097c0911016     |
-   | share_size  | 1                                    |
-   | name        | Snapshot1                            |
+   | metadata    | {}                                   |
    +-------------+--------------------------------------+
 
 Update snapshot name or description if needed:
 
 .. code-block:: console
 
-   $ manila snapshot-rename Snapshot1 Snapshot_1 --description "Snapshot of Share1. Updated."
+   $ openstack share snapshot set Snapshot1 --name Snapshot_1 \
+       --description "Snapshot of Share1. Updated."
 
 Check that status of a snapshot is ``available``:
 
 .. code-block:: console
 
-   $ manila snapshot-show Snapshot1
+   $ openstack share snapshot show Snapshot1
    +-------------+--------------------------------------+
-   | Property    | Value                                |
+   | Field       | Value                                |
    +-------------+--------------------------------------+
-   | status      | available                            |
-   | share_id    | aca648eb-8c03-4394-a5cc-755066b7eb66 |
-   | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
-   | name        | Snapshot1                            |
-   | created_at  | 2015-09-25T05:27:38.000000           |
-   | share_proto | NFS                                  |
    | id          | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
-   | project_id  | cadd7139bc3148b8973df097c0911016     |
-   | size        | 1                                    |
+   | share_id    | aca648eb-8c03-4394-a5cc-755066b7eb66 |
    | share_size  | 1                                    |
+   | created_at  | 2026-03-31T05:27:38.188948           |
+   | status      | available                            |
+   | name        | Snapshot1                            |
    | description | Snapshot of Share1                   |
+   | size        | 1                                    |
+   | share_proto | NFS                                  |
+   | user_id     | 5c7bdb6eb0504d54a619acf8375c08ce     |
+   | project_id  | cadd7139bc3148b8973df097c0911016     |
+   | properties  |                                      |
    +-------------+--------------------------------------+
 
-To create a copy of your data from a snapshot, use :command:`manila create`
+To create a copy of your data from a snapshot, use :command:`openstack share create`
 with key ``--snapshot-id``. This creates a new share from an
 existing snapshot. Create a share from a snapshot and check whether it is
 available:
 
 .. code-block:: console
 
-   $ manila create nfs 1 --name Share2 --metadata source=snapshot --description "Share from a snapshot." --snapshot-id 962e8126-35c3-47bb-8c00-f0ee37f42ddd
-   +-----------------------------+--------------------------------------+
-   | Property                    | Value                                |
-   +-----------------------------+--------------------------------------+
-   | status                      | None                                 |
-   | share_type_name             | default                              |
-   | description                 | Share from a snapshot.               |
-   | availability_zone           | None                                 |
-   | share_network_id            | None                                 |
-   | export_locations            | []                                   |
-   | share_server_id             | None                                 |
-   | share_group_id              | None                                 |
-   | host                        | None                                 |
-   | snapshot_id                 | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
-   | is_public                   | False                                |
-   | task_state                  | None                                 |
-   | snapshot_support            | True                                 |
-   | id                          | b6b0617c-ea51-4450-848e-e7cff69238c7 |
-   | size                        | 1                                    |
-   | name                        | Share2                               |
-   | share_type                  | c0086582-30a6-4060-b096-a42ec9d66b86 |
-   | created_at                  | 2015-09-25T06:25:50.240417           |
-   | export_location             | None                                 |
-   | share_proto                 | NFS                                  |
-   | project_id                  | 20787a7ba11946adad976463b57d8a2f     |
-   | metadata                    | {u'source': u'snapshot'}             |
-   +-----------------------------+--------------------------------------+
+   $ openstack share create nfs 1 --name Share2 --property source=snapshot \
+       --description "Share from a snapshot." \
+       --snapshot-id 962e8126-35c3-47bb-8c00-f0ee37f42ddd
+   +---------------------------------------+--------------------------------------+
+   | Field                                 | Value                                |
+   +---------------------------------------+--------------------------------------+
+   | id                                    | b6b0617c-ea51-4450-848e-e7cff69238c7 |
+   | size                                  | 1                                    |
+   | availability_zone                     | nova                                 |
+   | created_at                            | 2026-03-31T06:25:50.309282           |
+   | status                                | creating                             |
+   | name                                  | Share2                               |
+   | description                           | Share from a snapshot.               |
+   | project_id                            | 20787a7ba11946adad976463b57d8a2f     |
+   | snapshot_id                           | 962e8126-35c3-47bb-8c00-f0ee37f42ddd |
+   | share_network_id                      | None                                 |
+   | share_proto                           | NFS                                  |
+   | metadata                              | {'source': 'snapshot'}               |
+   | share_type                            | c0086582-30a6-4060-b096-a42ec9d66b86 |
+   | is_public                             | False                                |
+   | snapshot_support                      | True                                 |
+   | task_state                            | None                                 |
+   | share_type_name                       | default                              |
+   | access_rules_status                   | active                               |
+   | replication_type                      | None                                 |
+   | has_replicas                          | False                                |
+   | user_id                               | 5c7bdb6eb0504d54a619acf8375c08ce     |
+   | create_share_from_snapshot_support    | True                                 |
+   | revert_to_snapshot_support            | True                                 |
+   | share_group_id                        | None                                 |
+   | source_share_group_snapshot_member_id | None                                 |
+   | mount_snapshot_support                | True                                 |
+   | progress                              | None                                 |
+   +---------------------------------------+--------------------------------------+
 
-   $ manila show Share2
-   +-----------------------------+-------------------------------------------+
-   | Property                    | Value                                     |
-   +-----------------------------+-------------------------------------------+
-   | status                      | available                                 |
-   | share_type_name             | default                                   |
-   | description                 | Share from a snapshot.                    |
-   | availability_zone           | nova                                      |
-   | share_network_id            | 5c3cbabb-f4da-465f-bc7f-fadbe047b85a      |
-   | export_locations            | 10.254.0.3:/shares/share-1dc2a471-3d47-...|
-   | share_server_id             | 41b7829d-7f6b-4c96-aea5-d106c2959961      |
-   | share_group_id              | None                                      |
-   | host                        | manila@generic1#GENERIC1                  |
-   | snapshot_id                 | 962e8126-35c3-47bb-8c00-f0ee37f42ddd      |
-   | is_public                   | False                                     |
-   | task_state                  | None                                      |
-   | snapshot_support            | True                                      |
-   | id                          | b6b0617c-ea51-4450-848e-e7cff69238c7      |
-   | size                        | 1                                         |
-   | name                        | Share2                                    |
-   | share_type                  | c0086582-30a6-4060-b096-a42ec9d66b86      |
-   | created_at                  | 2015-09-25T06:25:50.000000                |
-   | share_proto                 | NFS                                       |
-   | project_id                  | 20787a7ba11946adad976463b57d8a2f          |
-   | metadata                    | {u'source': u'snapshot'}                  |
-   +-----------------------------+-------------------------------------------+
+   $ openstack share show Share2
+   +---------------------------------------+---------------------------------------------------------------+
+   | Field                                 | Value                                                         |
+   +---------------------------------------+---------------------------------------------------------------+
+   | id                                    | b6b0617c-ea51-4450-848e-e7cff69238c7                          |
+   | size                                  | 1                                                             |
+   | availability_zone                     | nova                                                          |
+   | created_at                            | 2026-03-31T06:25:50.309282                                    |
+   | status                                | available                                                     |
+   | name                                  | Share2                                                        |
+   | description                           | Share from a snapshot.                                        |
+   | project_id                            | 20787a7ba11946adad976463b57d8a2f                              |
+   | snapshot_id                           | 962e8126-35c3-47bb-8c00-f0ee37f42ddd                          |
+   | share_network_id                      | None                                                          |
+   | share_proto                           | NFS                                                           |
+   | share_type                            | c0086582-30a6-4060-b096-a42ec9d66b86                          |
+   | is_public                             | False                                                         |
+   | snapshot_support                      | True                                                          |
+   | task_state                            | None                                                          |
+   | share_type_name                       | default                                                       |
+   | access_rules_status                   | active                                                        |
+   | replication_type                      | None                                                          |
+   | has_replicas                          | False                                                         |
+   | user_id                               | 5c7bdb6eb0504d54a619acf8375c08ce                              |
+   | create_share_from_snapshot_support    | True                                                          |
+   | revert_to_snapshot_support            | True                                                          |
+   | share_group_id                        | None                                                          |
+   | source_share_group_snapshot_member_id | None                                                          |
+   | mount_snapshot_support                | True                                                          |
+   | progress                              | 100%                                                          |
+   | export_locations                      |                                                               |
+   |                                       | id = 33d0964d-a968-40d5-97c4-b9371f580e46                     |
+   |                                       | path = 203.0.113.3:/shares/share-1dc2a471-3d47-4e1a-bf6c-bd01 |
+   |                                       | preferred = True                                              |
+   | properties                            | source='snapshot'                                             |
+   +---------------------------------------+---------------------------------------------------------------+
 
 By default, the Shared File Systems service will place the new share in the
 source share's pool, unless a different destination availability zone is
@@ -155,15 +176,15 @@ disabled by default.
    operation will be denied when source and destination availability zones are
    different.
 
-You can soft-delete a snapshot using :command:`manila snapshot-delete
+You can soft-delete a snapshot using :command:`openstack share snapshot delete
 <snapshot_name_or_ID>`. If a snapshot is in busy state, and during
 the delete an ``error_deleting`` status appeared, administrator can
 force-delete it or explicitly reset the state.
 
-Use :command:`snapshot-reset-state [--state <state>] <snapshot>` to update
+Use :command:`openstack share snapshot set <snapshot> --status <status>` to update
 the state of a snapshot explicitly. A valid value of a status are
 ``available``, ``error``, ``creating``, ``deleting``, ``error_deleting``.
-If no state is provided, the ``available`` state will be used.
+If no status is provided, the ``available`` status will be used.
 
-Use :command:`manila snapshot-force-delete <snapshot>` to force-delete
+Use :command:`openstack share snapshot delete --force <snapshot>` to force-delete
 a specified share snapshot in any state.

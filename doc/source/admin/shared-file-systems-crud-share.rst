@@ -157,7 +157,8 @@ protocol, and size 1 GB:
 
 .. code-block:: console
 
-   $ openstack share create nfs 1 --name Share1 --description "My share" --share-type dhss_false
+   $ openstack share create nfs 1 --name Share1 --description "My share" \
+       --share-type dhss_false
    +---------------------------------------+--------------------------------------+
    | Field                                 | Value                                |
    +---------------------------------------+--------------------------------------+
@@ -239,7 +240,7 @@ New share ``Share1`` should have a status ``available``:
    | export_locations                      |                                          |
    |                                       | id =                                     |
    |                                       | 30d8ad5a-05b2-401a-9dbd-caf496f4ab12     |
-   |                                       | path = 11.0.0.11:/shares/share_c1de2     |
+   |                                       | path = 192.0.2.11:/shares/share_c1de2    |
    |                                       | cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2    |
    |                                       | fc0_acbe_444c_888a_c52c05242dce          |
    |                                       | preferred = False                        |
@@ -249,7 +250,7 @@ New share ``Share1`` should have a status ``available``:
    |                                       | is_admin_only = True                     |
    |                                       | id =                                     |
    |                                       | acdd47f6-aef5-4d3b-86b2-db7d73d4bbfe     |
-   |                                       | path = 10.0.0.10:/shares/share_c1de2     |
+   |                                       | path = 192.0.2.10:/shares/share_c1de2    |
    |                                       | cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2    |
    |                                       | fc0_acbe_444c_888a_c52c05242dce          |
    |                                       | preferred = True                         |
@@ -259,7 +260,7 @@ New share ``Share1`` should have a status ``available``:
    |                                       | is_admin_only = False                    |
    |                                       | id =                                     |
    |                                       | 224f223f-6dea-4e08-92c5-66de161cf43d     |
-   |                                       | path = 10.0.0.20:shares/share_c1de2      |
+   |                                       | path = 192.0.2.20:shares/share_c1de2     |
    |                                       | cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2    |
    |                                       | fc0_acbe_444c_888a_c52c05242dce          |
    |                                       | preferred = False                        |
@@ -300,7 +301,7 @@ To create a file share in share servers mode, you need to:
      org/manila/latest/admin/shared-file-systems-multi-backend.html>`_ of the specific
      share driver.
 
-#. After the share becomes available, use the :command:`manila show` command
+#. After the share becomes available, use the :command:`openstack share show` command
    to get the share export location.
 
 In the example to create a share, the default share type and the already
@@ -334,10 +335,10 @@ share type, NFS shared file system protocol, and size 1 GB:
        --description "My second share" \
        --share-type default \
        --share-network my_net \
-       --metadata aim=testing \
+       --property aim=testing \
        --public
    +---------------------------------------+--------------------------------------+
-   | Property                              | Value                                |
+   | Field                                 | Value                                |
    +---------------------------------------+--------------------------------------+
    | id                                    | a37c3d1d-023f-4fcf-b640-3dbbb3e89193 |
    | size                                  | 1                                    |
@@ -432,7 +433,7 @@ status share should have status ``available``:
    | export_locations                      |                                          |
    |                                       | id =                                     |
    |                                       | aeac5f3e-60e3-461c-8ca8-6696e0f59f39     |
-   |                                       | path = 12.0.0.12:/shares/share_cdc_2c    |
+   |                                       | path = 192.0.2.12:/shares/share_cdc_2c   |
    |                                       | cf_4e8d_afe9_b25c84bf3953_86ef2          |
    |                                       | 789-f1f5-4171-9e43-3afabddf8b5f          |
    |                                       | preferred = False                        |
@@ -442,7 +443,7 @@ status share should have status ``available``:
    |                                       | is_admin_only = True                     |
    |                                       | id =                                     |
    |                                       | 965aa536-9ba4-4f8b-9ddd-a6a916968597     |
-   |                                       | path = 10.0.0.10:/shares/share_cdc_2c    |
+   |                                       | path = 192.0.2.10:/shares/share_cdc_2c   |
    |                                       | cf_4e8d_afe9_b25c84bf3953_86ef2          |
    |                                       | 789-f1f5-4171-9e43-3afabddf8b5f          |
    |                                       | preferred = True                         |
@@ -452,7 +453,7 @@ status share should have status ``available``:
    |                                       | is_admin_only = False                    |
    |                                       | id =                                     |
    |                                       | 224f223f-6dea-4e08-92c5-66de161cf43d     |
-   |                                       | path = 10.0.0.20:/shares/share_cdc_2c    |
+   |                                       | path = 192.0.2.20:/shares/share_cdc_2c   |
    |                                       | cf_4e8d_afe9_b25c84bf3953_86ef2          |
    |                                       | 789-f1f5-4171-9e43-3afabddf8b5f          |
    |                                       | preferred = False                        |
@@ -473,7 +474,8 @@ the share if you need:
 
 .. code-block:: console
 
-   $ openstack share set Share2 --description "My second share. Updated" --public False
+   $ openstack share set Share2 --description "My second share. Updated" \
+       --public False
 
    $ openstack share show Share2
    +---------------------------------------+--------------------------------------+
@@ -582,7 +584,7 @@ You can update the metadata:
 
 .. code-block:: console
 
-   $ openstack share set Share2 --proper deadline='01/30/16'
+   $ openstack share set Share2 --property deadline='01/30/16'
    $ openstack share show -c properties Share2
    +------------+------------------------------------------------------+
    | Field      | Value                                                |
@@ -735,31 +737,31 @@ You must also specify one of these supported authentication methods:
   contain periods.
 
 Try to mount NFS share with export path
-``10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f`` on the
-node with IP address ``10.0.0.13``:
+``192.0.2.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f`` on the
+node with IP address ``192.0.2.13``:
 
 .. code-block:: console
 
-   $ sudo mount -v -t nfs 10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f /mnt/
-   mount.nfs: timeout set for Tue Oct  6 10:37:23 2015
-   mount.nfs: trying text-based options 'vers=4,addr=10.0.0.10,clientaddr=10.0.0.13'
+   $ sudo mount -v -t nfs 192.0.2.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f /mnt/
+   mount.nfs: timeout set for Mon Mar 31 10:37:23 2026
+   mount.nfs: trying text-based options 'vers=4,addr=192.0.2.10,clientaddr=192.0.2.13'
    mount.nfs: mount(2): Permission denied
-   mount.nfs: access denied by server while mounting 10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f
+   mount.nfs: access denied by server while mounting 192.0.2.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f
 
 An error message "Permission denied" appeared, so you are not allowed to mount
 a share without an access rule. Allow access to the share with ``ip`` access
-type and ``10.0.2.13`` IP address:
+type and ``198.51.100.13`` IP address:
 
 .. code-block:: console
 
-   $ openstack share access create Share1 ip 10.0.2.13 --access-level rw
+   $ openstack share access create Share1 ip 198.51.100.13 --access-level rw
    +--------------+--------------------------------------+
    | Field        | Value                                |
    +--------------+--------------------------------------+
    | id           | 56d344c5-95cb-477b-bf33-39f6e9b43edf |
    | share_id     | c1de2cdc-2ccf-4e8d-afe9-b25c84bf3953 |
    | access_level | rw                                   |
-   | access_to    | 10.0.2.13                            |
+   | access_to    | 198.51.100.13                        |
    | access_type  | ip                                   |
    | state        | queued_to_apply                      |
    | access_key   | None                                 |
@@ -772,7 +774,7 @@ Try to mount a share again. This time it is mounted successfully:
 
 .. code-block:: console
 
-   $ sudo mount -v -t nfs 10.0.0.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f /mnt/
+   $ sudo mount -v -t nfs 192.0.2.10:/shares/share_cdc_2ccf_4e8d_afe9_b25c84bf3953_86ef2789-f1f5-4171-9e43-3afabddf8b5f /mnt/
 
 .. note::
 
@@ -802,11 +804,11 @@ you list permissions for a share:
 .. code-block:: console
 
    $ openstack share access list Share1
-   +--------------------------------------+-------------+-----------+--------------+--------+------------+----------------------------+-------------------------+
-   | ID                                   | Access Type | Access To | Access Level | State  | Access Key | Created At                 | Updated At              |
-   +--------------------------------------+-------------+-----------+--------------+--------+------------+----------------------------+-------------------------+
-   | 56d344c5-95cb-477b-bf33-39f6e9b43edf | ip          | 10.0.0.13 | rw           | active | None       | 2025-04-05T23:44:31.165395 | 2025-04-05T23:45:50.780 |
-   +--------------------------------------+-------------+-----------+--------------+--------+------------+----------------------------+-------------------------+
+   +--------------------------------------+-------------+------------+--------------+--------+------------+----------------------------+-------------------------+
+   | ID                                   | Access Type | Access To  | Access Level | State  | Access Key | Created At                 | Updated At              |
+   +--------------------------------------+-------------+------------+--------------+--------+------------+----------------------------+-------------------------+
+   | 56d344c5-95cb-477b-bf33-39f6e9b43edf | ip          | 192.0.2.13 | rw           | active | None       | 2025-04-05T23:44:31.165395 | 2025-04-05T23:45:50.780 |
+   +--------------------------------------+-------------+------------+--------------+--------+------------+----------------------------+-------------------------+
 
 Deny access to the share and check that deleted access rule is absent in the
 access rule list:

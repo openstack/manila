@@ -37,57 +37,16 @@ To start profiling Manila code, the following steps have to be taken:
 
 #. Restart all manila services and keystone service.
 
-#. To verify profiler with manilaclient, run any command with ``--profile <key>.``
+#. To verify profiler with openstackclient, run any command with
+   ``--os-profile <key>``.
    The key (e.g. SECRET_KEY) should be one of the ``hmac_keys`` mentioned in
    manila.conf. To generate correct profiling information across all services
    at least one key needs to be consistent between OpenStack projects.
 
    .. code-block:: console
 
-       $ manila --profile SECRET_KEY create NFS 1 --name Share1 --share-network testNetwork --share-type dhss_true
-        +---------------------------------------+--------------------------------------+
-        | Property                              | Value                                |
-        +---------------------------------------+--------------------------------------+
-        | id                                    | 9703da88-25ba-41e6-827d-a6932f708dd4 |
-        | size                                  | 1                                    |
-        | availability_zone                     | None                                 |
-        | created_at                            | 2021-02-23T11:21:38.000000           |
-        | status                                | creating                             |
-        | name                                  | Share1                               |
-        | description                           | None                                 |
-        | project_id                            | c67b2fd35b054060971d28cf654ee92a     |
-        | snapshot_id                           | None                                 |
-        | share_network_id                      | 03754c58-1456-497f-b7d6-8f36a4d644f0 |
-        | share_proto                           | NFS                                  |
-        | metadata                              | {}                                   |
-        | share_type                            | 5b1a4133-371c-4583-a801-f2b6e1ae102d |
-        | is_public                             | False                                |
-        | snapshot_support                      | False                                |
-        | task_state                            | None                                 |
-        | share_type_name                       | dhss_true                            |
-        | access_rules_status                   | active                               |
-        | replication_type                      | None                                 |
-        | has_replicas                          | False                                |
-        | user_id                               | 7ecd60ddae1448b79449dc6434460eaf     |
-        | create_share_from_snapshot_support    | False                                |
-        | revert_to_snapshot_support            | False                                |
-        | share_group_id                        | None                                 |
-        | source_share_group_snapshot_member_id | None                                 |
-        | mount_snapshot_support                | False                                |
-        | progress                              | None                                 |
-        | share_server_id                       | None                                 |
-        | host                                  |                                      |
-        +---------------------------------------+--------------------------------------+
-        Profiling trace ID: 1705dfd8-e45a-46cd-b0e2-2e40fd9e5f22
-        To display trace use next command:
-        osprofiler trace show --html 1705dfd8-e45a-46cd-b0e2-2e40fd9e5f22
-
-#. To verify profiler with openstackclient, run any command with
-   ``--os-profile <key>``.
-
-   .. code-block:: console
-
-       $ openstack --os-profile SECRET_KEY share create NFS 1 --name Share2 --share-network testNetwork --share-type dhss_true
+       $ openstack --os-profile SECRET_KEY share create NFS 1 --name Share2 \
+           --share-network testNetwork --share-type dhss_true
         +---------------------------------------+--------------------------------------+
         | Field                                 | Value                                |
         +---------------------------------------+--------------------------------------+

@@ -32,7 +32,7 @@ To extend the share and check the result, run:
    $ openstack share resize docs_resize 2
    $ openstack share show docs_resize
    +---------------------------------------+---------------------------------------+
-   | Property                              | Value                                 |
+   | Field                                 | Value                                 |
    +---------------------------------------+---------------------------------------+
    | id                                    | a3454cf1-bb1d-4e4d-a8e4-a3881c593720  |
    | size                                  | 2                                     |
@@ -45,7 +45,7 @@ To extend the share and check the result, run:
    | snapshot_id                           | None                                  |
    | share_network_id                      | None                                  |
    | share_proto                           | NFS                                   |
-   | metadata                              | {}                                    |
+   | properties                            | {}                                    |
    | share_type                            | 303f0a73-711e-4beb-a4f7-a60acc1d588e  |
    | is_public                             | True                                  |
    | snapshot_support                      | True                                  |
@@ -77,7 +77,7 @@ check the result, run:
    $ openstack share resize docs_resize 1
    $ openstack share show docs_resize
    +---------------------------------------+---------------------------------------+
-   | Property                              | Value                                 |
+   | Field                                 | Value                                 |
    +---------------------------------------+---------------------------------------+
    | id                                    | a3454cf1-bb1d-4e4d-a8e4-a3881c593720  |
    | size                                  | 1                                     |
@@ -90,7 +90,7 @@ check the result, run:
    | snapshot_id                           | None                                  |
    | share_network_id                      | None                                  |
    | share_proto                           | NFS                                   |
-   | metadata                              | {'__mount_options': 'fs=cephfs'}      |
+   | properties                            | {'__mount_options': 'fs=cephfs'}      |
    | share_type                            | 303f0a73-711e-4beb-a4f7-a60acc1d588e  |
    | is_public                             | True                                  |
    | snapshot_support                      | True                                  |

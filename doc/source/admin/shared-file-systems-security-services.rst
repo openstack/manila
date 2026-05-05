@@ -43,7 +43,7 @@ Create a ``ldap`` security service:
 .. code-block:: console
 
    $ openstack share security service create ldap \
-       --dns-ip 8.8.8.8 --server 10.254.0.3 \
+       --dns-ip 203.0.113.53 --server 203.0.113.3 \
        --name my_ldap_security_service
    +-----------------+--------------------------------------+
    | Field           | Value                                |
@@ -55,8 +55,8 @@ Create a ``ldap`` security service:
    | created_at      | 2025-04-04T12:44:17.131358           |
    | updated_at      | None                                 |
    | description     | None                                 |
-   | dns_ip          | 8.8.8.8                              |
-   | server          | 10.254.0.3                           |
+   | dns_ip          | 203.0.113.53                         |
+   | server          | 203.0.113.3                          |
    | domain          | None                                 |
    | user            | None                                 |
    | password        | None                                 |
@@ -70,7 +70,7 @@ To create ``kerberos`` security service, run:
 .. code-block:: console
 
    $ openstack share security service create kerberos \
-       --server 10.254.0.3  --user demo --password secret \
+       --server 203.0.113.3  --user demo --password secret \
        --name my_kerberos_security_service \
        --description "Kerberos security service"
    +-----------------+--------------------------------------+
@@ -84,7 +84,7 @@ To create ``kerberos`` security service, run:
    | updated_at      | None                                 |
    | description     | Kerberos security service            |
    | dns_ip          | None                                 |
-   | server          | 10.254.0.3                           |
+   | server          | 203.0.113.3                          |
    | domain          | None                                 |
    | user            | demo                                 |
    | password        | secret                               |
@@ -123,7 +123,7 @@ using the associated share network ID.
 
    $ openstack share security service show my_ldap_security_service
    +-----------------+-------------------------------------------+
-   | Property        | Value                                     |
+   | Field           | Value                                     |
    +-----------------+-------------------------------------------+
    | id              | 266d7c94-db18-47af-b6db-0c3a663e39f5      |
    | name            | my_ldap_security_service                  |
@@ -132,8 +132,8 @@ using the associated share network ID.
    | created_at      | 2025-04-04T12:44:17.131358                |
    | updated_at      | None                                      |
    | description     | None                                      |
-   | dns_ip          | 8.8.8.8                                   |
-   | server          | 10.254.0.3                                |
+   | dns_ip          | 203.0.113.53                              |
+   | server          | 203.0.113.3                               |
    | domain          | None                                      |
    | user            | None                                      |
    | password        | None                                      |
@@ -187,11 +187,12 @@ share networks:
 
 .. code-block:: console
 
-   $ openstack share network unset --security-service my_ldap_security_service share_net2
+   $ openstack share network unset \
+       --security-service my_ldap_security_service share_net2
 
    $ openstack share security service show my_ldap_security_service
    +-----------------+--------------------------------------+
-   | Property        | Value                                |
+   | Field           | Value                                |
    +-----------------+--------------------------------------+
    | id              | 266d7c94-db18-47af-b6db-0c3a663e39f5 |
    | name            | my_ldap_security_service             |
@@ -200,8 +201,8 @@ share networks:
    | created_at      | 2025-04-04T12:44:17.131358           |
    | updated_at      | None                                 |
    | description     | None                                 |
-   | dns_ip          | 8.8.8.8                              |
-   | server          | 10.254.0.3                           |
+   | dns_ip          | 203.0.113.53                         |
+   | server          | 203.0.113.3                          |
    | domain          | None                                 |
    | user            | None                                 |
    | password        | None                                 |

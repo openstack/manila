@@ -45,7 +45,7 @@ You can get a list of non-scoped capabilities from the scheduler by using:
 
 .. code-block:: console
 
-    $ manila pool-list --detail
+    $ openstack share pool list --detail
 
 The non-scoped capabilities can be of three types:
 

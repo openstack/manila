@@ -247,7 +247,7 @@ this must be set to False.
 
 .. code-block:: console
 
-   $ manila type-create hitachi False
+   $ openstack share type create hitachi False
 
 Additionally, the driver also reports the following common capabilities that
 can be specified in the share type:
@@ -266,12 +266,12 @@ can be specified in the share type:
 |                            | enable the feature on the file system used.  |
 +----------------------------+----------------------------------------------+
 
-To specify a common capability on the share type, use the *type-key* command,
+To specify a common capability on the share type, use the *share type set* command,
 for example:
 
 .. code-block:: console
 
-   $ manila type-key hitachi set dedupe=True
+   $ openstack share type set hitachi --extra-specs dedupe=True
 
 Step 4 - Restart the Services
 *****************************
@@ -319,8 +319,8 @@ subnet ID created on previously step (can be fetched using *neutron subnet-list*
 Manage and Unmanage Shares
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Manila has the ability to manage and unmanage shares. If there is a share in
-the storage and it is not in OpenStack, you can manage that share and use it
+Manila has the ability to adopt and abandon shares. If there is a share in
+the storage and it is not in OpenStack, you can adopt that share and use it
 as a manila share. Hitachi NAS Platform File Services Driver for OpenStack use
 virtual-volumes (V-VOLs) to create shares. Only V-VOLs with a quota limit
 can be used by the driver, also, they must be created or moved inside the
@@ -332,9 +332,10 @@ To **manage** shares use:
 
 .. code-block:: console
 
-   $ manila manage [--name <name>] [--description <description>]
-   [--share_type <share_type>] [--driver_options [<key=value> [<key=value> ...]]]
-   <service_host> <protocol> <export_path>
+   $ openstack share adopt [--name <name>] [--description <description>]
+                           [--share-type <share-type>]
+                           [--driver-options [<key=value> [<key=value> ...]]]
+                           <service-host> <protocol> <export-path>
 
 Where:
 
@@ -343,7 +344,8 @@ Where:
 +==================+==========================================================+
 |                  | Manila host, backend and share name. For example         |
 |  service_host    | ubuntu\@hitachi1#HITACHI1. The available hosts can be    |
-|                  | listed with the command: *manila pool-list* (admin only).|
+|                  | listed with the command:                                 |
+|                  | *openstack share pool list* (admin only).                |
 +------------------+---------------------+------------------------------------+
 |  protocol        | NFS or CIFS protocols are currently supported.           |
 +------------------+----------------------------------------------------------+
@@ -356,7 +358,7 @@ To **unmanage** a share use:
 
 .. code-block:: console
 
-   $ manila unmanage <share_id>
+   $ openstack share abandon <share_id>
 
 Where:
 
@@ -364,8 +366,8 @@ Where:
 |  Parameter       | Description                                             |
 +==================+=========================================================+
 |   share_id       | Manila ID of the share to be unmanaged. This list can   |
-|                  | be fetched with: *manila list*.                         |
-+------------------+---------------------+-----------------------------------+
+|                  | be fetched with: *openstack share list*.                |
++------------------+---------------------------------------------------------+
 
 Additional Notes
 ~~~~~~~~~~~~~~~~
@@ -377,7 +379,7 @@ Additional Notes
   real used space in HNAS. Also, a snapshot does not initially take any space in
   HNAS, it only stores the difference between the share and the snapshot, so it
   grows when share data is changed.
-- Admins should manage the tenant's quota (*manila quota-update*) to control
+- Admins should manage the tenant's quota (*openstack share quota set*) to control
   the backend usage.
 - By default, CIFS snapshots are disabled when the share is mounted, since it
   uses tree-clone to create snapshots and does not guarantee point-in-time

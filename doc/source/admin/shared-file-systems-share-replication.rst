@@ -150,129 +150,132 @@ Create a new share type and specify the `replication_type` as an extra-spec
 within the share-type being used.
 
 
-Use the :command:`manila type-create` command to create a new share type.
+Use the :command:`openstack share type create` command to create a new share type.
 Specify the name and the value for the extra-spec
 ``driver_handles_share_servers``.
 
 .. code-block:: console
 
-   $ manila type-create readable_type_replication False
+   $ openstack share type create readable_type_replication False
    +----------------------+--------------------------------------+
-   | Property             | Value                                |
+   | Field                | Value                                |
    +----------------------+--------------------------------------+
-   | required_extra_specs | driver_handles_share_servers : False |
-   | Name                 | readable_type_replication            |
-   | Visibility           | public                               |
+   | id                   | 3b3ee3f7-6e43-4aa1-859d-0b0511c43074 |
+   | name                 | readable_type_replication            |
+   | visibility           | public                               |
    | is_default           | -                                    |
-   | ID                   | 3b3ee3f7-6e43-4aa1-859d-0b0511c43074 |
+   | required_extra_specs | driver_handles_share_servers : False |
    | optional_extra_specs | snapshot_support : True              |
+   | description          | None                                 |
    +----------------------+--------------------------------------+
 
-Use the :command:`manila type-key` command to set an extra-spec to the
+Use the :command:`openstack share type set` command to set an extra-spec to the
 share type.
 
 .. code-block:: console
 
-   $ manila type-key readable_type_replication set replication_type=readable
+   $ openstack share type set readable_type_replication \
+       --extra-specs replication_type=readable
 
 .. note::
    This command has no output. To verify the extra-spec, use the
-   :command:`manila extra-specs-list` command and specify the share type's name
+   :command:`openstack share type list` command and specify the share type's name
    or ID as a parameter.
 
 Create a share with the share type
 
-Use the :command:`manila create` command to create a share. Specify the share
+Use the :command:`openstack share create` command to create a share. Specify the share
 protocol, size and the availability zone.
 
 .. code-block:: console
 
-   $ manila create NFS 1 --share_type readable_type_replication --name my_share --description "This share will have replicas" --az availability_zone_1
-   +-----------------------------+--------------------------------------+
-   | Property                    | Value                                |
-   +-----------------------------+--------------------------------------+
-   | status                      | creating                             |
-   | share_type_name             | readable_type_replication            |
-   | description                 | This share will have replicas        |
-   | availability_zone           | availability_zone_1                  |
-   | share_network_id            | None                                 |
-   | share_server_id             | None                                 |
-   | share_group_id              | None                                 |
-   | host                        |                                      |
-   | access_rules_status         | active                               |
-   | snapshot_id                 | None                                 |
-   | is_public                   | False                                |
-   | task_state                  | None                                 |
-   | snapshot_support            | True                                 |
-   | id                          | e496ed61-8f2e-436b-b299-32c3e90991cc |
-   | size                        | 1                                    |
-   | name                        | my_share                             |
-   | share_type                  | 3b3ee3f7-6e43-4aa1-859d-0b0511c43074 |
-   | has_replicas                | False                                |
-   | replication_type            | readable                             |
-   | created_at                  | 2016-03-29T20:22:18.000000           |
-   | share_proto                 | NFS                                  |
-   | project_id                  | 48a5ca76ac69405e99dc1c13c5195186     |
-   | metadata                    | {}                                   |
-   +-----------------------------+--------------------------------------+
+   $ openstack share create NFS 1 --share-type readable_type_replication \
+       --name my_share --description "This share will have replicas" \
+       --availability-zone availability_zone_1
+   +---------------------------------------+--------------------------------------+
+   | Field                                 | Value                                |
+   +---------------------------------------+--------------------------------------+
+   | id                                    | e496ed61-8f2e-436b-b299-32c3e90991cc |
+   | size                                  | 1                                    |
+   | availability_zone                     | availability_zone_1                  |
+   | created_at                            | 2026-03-31T20:22:18.000000           |
+   | status                                | creating                             |
+   | name                                  | my_share                             |
+   | description                           | This share will have replicas        |
+   | project_id                            | 48a5ca76ac69405e99dc1c13c5195186     |
+   | snapshot_id                           | None                                 |
+   | share_network_id                      | None                                 |
+   | share_proto                           | NFS                                  |
+   | metadata                              | {}                                   |
+   | share_type                            | 3b3ee3f7-6e43-4aa1-859d-0b0511c43074 |
+   | is_public                             | False                                |
+   | snapshot_support                      | True                                 |
+   | task_state                            | None                                 |
+   | share_type_name                       | readable_type_replication            |
+   | access_rules_status                   | active                               |
+   | replication_type                      | readable                             |
+   | has_replicas                          | False                                |
+   | user_id                               | 5c7bdb6eb0504d54a619acf8375c08ce     |
+   | create_share_from_snapshot_support    | True                                 |
+   | revert_to_snapshot_support            | True                                 |
+   | share_group_id                        | None                                 |
+   | source_share_group_snapshot_member_id | None                                 |
+   | mount_snapshot_support                | True                                 |
+   | progress                              | None                                 |
+   +---------------------------------------+--------------------------------------+
 
 .. note::
    If you are creating a share with the share type specification
    ``driver_handles_share_servers=True``, the share network parameter is
    required for the operation to be performed.
 
-Use the :command:`manila show` command to retrieve details of the share.
+Use the :command:`openstack share show` command to retrieve details of the share.
 Specify the share ID or name as a parameter.
 
 .. code-block:: console
 
-   $ manila show my_share
-   +-----------------------------+--------------------------------------------------------------------+
-   | Property                    | Value                                                              |
-   +-----------------------------+--------------------------------------------------------------------+
-   | status                      | available                                                          |
-   | share_type_name             | readable_type_replication                                          |
-   | description                 | This share will have replicas                                      |
-   | availability_zone           | availability_zone_1                                                |
-   | share_network_id            | None                                                               |
-   | export_locations            |                                                                    |
-   |                             | path =                                                             |
-   |                             |10.32.62.26:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a8277b28|
-   |                             | preferred = False                                                  |
-   |                             | is_admin_only = False                                              |
-   |                             | id = e1d754b5-ec06-42d2-afff-3e98c0013faf                          |
-   |                             | share_instance_id = 38efc042-50c2-4825-a6d8-cba2a8277b28           |
-   |                             | path =                                                             |
-   |                             |172.21.0.23:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a8277b28|
-   |                             | preferred = False                                                  |
-   |                             | is_admin_only = True                                               |
-   |                             | id = 6f843ecd-a7ea-4939-86de-e1e01d9e8672                          |
-   |                             | share_instance_id = 38efc042-50c2-4825-a6d8-cba2a8277b28           |
-   | share_server_id             | None                                                               |
-   | share_group_id       | None                                                                     |
-   | host                        | openstack4@zfsonlinux_1#alpha                                      |
-   | access_rules_status         | active                                                             |
-   | snapshot_id                 | None                                                               |
-   | is_public                   | False                                                              |
-   | task_state                  | None                                                               |
-   | snapshot_support            | True                                                               |
-   | id                          | e496ed61-8f2e-436b-b299-32c3e90991cc                               |
-   | size                        | 1                                                                  |
-   | name                        | my_share                                                           |
-   | share_type                  | 3b3ee3f7-6e43-4aa1-859d-0b0511c43074                               |
-   | has_replicas                | False                                                              |
-   | replication_type            | readable                                                           |
-   | created_at                  | 2016-03-29T20:22:18.000000                                         |
-   | share_proto                 | NFS                                                                |
-   | project_id                  | 48a5ca76ac69405e99dc1c13c5195186                                   |
-   | metadata                    | {}                                                                 |
-   +-----------------------------+--------------------------------------------------------------------+
+   $ openstack share show my_share
+   +---------------------------------------+----------------------------------------------------------------------+
+   | Field                                 | Value                                                                |
+   +---------------------------------------+----------------------------------------------------------------------+
+   | id                                    | e496ed61-8f2e-436b-b299-32c3e90991cc                                 |
+   | size                                  | 1                                                                    |
+   | availability_zone                     | availability_zone_1                                                  |
+   | created_at                            | 2026-03-31T20:22:18.000000                                           |
+   | status                                | available                                                            |
+   | name                                  | my_share                                                             |
+   | description                           | This share will have replicas                                        |
+   | project_id                            | 48a5ca76ac69405e99dc1c13c5195186                                     |
+   | snapshot_id                           | None                                                                 |
+   | share_network_id                      | None                                                                 |
+   | share_proto                           | NFS                                                                  |
+   | share_type                            | 3b3ee3f7-6e43-4aa1-859d-0b0511c43074                                 |
+   | is_public                             | False                                                                |
+   | snapshot_support                      | True                                                                 |
+   | task_state                            | None                                                                 |
+   | share_type_name                       | readable_type_replication                                            |
+   | access_rules_status                   | active                                                               |
+   | replication_type                      | readable                                                             |
+   | has_replicas                          | False                                                                |
+   | user_id                               | 5c7bdb6eb0504d54a619acf8375c08ce                                     |
+   | create_share_from_snapshot_support    | True                                                                 |
+   | revert_to_snapshot_support            | True                                                                 |
+   | share_group_id                        | None                                                                 |
+   | source_share_group_snapshot_member_id | None                                                                 |
+   | mount_snapshot_support                | True                                                                 |
+   | progress                              | 100%                                                                 |
+   | export_locations                      |                                                                      |
+   |                                       | id = e1d754b5-ec06-42d2-afff-3e98c0013faf                            |
+   |                                       | path = 192.0.2.26:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a  |
+   |                                       | preferred = False                                                    |
+   | properties                            |                                                                      |
+   +---------------------------------------+----------------------------------------------------------------------+
 
 
 .. note::
    When you create a share that supports replication, an ``active`` replica is
    created for you. You can verify this with the
-   :command:`manila share-replica-list` command.
+   :command:`openstack share replica list` command.
 
    From API version 2.53, when creating a replicated share, the manila quota
    system will reserve and consume resources for two additional quotas:
@@ -284,7 +287,7 @@ Creating and promoting share replicas
 
 Create a share replica
 
-Use the :command:`manila share-replica-create` command to create a share
+Use the :command:`openstack share replica create` command to create a share
 replica. Specify the share ID or name as a parameter. You may
 optionally provide the `availability_zone` or the `scheduler_hints`.
 
@@ -293,20 +296,22 @@ manila-share service host in ``host@backend#POOL`` format.
 
 .. code-block:: console
 
-   $ manila share-replica-create my_share --az availability_zone_2 --scheduler_hints only_host=openstack4@zfsonlinux_2#beta
+   $ openstack share replica create my_share \
+       --availability-zone availability_zone_2 \
+       --scheduler-hint only_host=openstack4@zfsonlinux_2#beta
    +-------------------+--------------------------------------+
-   | Property          | Value                                |
+   | Field             | Value                                |
    +-------------------+--------------------------------------+
+   | id                | 78a5ef96-6c36-42e0-b50b-44efe7c1807e |
    | status            | creating                             |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
    | availability_zone | availability_zone_2                  |
-   | created_at        | 2016-03-29T20:24:53.148992           |
+   | created_at        | 2026-03-31T20:24:53.148992           |
    | updated_at        | None                                 |
    | share_network_id  | None                                 |
    | share_server_id   | None                                 |
    | host              |                                      |
    | replica_state     | None                                 |
-   | id                | 78a5ef96-6c36-42e0-b50b-44efe7c1807e |
    +-------------------+--------------------------------------+
 
 See details of the newly created share replica
@@ -321,52 +326,52 @@ See details of the newly created share replica
 .. note::
    Scheduler hints are available only for API version >= 2.67.
 
-Use the :command:`manila share-replica-show` command to see details
+Use the :command:`openstack share replica show` command to see details
 of the newly created share replica. Specify the share replica's ID as a
 parameter.
 
 .. code-block:: console
 
-   $ manila share-replica-show 78a5ef96-6c36-42e0-b50b-44efe7c1807e
+   $ openstack share replica show 78a5ef96-6c36-42e0-b50b-44efe7c1807e
    +-------------------+--------------------------------------+
-   | Property          | Value                                |
+   | Field             | Value                                |
    +-------------------+--------------------------------------+
+   | id                | 78a5ef96-6c36-42e0-b50b-44efe7c1807e |
    | status            | available                            |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
    | availability_zone | availability_zone_2                  |
-   | created_at        | 2016-03-29T20:24:53.000000           |
-   | updated_at        | 2016-03-29T20:24:58.000000           |
+   | created_at        | 2026-03-31T20:24:53.000000           |
+   | updated_at        | 2026-03-31T20:24:58.000000           |
    | share_network_id  | None                                 |
    | share_server_id   | None                                 |
    | host              | openstack4@zfsonlinux_2#beta         |
    | replica_state     | in_sync                              |
-   | id                | 78a5ef96-6c36-42e0-b50b-44efe7c1807e |
    +-------------------+--------------------------------------+
 
 See all replicas of the share
 
-Use the :command:`manila share-replica-list` command to see all the replicas
+Use the :command:`openstack share replica list` command to see all the replicas
 of the share. Specify the share ID or name as an optional parameter.
 
 .. code-block:: console
 
-   $ manila share-replica-list --share-id my_share
+   $ openstack share replica list --share-id my_share
    +--------------------------------------+-----------+---------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
    | ID                                   | Status    | Replica State | Share ID                             | Host                          | Availability Zone   | Updated At                 |
    +--------------------------------------+-----------+---------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
-   | 38efc042-50c2-4825-a6d8-cba2a8277b28 | available | active        | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_1#alpha | availability_zone_1 | 2016-03-29T20:22:19.000000 |
-   | 78a5ef96-6c36-42e0-b50b-44efe7c1807e | available | in_sync       | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_2#beta  | availability_zone_2 | 2016-03-29T20:24:58.000000 |
+   | 38efc042-50c2-4825-a6d8-cba2a8277b28 | available | active        | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_1#alpha | availability_zone_1 | 2026-03-31T20:22:19.000000 |
+   | 78a5ef96-6c36-42e0-b50b-44efe7c1807e | available | in_sync       | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_2#beta  | availability_zone_2 | 2026-03-31T20:24:58.000000 |
    +--------------------------------------+-----------+---------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
 
 Promote the secondary share replica to be the new active replica
 
-Use the :command:`manila share-replica-promote` command to promote a
+Use the :command:`openstack share replica promote` command to promote a
 non-active share replica to become the ``active`` replica. Specify the
 non-active replica's ID as a parameter.
 
 .. code-block:: console
 
-   $ manila share-replica-promote 78a5ef96-6c36-42e0-b50b-44efe7c1807e
+   $ openstack share replica promote 78a5ef96-6c36-42e0-b50b-44efe7c1807e
 
 .. note::
    This command has no output.
@@ -377,12 +382,12 @@ attribute of the share replica being promoted will be set to
 
 .. code-block:: console
 
-   $ manila share-replica-list --share-id my_share
+   $ openstack share replica list --share-id my_share
    +--------------------------------------+-----------+--------------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
    | ID                                   | Status    |    Replica State   | Share ID                             | Host                          | Availability Zone   | Updated At                 |
    +--------------------------------------+-----------+--------------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
-   | 38efc042-50c2-4825-a6d8-cba2a8277b28 | available |       active       | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_1#alpha | availability_zone_1 | 2016-03-29T20:32:19.000000 |
-   | 78a5ef96-6c36-42e0-b50b-44efe7c1807e | available | replication_change | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_2#beta  | availability_zone_2 | 2016-03-29T20:32:19.000000 |
+   | 38efc042-50c2-4825-a6d8-cba2a8277b28 | available |       active       | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_1#alpha | availability_zone_1 | 2026-03-31T20:32:19.000000 |
+   | 78a5ef96-6c36-42e0-b50b-44efe7c1807e | available | replication_change | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_2#beta  | availability_zone_2 | 2026-03-31T20:32:19.000000 |
    +--------------------------------------+-----------+--------------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
 
 Once the promotion is complete, the ``replica_state`` will be set to
@@ -390,12 +395,12 @@ Once the promotion is complete, the ``replica_state`` will be set to
 
 .. code-block:: console
 
-   $ manila share-replica-list --share-id my_share
+   $ openstack share replica list --share-id my_share
    +--------------------------------------+-----------+---------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
    | ID                                   | Status    | Replica State | Share ID                             | Host                          | Availability Zone   | Updated At                 |
    +--------------------------------------+-----------+---------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
-   | 38efc042-50c2-4825-a6d8-cba2a8277b28 | available | in_sync       | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_1#alpha | availability_zone_1 | 2016-03-29T20:32:19.000000 |
-   | 78a5ef96-6c36-42e0-b50b-44efe7c1807e | available | active        | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_2#beta  | availability_zone_2 | 2016-03-29T20:32:19.000000 |
+   | 38efc042-50c2-4825-a6d8-cba2a8277b28 | available | in_sync       | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_1#alpha | availability_zone_1 | 2026-03-31T20:32:19.000000 |
+   | 78a5ef96-6c36-42e0-b50b-44efe7c1807e | available | active        | e496ed61-8f2e-436b-b299-32c3e90991cc | openstack4@zfsonlinux_2#beta  | availability_zone_2 | 2026-03-31T20:32:19.000000 |
    +--------------------------------------+-----------+---------------+--------------------------------------+-------------------------------+---------------------+----------------------------+
 
 
@@ -404,14 +409,14 @@ Access rules
 
 Create an IP access rule for the share
 
-Use the :command:`manila access-allow` command to add an access rule.
+Use the :command:`openstack share access create` command to add an access rule.
 Specify the share ID or name, protocol and the target as parameters.
 
 .. code-block:: console
 
-   $ manila access-allow my_share ip 0.0.0.0/0 --access-level rw
+   $ openstack share access create my_share ip 0.0.0.0/0 --access-level rw
    +--------------+--------------------------------------+
-   | Property     | Value                                |
+   | Field        | Value                                |
    +--------------+--------------------------------------+
    | share_id     | e496ed61-8f2e-436b-b299-32c3e90991cc |
    | access_type  | ip                                   |
@@ -431,25 +436,25 @@ Specify the share ID or name, protocol and the target as parameters.
    access to the (currently) non-active replica when it is promoted to
    become the ``active`` replica.
 
-The :command:`manila access-deny` command can be used to remove a previously
+The :command:`openstack share access delete` command can be used to remove a previously
 applied access rule.
 
 List the export locations of the share
 
-Use the :command:`manila share-export-locations-list` command to list the
+Use the :command:`openstack share export location list` command to list the
 export locations of a share.
 
 .. code-block:: console
 
-   $ manila share-export-location-list my_share
-   +--------------------------------------+---------------------------------------------------------------------------+-----------+
-   | ID                                   | Path                                                                      | Preferred |
-   +--------------------------------------+---------------------------------------------------------------------------+-----------+
-   | 3ed3fbf5-2fa1-4dc0-8440-a0af72398cb6 | 10.32.62.21:/beta/subdir/manila_share_78a5ef96_6c36_42e0_b50b_44efe7c1807e| False     |
-   | 6f843ecd-a7ea-4939-86de-e1e01d9e8672 | 172.21.0.23:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a8277b28      | False     |
-   | e1d754b5-ec06-42d2-afff-3e98c0013faf | 10.32.62.26:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a8277b28      | False     |
-   | f3c5585f-c2f7-4264-91a7-a4a1e754e686 | 172.21.0.29:/beta/subdir/manila_share_78a5ef96_6c36_42e0_b50b_44efe7c1807e| False     |
-   +--------------------------------------+---------------------------------------------------------------------------+-----------+
+   $ openstack share export location list my_share
+   +--------------------------------------+-----------------------------------------------------------------------------+-----------+
+   | ID                                   | Path                                                                        | Preferred |
+   +--------------------------------------+-----------------------------------------------------------------------------+-----------+
+   | 3ed3fbf5-2fa1-4dc0-8440-a0af72398cb6 | 192.0.2.21:/beta/subdir/manila_share_78a5ef96_6c36_42e0_b50b_44efe7c1807e   | False     |
+   | 6f843ecd-a7ea-4939-86de-e1e01d9e8672 | 203.0.113.23:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a8277b28       | False     |
+   | e1d754b5-ec06-42d2-afff-3e98c0013faf | 192.0.2.26:/alpha/manila_share_38efc042_50c2_4825_a6d8_cba2a8277b28         | False     |
+   | f3c5585f-c2f7-4264-91a7-a4a1e754e686 | 203.0.113.29:/beta/subdir/manila_share_78a5ef96_6c36_42e0_b50b_44efe7c1807e | False     |
+   +--------------------------------------+-----------------------------------------------------------------------------+-----------+
 
 Identify the export location corresponding to the share replica on the user
 accessible network and you may mount it on the target node.
@@ -457,7 +462,7 @@ accessible network and you may mount it on the target node.
 .. note::
    As an administrator, you can list the export locations for a particular
    share replica by using the
-   :command:`manila share-instance-export-location-list` command and
+   :command:`openstack share instance export location list` command and
    specifying the share replica's ID as a parameter.
 
 
@@ -466,20 +471,20 @@ Snapshots
 
 Create a snapshot of the share
 
-Use the :command:`manila snapshot-create` command to create a snapshot
+Use the :command:`openstack share snapshot create` command to create a snapshot
 of the share. Specify the share ID or name as a parameter.
 
 .. code-block:: console
 
-   $ manila snapshot-create my_share --name "my_snapshot"
+   $ openstack share snapshot create my_share --name "my_snapshot"
    +-------------------+--------------------------------------+
-   | Property          | Value                                |
+   | Field             | Value                                |
    +-------------------+--------------------------------------+
    | status            | creating                             |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
    | user_id           | 5c7bdb6eb0504d54a619acf8375c08ce     |
    | description       | None                                 |
-   | created_at        | 2016-03-29T21:14:03.000000           |
+   | created_at        | 2026-03-31T21:14:03.000000           |
    | share_proto       | NFS                                  |
    | provider_location | None                                 |
    | id                | 06cdccaf-93a0-4e57-9a39-79fb1929c649 |
@@ -492,20 +497,20 @@ of the share. Specify the share ID or name as a parameter.
 
 Show the details of the snapshot
 
-Use the :command:`manila snapshot-show` to view details of a snapshot.
+Use the :command:`openstack share snapshot show` to view details of a snapshot.
 Specify the snapshot ID or name as a parameter.
 
 .. code-block:: console
 
-   $ manila snapshot-show my_snapshot
+   $ openstack share snapshot show my_snapshot
    +-------------------+--------------------------------------+
-   | Property          | Value                                |
+   | Field             | Value                                |
    +-------------------+--------------------------------------+
    | status            | available                            |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
    | user_id           | 5c7bdb6eb0504d54a619acf8375c08ce     |
    | description       | None                                 |
-   | created_at        | 2016-03-29T21:14:03.000000           |
+   | created_at        | 2026-03-31T21:14:03.000000           |
    | share_proto       | NFS                                  |
    | provider_location | None                                 |
    | id                | 06cdccaf-93a0-4e57-9a39-79fb1929c649 |
@@ -528,14 +533,14 @@ Specify the snapshot ID or name as a parameter.
 Planned failovers
 -----------------
 
-As an administrator, you can use the :command:`manila share-replica-resync`
+As an administrator, you can use the :command:`openstack share replica resync`
 command to attempt to sync data between ``active`` and ``non-active`` share
 replicas of a share before promotion. This will ensure that share replicas have
 the most up-to-date data and their relationships can be safely switched.
 
 .. code-block:: console
 
-   $ manila share-replica-resync 38efc042-50c2-4825-a6d8-cba2a8277b28
+   $ openstack share replica resync 38efc042-50c2-4825-a6d8-cba2a8277b28
 
 .. note::
    This command has no output.
@@ -553,13 +558,14 @@ As an administrator, you can:
 
 Reset the ``status`` attribute of a share replica
 
-Use the :command:`manila share-replica-reset-state` command to reset
+Use the :command:`openstack share replica set` command to reset
 the ``status`` attribute. Specify the share replica's ID as a parameter
-and use the ``--state`` option to specify the state intended.
+and use the ``--status`` option to specify the state intended.
 
 .. code-block:: console
 
-   $ manila share-replica-reset-state 38efc042-50c2-4825-a6d8-cba2a8277b28 --state=available
+   $ openstack share replica set 38efc042-50c2-4825-a6d8-cba2a8277b28 \
+       --status=available
 
 .. note::
    This command has no output.
@@ -567,33 +573,34 @@ and use the ``--state`` option to specify the state intended.
 
 Reset the ``replica_state`` attribute
 
-Use the :command:`manila share-replica-reset-replica-state` command to
+Use the :command:`openstack share replica set` command to
 reset the ``replica_state`` attribute. Specify the share replica's ID
-and use the ``--state`` option to specify the state intended.
+and use the ``--replica-state`` option to specify the state intended.
 
 .. code-block:: console
 
-   $ manila share-replica-reset-replica-state 38efc042-50c2-4825-a6d8-cba2a8277b28 --state=out_of_sync
+   $ openstack share replica set 38efc042-50c2-4825-a6d8-cba2a8277b28 \
+       --replica-state=out_of_sync
 
 .. note::
    This command has no output.
 
 Force delete a specified share replica in any state
 
-Use the :command:`manila share-replica-delete` command with the
+Use the :command:`openstack share replica delete` command with the
 '--force' key to remove the share replica, regardless of the state it is in.
 
 .. code-block:: console
 
-   $ manila share-replica-show 9513de5d-0384-4528-89fb-957dd9b57680
+   $ openstack share replica show 9513de5d-0384-4528-89fb-957dd9b57680
    +-------------------+--------------------------------------+
-   | Property          | Value                                |
+   | Field             | Value                                |
    +-------------------+--------------------------------------+
    | status            | error                                |
    | share_id          | e496ed61-8f2e-436b-b299-32c3e90991cc |
    | availability_zone | availability_zone_1                  |
-   | created_at        | 2016-03-30T01:32:47.000000           |
-   | updated_at        | 2016-03-30T01:34:25.000000           |
+   | created_at        | 2026-03-31T01:32:47.000000           |
+   | updated_at        | 2026-03-31T01:34:25.000000           |
    | share_network_id  | None                                 |
    | share_server_id   | None                                 |
    | host              | openstack4@zfsonlinux_1#alpha        |
@@ -601,7 +608,8 @@ Use the :command:`manila share-replica-delete` command with the
    | id                | 38efc042-50c2-4825-a6d8-cba2a8277b28 |
    +-------------------+--------------------------------------+
 
-   $ manila share-replica-delete --force 38efc042-50c2-4825-a6d8-cba2a8277b28
+   $ openstack share replica delete \
+       --force 38efc042-50c2-4825-a6d8-cba2a8277b28
 
 .. note::
    This command has no output.
@@ -613,19 +621,19 @@ roles.
 Deleting share replicas
 -----------------------
 
-Use the :command:`manila share-replica-delete` command with the share
+Use the :command:`openstack share replica delete` command with the share
 replica's ID to delete a share replica.
 
 .. code-block:: console
 
-   $ manila share-replica-delete 38efc042-50c2-4825-a6d8-cba2a8277b28
+   $ openstack share replica delete 38efc042-50c2-4825-a6d8-cba2a8277b28
 
 .. note::
    This command has no output.
 
 .. note::
    You cannot delete the last ``active`` replica with this command. You should
-   use the :command:`manila delete` command to remove the share.
+   use the :command:`openstack share delete` command to remove the share.
 
 
 .. [1] When running in a multi-backend configuration, until the Stein

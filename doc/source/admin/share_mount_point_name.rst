@@ -36,7 +36,7 @@ Administrator Guide
 
    .. code-block:: bash
 
-      openstack share type set <share_type> --extra-spec \
+      openstack share type set <share_type> --extra-specs \
       mount_point_name_support="<is> True"
       provisioning:mount_point_prefix=<prefix>
 

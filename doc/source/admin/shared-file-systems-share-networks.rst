@@ -64,25 +64,32 @@ To create a share network with private network and subnetwork, run:
 
 .. code-block:: console
 
-   $ manila share-network-create --neutron-net-id 5ed5a854-21dc-4ed3-870a-117b7064eb21 \
-   --neutron-subnet-id 74dcfb5a-b4d7-4855-86f5-a669729428dc --name my_share_net \
-   --description "My first share network" --availability-zone manila-zone-0
-   +-------------------+--------------------------------------+
-   | Property          | Value                                |
-   +-------------------+--------------------------------------+
-   | name              | my_share_net                         |
-   | segmentation_id   | None                                 |
-   | created_at        | 2015-09-24T12:06:32.602174           |
-   | neutron_subnet_id | 74dcfb5a-b4d7-4855-86f5-a669729428dc |
-   | updated_at        | None                                 |
-   | network_type      | None                                 |
-   | neutron_net_id    | 5ed5a854-21dc-4ed3-870a-117b7064eb21 |
-   | ip_version        | None                                 |
-   | cidr              | None                                 |
-   | project_id        | 20787a7ba11946adad976463b57d8a2f     |
-   | id                | 5c3cbabb-f4da-465f-bc7f-fadbe047b85a |
-   | description       | My first share network               |
-   +-------------------+--------------------------------------+
+   $ openstack share network create \
+       --neutron-net-id 5ed5a854-21dc-4ed3-870a-117b7064eb21 \
+       --neutron-subnet-id 74dcfb5a-b4d7-4855-86f5-a669729428dc \
+       --name my_share_net --description "My first share network" \
+       --availability-zone manila-zone-0
+   +-----------------------------------+----------------------------------------------------------+
+   | Field                             | Value                                                    |
+   +-----------------------------------+----------------------------------------------------------+
+   | id                                | 5c3cbabb-f4da-465f-bc7f-fadbe047b85a                     |
+   | name                              | my_share_net                                             |
+   | project_id                        | 20787a7ba11946adad976463b57d8a2f                         |
+   | created_at                        | 2026-03-31T12:06:32.289118                               |
+   | updated_at                        | None                                                     |
+   | description                       | My first share network                                   |
+   | status                            | active                                                   |
+   | share_network_subnets             |                                                          |
+   |                                   | id = 3147bc3d-d389-451b-b912-e8f7894013b2                |
+   |                                   | availability_zone = manila-zone-0                        |
+   |                                   | created_at = 2026-03-31T12:06:32.321436                  |
+   |                                   | segmentation_id = None                                   |
+   |                                   | neutron_net_id = 5ed5a854-21dc-4ed3-870a-117b7064eb21    |
+   |                                   | neutron_subnet_id = 74dcfb5a-b4d7-4855-86f5-a669729428dc |
+   |                                   | ip_version = None                                        |
+   |                                   | cidr = None                                              |
+   |                                   | network_type = None                                      |
+   +-----------------------------------+----------------------------------------------------------+
 
 The ``segmentation_id``, ``cidr``, ``ip_version``, and ``network_type``
 share network attributes are automatically set to the values determined by the
@@ -111,9 +118,9 @@ To check the network list, run:
 
 .. code-block:: console
 
-   $ manila share-network-list
+   $ openstack share network list
    +--------------------------------------+--------------+
-   | id                                   | name         |
+   | ID                                   | Name         |
    +--------------------------------------+--------------+
    | 5c3cbabb-f4da-465f-bc7f-fadbe047b85a | my_share_net |
    +--------------------------------------+--------------+
@@ -149,7 +156,7 @@ You also can see detailed information about the share network including
    | admin_state_up            | UP                                   |
    | availability_zone_hints   |                                      |
    | availability_zones        | nova                                 |
-   | created_at                | 2016-12-13T09:31:30Z                 |
+   | created_at                | 2026-03-31T09:31:30Z                 |
    | description               |                                      |
    | id                        | 3b5a629a-e7a1-46a3-afb2-ab666fb884bc |
    | ipv4_address_scope        | None                                 |
@@ -167,7 +174,7 @@ You also can see detailed information about the share network including
    | status                    | ACTIVE                               |
    | subnets                   | 682e3329-60b0-440f-8749-83ef53dd8544 |
    | tags                      | []                                   |
-   | updated_at                | 2016-12-13T09:31:36Z                 |
+   | updated_at                | 2026-03-31T09:31:36Z                 |
    +---------------------------+--------------------------------------+
 
 You also can add and remove the security services from the share network.
@@ -179,7 +186,7 @@ To reset the state of a given share network, run:
 
 .. code-block:: console
 
-   $ manila share-network-reset-state manila_service_network --state active
+   $ openstack share network set manila_service_network --status active
 
 
 ==============================================
@@ -204,9 +211,9 @@ one share network. To list share networks in a project, run:
 
 .. code-block:: console
 
-   $ manila share-network-list
+   $ openstack share network list
    +--------------------------------------+-----------------------+
-   | id                                   | name                  |
+   | ID                                   | Name                  |
    +--------------------------------------+-----------------------+
    | 483a9787-5116-48b2-bd89-473022fad060 | sharenetwork1         |
    | bcb9c650-a501-410d-a418-97f28b8ab61a | sharenetwork2         |
@@ -222,18 +229,18 @@ To create a share network subnet in a specific share network, run:
 
 .. code-block:: console
 
-   $ manila share-network-subnet-create sharenetwork1 \
+   $ openstack share network subnet create sharenetwork1 \
         --availability-zone manila-zone-0 \
         --neutron-net-id 5ed5a854-21dc-4ed3-870a-117b7064eb21 \
         --neutron-subnet-id 74dcfb5a-b4d7-4855-86f5-a669729428dc
    +--------------------+--------------------------------------+
-   | Property           | Value                                |
+   | Field              | Value                                |
    +--------------------+--------------------------------------+
    | id                 | 20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38 |
    | availability_zone  | manila-zone-0                        |
    | share_network_id   | 483a9787-5116-48b2-bd89-473022fad060 |
    | share_network_name | sharenetwork1                        |
-   | created_at         | 2019-12-03T00:37:30.000000           |
+   | created_at         | 2026-03-31T00:37:30.847733           |
    | segmentation_id    | None                                 |
    | neutron_subnet_id  | 74dcfb5a-b4d7-4855-86f5-a669729428dc |
    | updated_at         | None                                 |
@@ -243,6 +250,7 @@ To create a share network subnet in a specific share network, run:
    | network_type       | None                                 |
    | mtu                | None                                 |
    | gateway            | None                                 |
+   | metadata           | {}                                   |
    +--------------------+--------------------------------------+
 
 To list all the share network subnets of a given share network, you need to
@@ -250,32 +258,53 @@ show the share network, and then all subnets will be displayed, as shown below:
 
 .. code-block:: console
 
-   $ manila share-network-show sharenetwork1
-   +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-   | Property              | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-   +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-   | id                    | 483a9787-5116-48b2-bd89-473022fad060                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-   | name                  | sharenetwork1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-   | project_id            | 58ff89e14f9245d7843b8cf290525b5b                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-   | created_at            | 2019-12-03T00:16:39.000000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-   | updated_at            | 2019-12-03T00:31:58.000000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-   | description           | None                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-   | share_network_subnets | [{'id': '20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38', 'availability_zone': 'manila-zone-0', 'created_at': '2019-12-03T00:37:30.000000', 'updated_at': None, 'segmentation_id': None, 'neutron_net_id': '5ed5a854-21dc-4ed3-870a-117b7064eb21', 'neutron_subnet_id': '74dcfb5a-b4d7-4855-86f5-a669729428dc', 'ip_version': None, 'cidr': None, 'network_type': None, 'mtu': None, 'gateway': None}, {'id': '8b532c15-3ac7-4ea1-b1bc-732614a82313', 'availability_zone': None, 'created_at': '2019-12-03T00:16:39.000000', 'updated_at': None, 'segmentation_id': None, 'neutron_net_id': None, 'neutron_subnet_id': None, 'ip_version': None, 'cidr': None, 'network_type': None, 'mtu': None, 'gateway': None}] |
-   +-----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+   $ openstack share network show sharenetwork1
+   +-----------------------------------+----------------------------------------------------------+
+   | Field                             | Value                                                    |
+   +-----------------------------------+----------------------------------------------------------+
+   | id                                | 483a9787-5116-48b2-bd89-473022fad060                     |
+   | name                              | sharenetwork1                                            |
+   | project_id                        | 58ff89e14f9245d7843b8cf290525b5b                         |
+   | created_at                        | 2026-03-31T00:16:39.289118                               |
+   | updated_at                        | 2026-03-31T00:31:58.000000                               |
+   | description                       | None                                                     |
+   | status                            | active                                                   |
+   | share_network_subnets             |                                                          |
+   |                                   | id = 20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38                |
+   |                                   | availability_zone = manila-zone-0                        |
+   |                                   | created_at = 2026-03-31T00:37:30.321436                  |
+   |                                   | segmentation_id = None                                   |
+   |                                   | neutron_net_id = 5ed5a854-21dc-4ed3-870a-117b7064eb21    |
+   |                                   | neutron_subnet_id = 74dcfb5a-b4d7-4855-86f5-a669729428dc |
+   |                                   | ip_version = None                                        |
+   |                                   | cidr = None                                              |
+   |                                   | network_type = None                                      |
+   |                                   | id = 8b532c15-3ac7-4ea1-b1bc-732614a82313                |
+   |                                   | availability_zone = None                                 |
+   |                                   | created_at = 2026-03-31T00:16:39.000000                  |
+   |                                   | segmentation_id = None                                   |
+   |                                   | neutron_net_id = None                                    |
+   |                                   | neutron_subnet_id = None                                 |
+   |                                   | ip_version = None                                        |
+   |                                   | cidr = None                                              |
+   |                                   | network_type = None                                      |
+   | security_services                 |                                                          |
+   +-----------------------------------+----------------------------------------------------------+
 
 To show a specific share network subnet, run:
 
 .. code-block:: console
 
-   $ manila share-network-subnet-show sharenetwork1 20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38
+   $ openstack share network subnet show sharenetwork1 \
+       20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38
    +--------------------+--------------------------------------+
-   | Property           | Value                                |
+   | Field              | Value                                |
    +--------------------+--------------------------------------+
    | id                 | 20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38 |
    | availability_zone  | manila-zone-0                        |
    | share_network_id   | 483a9787-5116-48b2-bd89-473022fad060 |
    | share_network_name | sharenetwork1                        |
-   | created_at         | 2019-12-03T00:37:30.000000           |
+   | created_at         | 2026-03-31T00:37:30.847733           |
    | segmentation_id    | None                                 |
    | neutron_subnet_id  | 74dcfb5a-b4d7-4855-86f5-a669729428dc |
    | updated_at         | None                                 |
@@ -285,13 +314,15 @@ To show a specific share network subnet, run:
    | network_type       | None                                 |
    | mtu                | None                                 |
    | gateway            | None                                 |
+   | properties         |                                      |
    +--------------------+--------------------------------------+
 
 To delete a share network subnet, run:
 
 .. code-block:: console
 
-   $ manila share-network-subnet-delete sharenetwork1 20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38
+   $ openstack share network subnet delete sharenetwork1 \
+       20f3cd2c-0faa-4b4b-a00a-4f188eb1cf38
 
 If you want to remove a share network subnet, make sure that no other
 resource is using the subnet, otherwise the Shared File Systems

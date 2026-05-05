@@ -149,10 +149,12 @@ following:
 
   .. code-block:: console
 
-     $ manila share-server-migration-check f3089d4f-89e8-4730-b6e6-7cab553df071 stack@dummy2 --nondisruptive False --writable True --preserve_snapshots True
+     $ openstack share server migration start \
+         --check-only f3089d4f-89e8-4730-b6e6-7cab553df071 stack@dummy2 \
+         --nondisruptive False --writable True --preserve-snapshots True
 
     +------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-    | Property               | Value                                                                                                                                                                                        |
+    | Field                  | Value                                                                                                                                                                                        |
     +------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
     | compatible             | True                                                                                                                                                                                         |
     | requested_capabilities | {'writable': 'True', 'nondisruptive': 'False', 'preserve_snapshots': 'True', 'share_network_id': None, 'host': 'stack@dummy2'}                                                               |
@@ -160,7 +162,7 @@ following:
     +------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
   The ``share_network_id`` attribute in the ``supported_capabilities`` will
-  correspond to the value ``--new_share_network`` option if provided, otherwise
+  correspond to the value ``--new-share-network`` option if provided, otherwise
   it will be the same as the source share network. In the output it is possible
   to identify if the destination host supports the ``migration_cancel`` and
   ``migration_get_progress`` operations before starting the migration. The
@@ -184,7 +186,9 @@ following:
 
   .. code-block:: console
 
-     $ manila share-server-migration-start f3089d4f-89e8-4730-b6e6-7cab553df071 stack@dummy2 --nondisruptive False --writable True --preserve_snapshots True
+     $ openstack share server migration start \
+         f3089d4f-89e8-4730-b6e6-7cab553df071 stack@dummy2 \
+         --nondisruptive False --writable True --preserve-snapshots True
 
   The parameters description is detailed in the following section.
 
@@ -207,10 +211,11 @@ following:
 
   .. code-block:: console
 
-     $ manila share-server-migration-complete f3089d4f-89e8-4730-b6e6-7cab553df071
+     $ openstack share server migration complete \
+         f3089d4f-89e8-4730-b6e6-7cab553df071
 
     +-----------------------------+--------------------------------------+
-    | Property                    | Value                                |
+    | Field                       | Value                                |
     +-----------------------------+--------------------------------------+
     | destination_share_server_id | f3fb808f-c2a4-4caa-9805-7caaf55c0522 |
     +-----------------------------+--------------------------------------+
@@ -223,7 +228,8 @@ following:
 
   .. code-block:: console
 
-     $ manila share-server-migration-cancel f3089d4f-89e8-4730-b6e6-7cab553df071
+     $ openstack share server migration cancel \
+         f3089d4f-89e8-4730-b6e6-7cab553df071
 
   .. note::
      This command has no output.
@@ -235,10 +241,11 @@ following:
 
   .. code-block:: console
 
-     $ manila share-server-migration-get-progress f3089d4f-89e8-4730-b6e6-7cab553df071
+     $ openstack share server migration show \
+         f3089d4f-89e8-4730-b6e6-7cab553df071
 
     +-----------------------------+--------------------------------------+
-    | Property                    | Value                                |
+    | Field                       | Value                                |
     +-----------------------------+--------------------------------------+
     | total_progress              | 50                                   |
     | task_state                  | migration_driver_in_progress         |
