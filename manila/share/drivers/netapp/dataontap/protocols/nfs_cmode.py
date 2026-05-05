@@ -85,7 +85,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
     @na_utils.trace
     @base.access_rules_synchronized
-    def update_access(self, share, share_name, rules):
+    def update_access(self, share, share_name, rules, replica=False):
         """Replaces the list of access rules known to the backend storage."""
 
         # Ensure rules are valid
@@ -155,8 +155,12 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
                                               export_policy_name)
 
         if set_volume_user_to_pcuser:
-            LOG.info('Setting user to pcuser for share %s.', share_name)
-            self._client.set_pcuser_for_volume(share_name)
+            if replica:
+                LOG.info('Skipping pcuser configuration for DP read-only '
+                         'volume %s.', share_name)
+            else:
+                LOG.info('Setting user to pcuser for share %s.', share_name)
+                self._client.set_pcuser_for_volume(share_name)
 
     @na_utils.trace
     def _validate_access_rule(self, rule):

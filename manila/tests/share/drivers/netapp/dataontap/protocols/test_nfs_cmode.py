@@ -131,6 +131,30 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         if all_squash_metadata:
             self.mock_client.set_pcuser_for_volume.assert_called_once_with(
                 fake.SHARE_NAME)
+        else:
+            self.mock_client.set_pcuser_for_volume.assert_not_called()
+
+    def test_update_access_all_squash_replica_skips_pcuser(self):
+
+        self.mock_object(self.helper, '_ensure_export_policy')
+        self.mock_object(self.helper,
+                         '_get_export_policy_name',
+                         mock.Mock(return_value='fake_export_policy'))
+        self.mock_object(self.helper,
+                         '_get_temp_export_policy_name',
+                         mock.Mock(side_effect=['fake_new_export_policy',
+                                                'fake_old_export_policy']))
+        self.mock_object(self.helper,
+                         '_get_auth_methods',
+                         mock.Mock(return_value='fake_auth_method'))
+
+        share = fake.NFS_SHARE.copy()
+        share.update({'metadata': {'all_squash': 'true'}})
+
+        self.helper.update_access(share, fake.SHARE_NAME, [fake.IP_ACCESS],
+                                  replica=True)
+
+        self.mock_client.set_pcuser_for_volume.assert_not_called()
 
     def test_validate_access_rule(self):
 
