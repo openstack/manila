@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Dell Inc. or its subsidiaries.
+# Copyright (c) 2026 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -388,6 +388,19 @@ class PowerStoreClient(object):
         res, response = self._send_get_request(url)
         if res.status_code == requests.codes.ok:
             return response['size_total']
+
+    def get_snapshot_filesystem(self, name):
+        """Retrieves snapshot filesystem details by name.
+
+        :param name: name of the snapshot filesystem
+        :return: dict with id, parent_id, size_total if found, else None
+        """
+        url = ('/file_system?name=eq.' + name +
+               '&select=id,parent_id,size_total')
+        res, response = self._send_get_request(url)
+        if res.status_code == requests.codes.ok and response:
+            return response[0]
+        return None
 
     def set_acl(self, smb_share_id, cifs_rw_users, cifs_ro_users):
         """Set ACL for a SMB share.
