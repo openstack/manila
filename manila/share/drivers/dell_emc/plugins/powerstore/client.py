@@ -303,7 +303,7 @@ class PowerStoreClient(object):
             return response[0]["id"]
 
     def retreive_cluster_capacity_metrics(self, cluster_id):
-        """Retreive cluster capacity metrics.
+        """Retrieve cluster capacity metrics.
 
         :param cluster_id: ID of the cluster
         :return: total and used capacity in Byte
