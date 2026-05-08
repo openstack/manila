@@ -543,19 +543,19 @@ class NeutronApiTest(test.TestCase):
             {'router': router_args})
         self.assertTrue(clientv20.Client.called)
 
-    def test_update_port_fixed_ips(self):
+    def test_update_port(self):
         # Set up test data
         port_id = 'test_port'
         fixed_ips = {'fixed_ips': [{'subnet_id': 'test subnet'}]}
 
-        # Execute method 'update_port_fixed_ips'
-        port = self.neutron_api.update_port_fixed_ips(port_id, fixed_ips)
+        # Execute method 'update_port'
+        port = self.neutron_api.update_port(port_id, fixed_ips)
 
         # Verify results
         self.assertEqual(fixed_ips, port)
         self.assertTrue(clientv20.Client.called)
 
-    def test_update_port_fixed_ips_exception(self):
+    def test_update_port_exception(self):
         # Set up test data
         port_id = 'test_port'
         fixed_ips = {'fixed_ips': [{'subnet_id': 'test subnet'}]}
@@ -563,10 +563,10 @@ class NeutronApiTest(test.TestCase):
             self.neutron_api.client, 'update_port',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException))
 
-        # Execute method 'update_port_fixed_ips'
+        # Execute method 'update_port'
         self.assertRaises(
             exception.NetworkException,
-            self.neutron_api.update_port_fixed_ips,
+            self.neutron_api.update_port,
             port_id, fixed_ips)
 
         # Verify results

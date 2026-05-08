@@ -777,7 +777,8 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
                 msg = 'Failed to delete port binding on port %{port}s: %{err}s'
                 LOG.warning(msg, {'port': port['id'], 'err': e})
 
-    def cutover_network_allocations(self, context, src_share_server):
+    def cutover_network_allocations(self, context, src_share_server,
+                                    dest_share_server=None):
         src_host = share_utils.extract_host(src_share_server['host'], 'host')
         dest_host = self.config.neutron_host_id
         ports = self.db.network_allocations_get_for_share_server(
@@ -785,6 +786,9 @@ class NeutronBindNetworkPlugin(NeutronNetworkPlugin):
         for port in ports:
             self.neutron_api.activate_port_binding(port['id'], dest_host)
             self.neutron_api.delete_port_binding(port['id'], src_host)
+            if dest_share_server:
+                self.neutron_api.update_port(
+                    port['id'], {'device_id': dest_share_server['id']})
         return ports
 
 
