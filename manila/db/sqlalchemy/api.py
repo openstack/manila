@@ -6609,10 +6609,16 @@ def _availability_zone_create_if_not_exist(context, name):
     try:
         return _availability_zone_get(context, name)
     except exception.AvailabilityZoneNotFound:
-        az = models.AvailabilityZone()
-        az.update({'id': uuidutils.generate_uuid(), 'name': name})
-        az.save(context.session)
-    return az
+        try:
+            nested = context.session.begin_nested()
+            az = models.AvailabilityZone()
+            az.update({'id': uuidutils.generate_uuid(), 'name': name})
+            az.save(context.session)
+            nested.commit()
+            return az
+        except db_exception.DBDuplicateEntry:
+            nested.rollback()
+            return _availability_zone_get(context, name)
 
 
 @require_context
