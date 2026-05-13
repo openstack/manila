@@ -88,7 +88,7 @@ Finalize installation
 
    .. code-block:: console
 
-      # service manila-share restart
+      # systemctl restart manila-share
 
 #. By default, the Ubuntu packages create an SQLite database. Because this
    configuration uses an SQL database server, remove the SQLite database
