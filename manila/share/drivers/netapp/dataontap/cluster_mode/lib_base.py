@@ -3089,9 +3089,14 @@ class NetAppCmodeFileStorageLibrary(object):
 
         share_name = self._get_backend_share_name(share['id'])
         if self._share_exists(share_name, vserver_client):
+            is_dp_replica = (
+                replica_state is not None and
+                replica_state != constants.REPLICA_STATE_ACTIVE and
+                self._is_readable_replica(share))
             helper = self._get_helper(share)
             helper.set_client(vserver_client)
-            helper.update_access(share, share_name, access_rules)
+            helper.update_access(share, share_name, access_rules,
+                                 replica=is_dp_replica)
         else:
             raise exception.ShareResourceNotFound(share_id=share['id'])
 
@@ -3386,7 +3391,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 helper.set_client(vserver_client)
                 share_name = self._get_backend_share_name(new_replica_id)
                 try:
-                    helper.update_access(new_replica, share_name, access_rules)
+                    helper.update_access(new_replica, share_name, access_rules,
+                                         replica=True)
                 except Exception:
                     model_update['access_rules_status'] = (
                         constants.SHARE_INSTANCE_RULES_ERROR)
@@ -3922,7 +3928,8 @@ class NetAppCmodeFileStorageLibrary(object):
         helper = self._get_helper(replica)
         helper.set_client(vserver_client)
         try:
-            helper.update_access(replica, share_name, access_rules)
+            helper.update_access(replica, share_name, access_rules,
+                                 replica=False)
         except Exception:
             new_active_replica['access_rules_status'] = (
                 constants.SHARE_INSTANCE_RULES_SYNCING)
@@ -4032,7 +4039,7 @@ class NetAppCmodeFileStorageLibrary(object):
         helper.set_client(replica_client)
         try:
             helper.update_access(
-                replica, replica_volume_name, access_rules)
+                replica, replica_volume_name, access_rules, replica=True)
         except Exception:
             replica['access_rules_status'] = (
                 constants.SHARE_INSTANCE_RULES_ERROR)
