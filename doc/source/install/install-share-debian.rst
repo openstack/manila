@@ -88,4 +88,4 @@ Finalize installation
 
    .. code-block:: console
 
-      # service manila-share restart
+      # systemctl restart manila-share

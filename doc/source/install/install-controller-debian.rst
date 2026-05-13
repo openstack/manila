@@ -52,5 +52,5 @@ Finalize installation
 
    .. code-block:: console
 
-      # service manila-scheduler restart
-      # service manila-api restart
+      # systemctl restart manila-scheduler
+      # systemctl restart manila-api

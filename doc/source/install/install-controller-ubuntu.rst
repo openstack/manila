@@ -52,8 +52,8 @@ Finalize installation
 
    .. code-block:: console
 
-      # service manila-scheduler restart
-      # service manila-api restart
+      # systemctl restart manila-scheduler
+      # systemctl restart manila-api
 
 #. By default, the Ubuntu packages create an SQLite database. Because this
    configuration uses an SQL database server, you can remove the SQLite
