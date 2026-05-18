@@ -7929,46 +7929,143 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.get_backend_info(self.context)
         self.assertEqual(expected, result)
 
-    @ddt.data('default', 'hidden')
-    def test_ensure_shares(self, snapdir_cfg):
-        shares = [
-            fake_share.fake_share_instance(id='s-1',
-                                           share_server='fake_server_1'),
-            fake_share.fake_share_instance(id='s-2',
-                                           share_server='fake_server_2'),
-            fake_share.fake_share_instance(id='s-3',
-                                           share_server='fake_server_2')
-        ]
+    def test_ensure_shares(self):
+        share1 = fake_share.fake_share_instance(id='s-1',
+                                                share_server='fake_server_1')
+        share2 = fake_share.fake_share_instance(id='s-2',
+                                                share_server='fake_server_2')
+        share3 = fake_share.fake_share_instance(id='s-3',
+                                                share_server='fake_server_2')
 
-        vserver_client = mock.Mock()
+        shares = [share1, share2, share3]
         self.mock_object(
-            self.library, '_get_vserver',
+            self.library, 'update_share',
             mock.Mock(side_effect=[
-                (fake.VSERVER1, vserver_client),
-                (fake.VSERVER2, vserver_client),
-                (fake.VSERVER2, vserver_client)
+                [dict(path=(':'.join(['10.10.10.10', 'fake_export_path1'])),
+                      is_admin_only=True, metadata=None),
+                 dict(path=(':'.join(['10.10.10.20', 'fake_export_path1'])),
+                      is_admin_only=False, metadata=None)],
+                [dict(path=(':'.join(['10.10.10.10', 'fake_export_path2'])),
+                      is_admin_only=True, metadata=None),
+                 dict(path=(':'.join(['10.10.10.20', 'fake_export_path2'])),
+                      is_admin_only=False, metadata=None)],
+                [dict(path=(':'.join(['10.10.10.10', 'fake_export_path3'])),
+                      is_admin_only=True, metadata=None),
+                 dict(path=(':'.join(['10.10.10.20', 'fake_export_path3'])),
+                      is_admin_only=False, metadata=None)],
             ]))
-        (self.library.configuration.
-         netapp_reset_snapdir_visibility) = snapdir_cfg
 
         self.library.ensure_shares(self.context, shares)
+        self.library.update_share.assert_has_calls([
+            mock.call(share1, share_server='fake_server_1'),
+            mock.call(share2, share_server='fake_server_2'),
+            mock.call(share3, share_server='fake_server_2'),
+        ])
+
+    @ddt.data('fake_message', 'Could not find volume')
+    def test_ensure_shares_exception(self, msg):
+        share1 = fake_share.fake_share_instance(id='s-1',
+                                                share_server='fake_server_1')
+        share2 = fake_share.fake_share_instance(id='s-2',
+                                                share_server='fake_server_2')
+        shares = [share1, share2]
+        na_api_error = netapp_api.NaApiError(code=netapp_api.EAPIERROR,
+                                             message=msg)
+        self.mock_object(
+            self.library, 'update_share', mock.Mock(side_effect=na_api_error))
+
+        updates = self.library.ensure_shares(self.context, shares)
+        self.assertEqual(updates, {})
+        if msg.lower().startswith('could not find'):
+            self.assertEqual(2, lib_base.LOG.debug.call_count)
+        else:
+            self.assertEqual(2, lib_base.LOG.warning.call_count)
+
+    @ddt.data('default', 'hidden')
+    def test_update_share(self, snapdir_cfg):
+        vserver_client = mock.Mock()
+        share = fake_share.fake_share_instance(id='s-1',
+                                               share_server=fake.VSERVER1)
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        mock_share_name = self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(return_value=fake.SHARE_NAME))
+        mock_extract = self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        mock_get_extra_specs = self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=fake.EXTRA_SPEC_WITH_QOS))
+        provisioning_options = copy.deepcopy(
+            fake.PROVISIONING_OPTIONS_WITH_FPOLICY)
+        provisioning_options['hide_snapdir'] = False
+        mock_get_provisioning_opts = self.mock_object(
+            self.library, '_get_provisioning_options_for_share',
+            mock.Mock(return_value=provisioning_options))
+        mock_modify_create_qos = self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_modify_volume = self.mock_object(
+            vserver_client, 'modify_volume')
+
+        (self.library.configuration.
+         netapp_reset_snapdir_visibility) = snapdir_cfg
+        mock_is_readable_replica = self.mock_object(
+            self.library, '_is_readable_replica', mock.Mock(return_value=True))
+        mock_set_max_files = self.mock_object(
+            vserver_client, 'set_volume_max_files')
+        mock_junction_path = self.mock_object(
+            vserver_client, 'get_volume_junction_path',
+            mock.Mock(return_value='/junction/path'))
+        mock_mount_volume = self.mock_object(vserver_client, 'mount_volume')
+        mock_create_export = self.mock_object(
+            self.library,
+            '_create_export',
+            mock.Mock(return_value='fake_export_location'))
+
+        result = self.library.update_share(share, share_server=fake.VSERVER1)
+
+        self.library._get_vserver.assert_called_once_with(
+            share_server=fake.VSERVER1)
+        mock_share_name.assert_called_once_with(share['id'])
+        mock_extract.assert_called_once_with(share['host'], level='pool')
+        mock_get_extra_specs.assert_called_once_with(share)
+        mock_get_provisioning_opts.assert_called_once_with(
+            share, fake.VSERVER1, vserver_client=vserver_client,
+            set_qos=False)
+        mock_modify_create_qos.assert_called_once_with(
+            share, fake.EXTRA_SPEC_WITH_QOS,
+            fake.VSERVER1, vserver_client)
+
+        expected_options = copy.deepcopy(provisioning_options)
+        expected_options['qos_policy_group'] = fake.QOS_POLICY_GROUP_NAME
+        mock_modify_volume.assert_called_once_with(
+            fake.POOL_NAME,
+            fake.SHARE_NAME,
+            **expected_options)
 
         if snapdir_cfg == 'default':
-            self.library._get_vserver.assert_not_called()
             vserver_client.set_volume_snapdir_access.assert_not_called()
-
         else:
-            self.library._get_vserver.assert_has_calls([
-                mock.call(share_server='fake_server_1'),
-                mock.call(share_server='fake_server_2'),
-                mock.call(share_server='fake_server_2'),
-            ])
+            vserver_client.set_volume_snapdir_access.assert_called_once_with(
+                fake.SHARE_NAME, True)
 
-            vserver_client.set_volume_snapdir_access.assert_has_calls([
-                mock.call('share_s_1', True),
-                mock.call('share_s_2', True),
-                mock.call('share_s_3', True),
-            ])
+        mock_is_readable_replica.assert_called_once_with(share)
+        mock_set_max_files.assert_not_called()
+        mock_junction_path.assert_called()
+        mock_mount_volume.assert_not_called()
+        mock_create_export.assert_called_once_with(
+            share,
+            fake.VSERVER1,
+            fake.VSERVER1,
+            vserver_client,
+            clear_current_export_policy=False,
+            ensure_share_already_exists=True,
+            replica=True)
+
+        self.assertEqual(result, 'fake_export_location')
 
     def test__check_volume_clone_split_completed(self):
         vserver_client = mock.Mock()
