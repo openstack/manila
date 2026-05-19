@@ -90,6 +90,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ontap_9_10_1 = self.get_system_version()['version-tuple'] >= (9, 10, 1)
         ontap_9_11_1 = self.get_system_version()['version-tuple'] >= (9, 11, 1)
         ontap_9_12_1 = self.get_system_version()['version-tuple'] >= (9, 12, 1)
+        ontap_9_14_1 = self.get_system_version()['version-tuple'] >= (9, 14, 1)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
@@ -121,6 +122,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.features.add_feature('AES_ENCRYPTION_TYPES',
                                   supported=ontap_9_12_1)
         self.features.add_feature('NAE_SUPPORT', supported=ontap_9_6)
+        self.features.add_feature('VOLUME_TAGS', supported=ontap_9_14_1)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -2478,7 +2480,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       snapshot_reserve=None, volume_type='rw',
                       qos_policy_group=None, adaptive_qos_policy_group=None,
                       encrypt=False, mount_point_name=None, snaplock_type=None,
-                      aggregate_encrypted=None, **options):
+                      aggregate_encrypted=None, volume_tags=None, **options):
         """Creates a volume."""
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
             msg = 'Adaptive QoS not supported on this backend ONTAP version.'
@@ -2516,6 +2518,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if snaplock_type is not None:
             self.set_snaplock_attributes(volume_name, **options)
 
+        if volume_tags and self.features.VOLUME_TAGS:
+            self.set_volume_tags(volume_name, volume_tags)
+
     @na_utils.trace
     def create_volume_async(self, aggregate_list, volume_name, size_gb,
                             thin_provisioned=False, snapshot_policy=None,
@@ -2524,7 +2529,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                             encrypt=False, adaptive_qos_policy_group=None,
                             auto_provisioned=False, mount_point_name=None,
                             snaplock_type=None, aggregate_encrypted=None,
-                            **options):
+                            volume_tags=None, **options):
         """Creates a volume asynchronously."""
 
         if adaptive_qos_policy_group and not self.features.ADAPTIVE_QOS:
@@ -2967,7 +2972,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                       compression_enabled=False, max_files=None,
                       qos_policy_group=None, hide_snapdir=None,
                       autosize_attributes=None,
-                      adaptive_qos_policy_group=None, **options):
+                      adaptive_qos_policy_group=None, volume_tags=None,
+                      **options):
         """Update backend volume for a share as necessary.
 
         :param aggregate_name: either a list or a string. List for aggregate
@@ -3059,6 +3065,23 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         )
         if self._is_snaplock_enabled_volume(volume_name):
             self.set_snaplock_attributes(volume_name, **options)
+
+        if volume_tags and self.features.VOLUME_TAGS:
+            self.set_volume_tags(volume_name, volume_tags)
+
+    @na_utils.trace
+    def set_volume_tags(self, volume_name, tags):
+        """Set _tags on a volume via REST API (requires ONTAP 9.14.1+)."""
+        try:
+            volume = self.get_volume(volume_name)
+            volume_uuid = volume['instance-uuid']
+            request = {'_tags': tags}
+            url_params = {'volume_uuid': volume_uuid}
+            api_args = self._format_request(request, url_params=url_params)
+            self.send_request('volume-modify-tags', api_args=api_args,
+                              use_zapi=False)
+        except Exception:
+            LOG.warning('Could not set tags on volume %s.', volume_name)
 
     @na_utils.trace
     def update_volume_efficiency_attributes(self, volume_name, dedup_enabled,
@@ -3378,6 +3401,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         'type': None,
                         'style': None,
                         'style-extended': None,
+                        'instance-uuid': None,
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
@@ -3447,6 +3471,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'adaptive-policy-group-name')),
             'style-extended': volume_id_attributes.get_child_content(
                 'style-extended'),
+            'instance-uuid': volume_id_attributes.get_child_content(
+                'instance-uuid'),
             'snaplock-type': volume_snaplock_attributes.get_child_content(
                 'snaplock-type')
         }

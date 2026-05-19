@@ -346,6 +346,24 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_generate_volume_tags(self):
+        result = self.library._generate_volume_tags(fake.SHARE_INSTANCE)
+        self.assertEqual(fake.VOLUME_TAGS, result)
+
+    def test_generate_volume_tags_with_share_type_object(self):
+        share = dict(fake.SHARE_INSTANCE,
+                     share_type={'name': fake.SHARE_TYPE_NAME},
+                     share_type_name=None)
+        result = self.library._generate_volume_tags(share)
+        self.assertEqual(fake.VOLUME_TAGS, result)
+
+    def test_generate_volume_tags_truncates_to_200_chars(self):
+        long_name = 'x' * 250
+        share = dict(fake.SHARE_INSTANCE, display_name=long_name)
+        result = self.library._generate_volume_tags(share)
+        for tag in result:
+            self.assertLessEqual(len(tag), 200)
+
     def test_get_backend_snapshot_name(self):
 
         result = self.library._get_backend_snapshot_name(fake.SNAPSHOT_ID)
@@ -1545,6 +1563,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         provisioning_options['snaplock_type'] = "compliance"
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
+        self.mock_object(
+            self.library, '_generate_volume_tags',
+            mock.Mock(return_value=fake.VOLUME_TAGS))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
@@ -1581,12 +1602,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_create_flexgroup.assert_called_once_with(
                 vserver_client, [fake.AGGREGATE], fake.SHARE_NAME,
                 fake.SHARE['size'], 8, mount_point_name=fake.MOUNT_POINT_NAME,
+                volume_tags=fake.VOLUME_TAGS,
                 **provisioning_options)
         else:
             mock_get_aggr_flexgroup.assert_not_called()
             vserver_client.create_volume.assert_called_once_with(
                 fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
                 snapshot_reserve=8, mount_point_name=fake.MOUNT_POINT_NAME,
+                volume_tags=fake.VOLUME_TAGS,
                 **provisioning_options)
 
         if hide_snapdir:
@@ -1613,6 +1636,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_allocate_container_as_replica(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
             return_value=fake.SHARE_NAME))
+        self.mock_object(
+            self.library, '_generate_volume_tags',
+            mock.Mock(return_value=fake.VOLUME_TAGS))
         self.mock_object(share_utils, 'extract_host', mock.Mock(
             return_value=fake.POOL_NAME))
         mock_get_provisioning_opts = self.mock_object(
@@ -1635,7 +1661,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             compression_enabled=False, max_files=5000, encrypt=False,
             snapshot_reserve=8, mount_point_name=fake.MOUNT_POINT_NAME,
             volume_type='dp', adaptive_qos_policy_group=None,
-            aggregate_encrypted=True)
+            aggregate_encrypted=True, volume_tags=fake.VOLUME_TAGS)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_backend_share_name', mock.Mock(
@@ -1680,6 +1706,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_wait_for_start.assert_called_once_with(
             start_timeout, vserver_client, aggr_list, fake.SHARE_NAME, 100,
             10, None, "compliance",
+            volume_tags=None,
             efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
         mock_wait_for_flexgroup_deployment.assert_called_once_with(
             vserver_client, fake.JOB_ID, 2)
@@ -1721,6 +1748,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.create_volume_async.assert_called_once_with(
             aggr_list, fake.SHARE_NAME, 1, is_flexgroup=True,
             snapshot_reserve=10,
+            volume_tags=None,
             auto_provisioned=self.library._is_flexgroup_auto,
             mount_point_name=fake.MOUNT_POINT_NAME,
             snaplock_type="compliance")
@@ -3210,9 +3238,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=fake_fpolicy_scope))
         mock_modify_fpolicy = self.mock_object(
             vserver_client, 'modify_fpolicy_scope')
+        mock_generate_tags = self.mock_object(
+            self.library, '_generate_volume_tags',
+            mock.Mock(return_value=fake.VOLUME_TAGS))
 
         size, created_at = self.library._manage_container(
             share_to_manage, fake.VSERVER1, vserver_client)
+
+        mock_generate_tags.assert_called_once_with(share_to_manage)
 
         mock_is_flexgroup_pool.assert_called_once_with(fake.POOL_NAME)
         if is_flexgroup:
@@ -3235,7 +3268,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.mount_volume.assert_called_once_with(
             fake.SHARE_NAME, fake.MOUNT_POINT_NAME)
         vserver_client.modify_volume.assert_called_once_with(
-            fake_aggr, fake.SHARE_NAME, **provisioning_opts)
+            fake_aggr, fake.SHARE_NAME, volume_tags=fake.VOLUME_TAGS,
+            **provisioning_opts)
         mock_modify_or_create_qos_policy.assert_called_once_with(
             share_to_manage, extra_specs, fake.VSERVER1, vserver_client)
         mock_get_volume_snapshot_attributes.assert_called_once_with(
@@ -7992,6 +8026,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_share_name = self.mock_object(
             self.library, '_get_backend_share_name',
             mock.Mock(return_value=fake.SHARE_NAME))
+        mock_volume_tags = self.mock_object(
+            self.library, '_generate_volume_tags',
+            mock.Mock(return_value=fake.VOLUME_TAGS))
         mock_extract = self.mock_object(
             share_utils, 'extract_host',
             mock.Mock(return_value=fake.POOL_NAME))
@@ -8030,6 +8067,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._get_vserver.assert_called_once_with(
             share_server=fake.VSERVER1)
         mock_share_name.assert_called_once_with(share['id'])
+        mock_volume_tags.assert_called_once_with(share)
         mock_extract.assert_called_once_with(share['host'], level='pool')
         mock_get_extra_specs.assert_called_once_with(share)
         mock_get_provisioning_opts.assert_called_once_with(
@@ -8044,6 +8082,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_modify_volume.assert_called_once_with(
             fake.POOL_NAME,
             fake.SHARE_NAME,
+            volume_tags=fake.VOLUME_TAGS,
             **expected_options)
 
         if snapdir_cfg == 'default':

@@ -1107,6 +1107,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             adaptive_qos_policy_group=None, mount_point_name=None,
             efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME,
             snaplock_type="enterprise", aggregate_encrypted=None,
+            volume_tags=None,
         )
         mock_update.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, False,
@@ -1140,7 +1141,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client._get_create_volume_body.assert_called_once_with(
             fake.VOLUME_NAMES[0], False, None, None, None, 'rw', None, False,
-            None, None, None, None)
+            None, None, None, None, None)
         self.client.send_request.assert_called_once_with(
             '/storage/volumes', 'post', body=body, wait_on_accepted=True)
         self.assertEqual(expected_result, result)
@@ -2833,6 +2834,29 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME
         )
 
+    def test_modify_volume_with_tags(self):
+        self.client.features.add_feature('VOLUME_TAGS', supported=True)
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+        self.mock_object(self.client, '_is_snaplock_enabled_volume',
+                         mock.Mock(return_value=False))
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+
+        self.client.modify_volume(
+            fake.SHARE_AGGREGATE_NAME,
+            fake.SHARE_NAME,
+            volume_tags=fake.VOLUME_TAGS,
+        )
+
+        body = {
+            'guarantee': {'type': 'volume'},
+            '_tags': fake.VOLUME_TAGS,
+        }
+        self.client.send_request.assert_called_once_with(
+            '/storage/volumes/' + volume['uuid'], 'patch', body=body)
+
     def test__parse_timestamp(self):
         test_time_str = '2022-11-25T14:41:20+00:00'
         res = self.client._parse_timestamp(test_time_str)
@@ -3283,6 +3307,23 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                                   fake.SHARE_MOUNT_POINT,
                                                   "compliance",
                                                   True)
+        self.assertEqual(expected, res)
+
+    def test__get_create_volume_body_with_tags(self):
+        self.client.features.add_feature('VOLUME_TAGS', supported=True)
+        expected = {
+            'type': 'rw',
+            'guarantee.type': 'volume',
+            'nas.path': '/%s' % fake.VOLUME_NAMES[0],
+            'svm.name': 'fake_vserver',
+            '_tags': fake.VOLUME_TAGS,
+        }
+
+        self.mock_object(self.client.connection, 'get_vserver',
+                         mock.Mock(return_value='fake_vserver'))
+        res = self.client._get_create_volume_body(
+            fake.VOLUME_NAMES[0], False, None, None, None, 'rw',
+            None, False, None, None, None, None, fake.VOLUME_TAGS)
         self.assertEqual(expected, res)
 
     def test_get_job_state(self):

@@ -946,6 +946,16 @@ class ShareManagerTestCase(test.TestCase):
                          for m in share_instance.get(
                 'share_instance_metadata', [])},
         }
+        if share_instance.get('share_type'):
+            share_instance_ref['share_type_name'] = (
+                share_instance.get('share_type').get('name'))
+        elif share_instance.get('share_type_id'):
+            try:
+                share_type = share_types.get_share_type(
+                    self.context, share_instance.get('share_type_id'))
+                share_instance_ref['share_type_name'] = share_type.get('name')
+            except Exception:
+                share_instance_ref['share_type_name'] = None
         return share_instance_ref
 
     def test_init_host_with_exception_on_ensure_shares(self):

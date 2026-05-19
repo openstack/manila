@@ -17,6 +17,7 @@ ENDPOINT_MIGRATION_ACTIONS = 'svm/migrations/%(svm_migration_id)s'
 ENDPOINT_MIGRATIONS = 'svm/migrations'
 ENDPOINT_JOB_ACTIONS = 'cluster/jobs/%(job_uuid)s'
 ENDPOINT_MIGRATION_GET_PROGRESS = '/storage/volumes/'
+ENDPOINT_VOLUME = 'storage/volumes/%(volume_uuid)s'
 
 endpoints = {
     'system-get-version': {
@@ -50,5 +51,9 @@ endpoints = {
     'svm-migration-get-progress': {
         'method': 'get',
         'url': ENDPOINT_MIGRATION_GET_PROGRESS
+    },
+    'volume-modify-tags': {
+        'method': 'patch',
+        'url': ENDPOINT_VOLUME
     },
 }

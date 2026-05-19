@@ -132,6 +132,9 @@ SNAPMIRROR_POLICY_NAME = 'fake_snapmirror_policy'
 SNAPMIRROR_POLICY_TYPE = 'async_mirror'
 
 USER_NAME = 'fake_user'
+VOLUME_TAGS = ['share_id:fake_id', 'share_name:fake_name',
+               'project:fake_project', 'share_type:fake_type',
+               'protocol:NFS']
 
 PORT = 'e0a'
 VLAN = '1001'
