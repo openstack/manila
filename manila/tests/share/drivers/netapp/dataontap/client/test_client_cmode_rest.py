@@ -4553,11 +4553,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'force': 'true',
             'name': 'FAKE-VSE-SERVER',
             'ad_domain.fqdn': fake_security['domain'],
+            'security.advertised_kdc_encryptions': (
+                ['aes-128', 'aes-256'] if aes_encryption else ['des', 'rc4']),
         }
 
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
-        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, 'configure_cifs_signing')
         self.mock_object(self.client, 'wait_for_cifs_server')
         self.mock_object(self.client, '_get_cifs_server_name',
@@ -4573,8 +4574,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             fake_security, vserver_name=fake.VSERVER_NAME)
         self.client.set_preferred_dc.assert_called_once_with(
             fake_security, fake.VSERVER_NAME)
-        self.client.configure_cifs_aes_encryption.assert_called_once_with(
-            fake.VSERVER_NAME, aes_encryption)
         if smb_signing:
             self.client.configure_cifs_signing.assert_called_once()
         else:
@@ -4681,9 +4680,11 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
         self.client.configure_dns(security_service)
 
+        uuid = fake.FAKE_VOL_MOVE_STATUS['records'][0]['uuid']
         net_dns_create_args = {
             'domains': [security_service['domain']],
             'servers': [security_service['dns_ip']],
+            'svm': {'uuid': uuid},
         }
 
         self.client.send_request.assert_has_calls([
@@ -4701,10 +4702,12 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
         security_service['dns_ip'] = mock_dns_ips
 
+        uuid = fake.FAKE_VOL_MOVE_STATUS['records'][0]['uuid']
         args_dns = {'domains': [security_service['domain']],
                     'servers': ['10.0.0.5',
                                 '10.0.0.6',
-                                '10.0.0.7']}
+                                '10.0.0.7'],
+                    'svm': {'uuid': uuid}}
         self.client.configure_dns(security_service)
 
         self.client.send_request.assert_has_calls([
@@ -4722,9 +4725,11 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         security_service = copy.deepcopy(fake.KERBEROS_SECURITY_SERVICE)
         self.client.configure_dns(security_service)
 
+        uuid = fake.FAKE_VOL_MOVE_STATUS['records'][0]['uuid']
         net_dns_create_args = {
             'domains': [security_service['domain']],
             'servers': [security_service['dns_ip']],
+            'svm': {'uuid': uuid},
         }
 
         self.client.send_request.assert_has_calls([
@@ -4969,38 +4974,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             f'/protocols/cifs/services/{fake.FAKE_UUID}',
             'patch', body=body)
 
-    def test_configure_cifs_aes_encryption_enable(self):
-        self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, '_get_unique_svm_by_name',
-                         mock.Mock(return_value=fake.FAKE_UUID))
-
-        self.client.configure_cifs_aes_encryption(fake.VSERVER_NAME, True)
-        self.client._get_unique_svm_by_name.assert_called_once_with(
-            fake.VSERVER_NAME)
-
-        body = {
-            'security.advertised_kdc_encryptions': ['aes-128', 'aes-256'],
-        }
-        self.client.send_request.assert_called_once_with(
-            f'/protocols/cifs/services/{fake.FAKE_UUID}',
-            'patch', body=body)
-
-    def test_configure_cifs_aes_encryption_disable(self):
-        self.mock_object(self.client, 'send_request')
-        self.mock_object(self.client, '_get_unique_svm_by_name',
-                         mock.Mock(return_value=fake.FAKE_UUID))
-
-        self.client.configure_cifs_aes_encryption(fake.VSERVER_NAME, False)
-        self.client._get_unique_svm_by_name.assert_called_once_with(
-            fake.VSERVER_NAME)
-
-        body = {
-            'security.advertised_kdc_encryptions': ['des', 'rc4'],
-        }
-        self.client.send_request.assert_called_once_with(
-            f'/protocols/cifs/services/{fake.FAKE_UUID}',
-            'patch', body=body)
-
     def test_set_preferred_dc(self):
         fake_ss = copy.deepcopy(fake.LDAP_AD_SECURITY_SERVICE_WITH_SERVER)
         self.mock_object(self.client, 'send_request')
@@ -5012,14 +4985,14 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client._get_unique_svm_by_name.assert_called_once_with(
             fake.VSERVER_NAME)
 
-        query = {
+        body = {
             'fqdn': fake_ss['domain'],
             'skip_config_validation': 'false',
-            'server_ip': ['10.10.10.1']
+            'server_ip': '10.10.10.1'
         }
         self.client.send_request.assert_called_once_with(
             f'/protocols/cifs/domains/{fake.FAKE_UUID}'
-            '/preferred-domain-controllers', 'post', query=query)
+            '/preferred-domain-controllers', 'post', body=body)
 
     @ddt.data(None, 'cluster_name')
     def test_create_vserver_peer(self, cluster_name):
@@ -7179,7 +7152,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_configure_active_directory_error(self):
         self.mock_object(self.client, 'configure_dns')
-        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, 'set_preferred_dc')
         self.mock_object(self.client, '_get_cifs_server_name')
         self.mock_object(self.client, 'send_request',
@@ -7695,7 +7667,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
-        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, '_get_cifs_server_name')
         self.mock_object(self.client, 'send_request',
                          self._mock_api_error(code=netapp_api.api.EAPIERROR,
@@ -7715,7 +7686,6 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client, 'configure_dns')
         self.mock_object(self.client, 'set_preferred_dc')
-        self.mock_object(self.client, 'configure_cifs_aes_encryption')
         self.mock_object(self.client, '_get_cifs_server_name')
         self.mock_object(self.client, 'send_request',
                          self._mock_api_error(code=netapp_api.api.EAPIERROR,

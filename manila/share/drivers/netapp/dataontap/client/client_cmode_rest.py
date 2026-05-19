@@ -4460,7 +4460,6 @@ class NetAppRestClient(object):
                                    vserver_name, aes_encryption, smb_signing):
         """Configures AD on Vserver."""
         self.configure_dns(security_service, vserver_name=vserver_name)
-        self.configure_cifs_aes_encryption(vserver_name, aes_encryption)
         self.set_preferred_dc(security_service, vserver_name)
 
         cifs_server = self._get_cifs_server_name(vserver_name)
@@ -4471,6 +4470,8 @@ class NetAppRestClient(object):
             'force': 'true',
             'name': cifs_server,
             'ad_domain.fqdn': security_service['domain'],
+            'security.advertised_kdc_encryptions': (
+                ['aes-128', 'aes-256'] if aes_encryption else ['des', 'rc4']),
         }
 
         if security_service['ou'] is not None:
@@ -4565,6 +4566,7 @@ class NetAppRestClient(object):
                 self.send_request(f'/name-services/dns/{svm_uuid}',
                                   'patch', body=body)
             else:
+                body['svm'] = {'uuid': svm_uuid}
                 self.send_request('/name-services/dns', 'post', body=body)
         except netapp_api.api.NaApiError as e:
             msg = _("Failed to configure DNS. %s")
@@ -4829,22 +4831,6 @@ class NetAppRestClient(object):
                 self.set_preferred_dc(new_security_service, svm_uuid)
 
     @na_utils.trace
-    def configure_cifs_aes_encryption(self, vserver_name, aes_encryption):
-        try:
-            svm_uuid = self._get_unique_svm_by_name(vserver_name)
-            body = {
-                'security.advertised_kdc_encryptions': (
-                    ['aes-128', 'aes-256'] if aes_encryption else
-                    ['des', 'rc4']),
-            }
-
-            self.send_request(
-                f'/protocols/cifs/services/{svm_uuid}', 'patch', body=body)
-        except netapp_api.api.NaApiError as e:
-            msg = _("Failed to set aes encryption. %s")
-            raise exception.NetAppException(msg % e.message)
-
-    @na_utils.trace
     def cifs_server_exists(self, vserver_name):
         """Checks if cifs server exists on vserver."""
         try:
@@ -4895,22 +4881,19 @@ class NetAppRestClient(object):
         if not security_service['server']:
             return
 
-        query = {
-            'server_ip': [],
-            'fqdn': security_service['domain'],
-            'skip_config_validation': 'false',
-        }
-
-        for dc_ip in security_service['server'].split(','):
-            query['server_ip'].append(dc_ip.strip())
-
         svm_uuid = self._get_unique_svm_by_name(vserver_name)
 
         try:
-            self.send_request(
-                f'/protocols/cifs/domains/{svm_uuid}'
-                '/preferred-domain-controllers',
-                'post', query=query)
+            for dc_ip in security_service['server'].split(','):
+                body = {
+                    'server_ip': dc_ip.strip(),
+                    'fqdn': security_service['domain'],
+                    'skip_config_validation': 'false',
+                }
+                self.send_request(
+                    f'/protocols/cifs/domains/{svm_uuid}'
+                    '/preferred-domain-controllers',
+                    'post', body=body)
         except netapp_api.api.NaApiError as e:
             msg = _("Failed to set preferred DC. %s")
             raise exception.NetAppException(msg % e.message)

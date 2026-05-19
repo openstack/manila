@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed CIFS share creation failure in the NetApp ONTAP REST driver when
+    operating in DHSS true mode. The issue caused
+    CIFS shares to fail during creation due to an incorrect handling in the
+    REST client. `Launchpad bug 2147108
+    <https://bugs.launchpad.net/manila/+bug/2147108>`_.
