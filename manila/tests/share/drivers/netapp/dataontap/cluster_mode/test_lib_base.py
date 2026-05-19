@@ -1602,7 +1602,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_create_flexgroup.assert_called_once_with(
                 vserver_client, [fake.AGGREGATE], fake.SHARE_NAME,
                 fake.SHARE['size'], 8, mount_point_name=fake.MOUNT_POINT_NAME,
-                volume_tags=fake.VOLUME_TAGS,
+                volume_tags=fake.VOLUME_TAGS, replica=False,
                 **provisioning_options)
         else:
             mock_get_aggr_flexgroup.assert_not_called()

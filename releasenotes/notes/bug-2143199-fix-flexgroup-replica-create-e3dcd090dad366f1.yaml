@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    fixed a bug in the NetApp driver on replica create,
+    where the driver failed to modify efficiency configuration
+    of a flexgroup volume
+    `Launchpad bug #2143199
+    <https://bugs.launchpad.net/manila/+bug/2143199>`_.

@@ -3906,14 +3906,23 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('sis-set-config',
                                                          sis_set_config_args)
 
-    def test_enable_dedupe_async(self):
-        self.mock_object(self.client, 'send_request')
+    @ddt.data(str(fake.JOB_ID), None)
+    def test_enable_dedupe_async(self, job_id):
+        mock_result = mock.Mock()
+        mock_result.get_child_content.return_value = job_id
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=mock_result))
+        mock_wait = self.mock_object(self.client, '_wait_for_efficiency_job')
 
         self.client.enable_dedupe_async(fake.SHARE_NAME)
 
         sis_enable_args = {'volume-name': fake.SHARE_NAME}
         self.client.send_request.assert_called_once_with(
             'sis-enable-async', sis_enable_args)
+        if job_id:
+            mock_wait.assert_called_once_with(job_id, fake.SHARE_NAME)
+        else:
+            mock_wait.assert_not_called()
 
     def test_disable_dedupe_async(self):
         self.mock_object(self.client, 'send_request')
@@ -10030,6 +10039,34 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.get_job_state,
                           fake.JOB_ID)
+
+    def test__wait_for_efficiency_job_success(self):
+        self.mock_object(self.client, 'get_job_state',
+                         mock.Mock(return_value='success'))
+
+        self.client._wait_for_efficiency_job(fake.JOB_ID, fake.SHARE_NAME)
+
+        self.client.get_job_state.assert_called_once_with(fake.JOB_ID)
+
+    @ddt.data('failure', 'error')
+    def test__wait_for_efficiency_job_failed(self, job_state):
+        self.mock_object(self.client, 'get_job_state',
+                         mock.Mock(return_value=job_state))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client._wait_for_efficiency_job,
+            fake.JOB_ID, fake.SHARE_NAME)
+
+    def test__wait_for_efficiency_job_timeout(self):
+        self.mock_object(self.client, 'get_job_state',
+                         mock.Mock(return_value='running'))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client._wait_for_efficiency_job,
+            fake.JOB_ID, fake.SHARE_NAME,
+            timeout=0)
 
     def test_check_snaprestore_license_svm_scoped_notfound(self):
         self.mock_object(self.client,
