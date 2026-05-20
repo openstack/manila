@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue where the database purge operation could incorrectly
+    delete records that had been restored after a soft-delete. For more
+    details, please check
+    `launchpad bug #2081827 <https://bugs.launchpad.net/manila/+bug/2081827>`_

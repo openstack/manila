@@ -4719,6 +4719,14 @@ class PurgeDeletedTest(test.TestCase):
         finally:
             connection.close()
 
+    def _soft_delete(self, model, record_id, deleted_at):
+        """Set deleted=id and deleted_at directly to simulate soft-delete."""
+        with db_api.context_manager.writer.using(self.context):
+            db_api.model_query(
+                self.context, model, read_deleted='yes'
+            ).filter_by(id=record_id).update(
+                {'deleted': record_id, 'deleted_at': deleted_at})
+
     @ddt.data({"del_days": 0, "num_left": 0},
               {"del_days": 10, "num_left": 2},
               {"del_days": 20, "num_left": 4})
@@ -4727,51 +4735,50 @@ class PurgeDeletedTest(test.TestCase):
         fake_now = timeutils.utcnow()
         with mock.patch.object(timeutils, 'utcnow',
                                mock.Mock(return_value=fake_now)):
-            # create resources soft-deleted in 0~9, 10~19 days ago
+            # create resources, then soft-delete them so deleted==id
             for start, end in ((0, 9), (10, 19)):
                 for unused in range(2):
-                    # share type
-                    db_utils.create_share_type(id=uuidutils.generate_uuid(),
-                                               deleted_at=self._days_ago(start,
-                                                                         end))
-                    # share
-                    share = db_utils.create_share_without_instance(
-                        metadata={},
-                        deleted_at=self._days_ago(start, end))
-                    # create share network
-                    network = db_utils.create_share_network(
-                        id=uuidutils.generate_uuid(),
-                        deleted_at=self._days_ago(start, end))
-                    # create security service
+                    deleted_at = self._days_ago(start, end)
+                    # Create all records while parents are still live, then
+                    # soft-delete them all. Ordering matters: children must
+                    # be created before parents are soft-deleted.
+                    type_id = uuidutils.generate_uuid()
+                    db_utils.create_share_type(id=type_id)
+                    network_id = uuidutils.generate_uuid()
+                    network = db_utils.create_share_network(id=network_id)
+                    secserv_id = uuidutils.generate_uuid()
                     db_utils.create_security_service(
-                        id=uuidutils.generate_uuid(),
-                        share_network_id=network.id,
-                        deleted_at=self._days_ago(start, end))
-                    # create share instance
+                        id=secserv_id,
+                        share_network_id=network.id)
+                    share = db_utils.create_share_without_instance(
+                        metadata={})
                     s_instance = db_utils.create_share_instance(
-                        id=uuidutils.generate_uuid(),
                         share_network_id=network.id,
                         share_id=share.id)
-                    # share access
+                    access_id = uuidutils.generate_uuid()
                     db_utils.create_share_access(
-                        id=uuidutils.generate_uuid(),
-                        share_id=share['id'],
-                        deleted_at=self._days_ago(start, end))
-                    # create share server
-                    db_utils.create_share_server(
-                        id=uuidutils.generate_uuid(),
-                        deleted_at=self._days_ago(start, end))
-                    # create snapshot
-                    db_api.share_snapshot_create(
-                        self.context, {'share_id': share['id'],
-                                       'deleted_at': self._days_ago(start,
-                                                                    end)},
+                        id=access_id,
+                        share_id=share['id'])
+                    server_id = uuidutils.generate_uuid()
+                    db_utils.create_share_server(id=server_id)
+                    snap = db_api.share_snapshot_create(
+                        self.context, {'share_id': share['id']},
                         create_snapshot_instance=False)
-                    # update share instance
-                    db_api.share_instance_update(
-                        self.context,
-                        s_instance.id,
-                        {'deleted_at': self._days_ago(start, end)})
+                    # Now soft-delete everything (children before parents)
+                    self._soft_delete(models.ShareTypes, type_id, deleted_at)
+                    self._soft_delete(models.SecurityService, secserv_id,
+                                      deleted_at)
+                    self._soft_delete(models.ShareAccessMapping, access_id,
+                                      deleted_at)
+                    self._soft_delete(models.ShareSnapshot, snap['id'],
+                                      deleted_at)
+                    self._soft_delete(models.ShareInstance, s_instance.id,
+                                      deleted_at)
+                    self._soft_delete(models.ShareServer, server_id,
+                                      deleted_at)
+                    self._soft_delete(models.Share, share.id, deleted_at)
+                    self._soft_delete(models.ShareNetwork, network_id,
+                                      deleted_at)
 
             db_api.purge_deleted_records(self.context, age_in_days=del_days)
 
@@ -4780,7 +4787,8 @@ class PurgeDeletedTest(test.TestCase):
                           models.ShareInstance, models.ShareServer,
                           models.ShareSnapshot, models.SecurityService]:
                 with db_api.context_manager.reader.using(self.context):
-                    rows = db_api.model_query(self.context, model).count()
+                    rows = db_api.model_query(
+                        self.context, model, read_deleted='yes').count()
                 self.assertEqual(num_left, rows)
 
     def test_purge_records_with_illegal_args(self):
@@ -4794,21 +4802,22 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_records_with_constraint(self):
         self._turn_on_foreign_key()
         type_id = uuidutils.generate_uuid()
-        # create share type1
-        db_utils.create_share_type(id=type_id,
-                                   deleted_at=self._days_ago(1, 1))
-        # create share type2
-        db_utils.create_share_type(id=uuidutils.generate_uuid(),
-                                   deleted_at=self._days_ago(1, 1))
+        # create share type1 and soft-delete it
+        db_utils.create_share_type(id=type_id)
+        self._soft_delete(models.ShareTypes, type_id, self._days_ago(1, 1))
+        # create share type2 and soft-delete it
+        type_id2 = uuidutils.generate_uuid()
+        db_utils.create_share_type(id=type_id2)
+        self._soft_delete(models.ShareTypes, type_id2, self._days_ago(1, 1))
         # create share
         share = db_utils.create_share(share_type_id=type_id)
 
         db_api.purge_deleted_records(self.context, age_in_days=0)
         with db_api.context_manager.reader.using(self.context):
             type_row = db_api.model_query(
-                self.context, models.ShareTypes
+                self.context, models.ShareTypes, read_deleted='yes'
             ).count()
-        # share type1 should not be deleted
+        # share type1 should not be deleted (FK constraint from share)
         self.assertEqual(1, type_row)
         with db_api.context_manager.writer.using(self.context):
             db_api.model_query(self.context, models.ShareInstance).delete()
@@ -4816,11 +4825,74 @@ class PurgeDeletedTest(test.TestCase):
 
         db_api.purge_deleted_records(self.context, age_in_days=0)
         with db_api.context_manager.reader.using(self.context):
-            s_row = db_api.model_query(self.context, models.Share).count()
+            s_row = db_api.model_query(
+                self.context, models.Share, read_deleted='yes').count()
             type_row = db_api.model_query(
-                self.context, models.ShareTypes
+                self.context, models.ShareTypes, read_deleted='yes'
             ).count()
         self.assertEqual(0, s_row + type_row)
+
+    def test_purge_skips_records_with_stale_deleted_at_but_not_soft_deleted(
+            self):
+        fake_now = timeutils.utcnow()
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fake_now)):
+            share_type_id = uuidutils.generate_uuid()
+            # Create a share type with deleted_at set but deleted NOT equal
+            # to its id (simulates an un-deleted record with a stale
+            # deleted_at).
+            db_utils.create_share_type(
+                id=share_type_id,
+                deleted='False',
+                deleted_at=fake_now - datetime.timedelta(days=1))
+
+            db_api.purge_deleted_records(self.context, age_in_days=0)
+
+            with db_api.context_manager.reader.using(self.context):
+                rows = db_api.model_query(
+                    self.context, models.ShareTypes).count()
+            # The record must survive because deleted != id.
+            self.assertEqual(1, rows)
+
+    def test_purge_tables_without_id_uses_deleted_equals_one(self):
+        fake_now = timeutils.utcnow()
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fake_now)):
+            entity_uuid = uuidutils.generate_uuid()
+            old_time = fake_now - datetime.timedelta(days=2)
+
+            # Insert a soft-deleted drivers_private_data row directly via
+            # the session (deleted=1, deleted_at set).
+            with db_api.context_manager.writer.using(self.context):
+                self.context.session.execute(
+                    models.DriverPrivateData.__table__.insert(),
+                    {'entity_uuid': entity_uuid,
+                     'key': 'test_key',
+                     'value': 'test_value',
+                     'deleted': 1,
+                     'deleted_at': old_time,
+                     'created_at': old_time,
+                     'updated_at': None})
+            # Insert a live row (deleted=0) that must survive.
+            entity_uuid_live = uuidutils.generate_uuid()
+            with db_api.context_manager.writer.using(self.context):
+                self.context.session.execute(
+                    models.DriverPrivateData.__table__.insert(),
+                    {'entity_uuid': entity_uuid_live,
+                     'key': 'live_key',
+                     'value': 'live_value',
+                     'deleted': 0,
+                     'deleted_at': None,
+                     'created_at': fake_now,
+                     'updated_at': None})
+
+            db_api.purge_deleted_records(self.context, age_in_days=0)
+
+            with db_api.context_manager.reader.using(self.context):
+                rows = self.context.session.query(
+                    models.DriverPrivateData).count()
+            # Only the live row must remain.
+            self.assertEqual(1, rows)
 
 
 @ddt.ddt
