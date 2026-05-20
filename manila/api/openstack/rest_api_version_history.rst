@@ -506,3 +506,7 @@ user documentation.
 ---------------------------------
   Added Metadata API methods (GET, PUT, POST, DELETE)
   to Share Replicas.
+
+2.96
+----
+  Share migration APIs are no longer considered experimental.

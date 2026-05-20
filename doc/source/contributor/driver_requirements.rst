@@ -316,15 +316,8 @@ necessary methods.
 
 More details can be found at: :doc:`../admin/shared-file-systems-share-replication`
 
-Manila experimental features
-============================
-
-Some features are currently released as experimental and can be accessed by
-including specific additional HTTP Request headers. Those features are not
-recommended for production cloud environments while in experimental stage.
-
-Share Migration (since API v2.22)
----------------------------------
+Share Migration (experimental: Newton, graduated: API v2.96)
+------------------------------------------------------------
 
 Shares can be migrated between different backends and pools. Manila implements
 migration using an approach that works for any manufacturer, but driver vendors
@@ -333,8 +326,12 @@ backends or pools related to the same vendor.
 
 More details can be found at: :doc:`../admin/shared-file-systems-share-migration`
 
-.. note::
-   Share migration APIs are currently being graduated from experimental status.
+Manila experimental features
+============================
+
+Some features are currently released as experimental and can be accessed by
+including specific additional HTTP Request headers. Those features are not
+recommended for production cloud environments while in experimental stage.
 
 Update "used_size" of shares
 ----------------------------

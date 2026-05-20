@@ -46,6 +46,9 @@ from manila import utils
 LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
+PRE_GRADUATION_MIGRATION_VERSION = '2.95'
+GRADUATION_MIGRATION_VERSION = '2.96'
+
 
 class ShareController(
     wsgi.Controller, metadata.MetadataController, wsgi.AdminActionsMixin
@@ -476,13 +479,26 @@ class ShareController(
 
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version('2.29', experimental=True)
+    @wsgi.Controller.api_version(
+        '2.29', PRE_GRADUATION_MIGRATION_VERSION, experimental=True)
     @wsgi.action("migration_start")
     @wsgi.Controller.authorize
     @validation.request_body_schema(schema.migration_start_request_body)
     @validation.response_body_schema(schema.migration_start_response_body)
     def migration_start(self, req, id, body):
         """Migrate a share to the specified host."""
+        return self._migration_start(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION)  # noqa
+    @wsgi.action("migration_start")
+    @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.migration_start_request_body)
+    @validation.response_body_schema(schema.migration_start_response_body)
+    def migration_start(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
+        """Migrate a share to the specified host."""
+        return self._migration_start(req, id, body)
+
+    def _migration_start(self, req, id, body):
         context = req.environ['manila.context']
         try:
             share = self.share_api.get(context, id)
@@ -545,13 +561,26 @@ class ShareController(
 
         return webob.Response(status_int=return_code)
 
-    @wsgi.Controller.api_version('2.22', experimental=True)
+    @wsgi.Controller.api_version(
+        '2.22', PRE_GRADUATION_MIGRATION_VERSION, experimental=True)
     @wsgi.action("migration_complete")
     @validation.request_body_schema(schema.migration_complete_request_body)
     @validation.response_body_schema(schema.migration_complete_response_body)
     @wsgi.Controller.authorize
     def migration_complete(self, req, id, body):
         """Invokes 2nd phase of share migration."""
+        return self._migration_complete(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION)  # noqa
+    @wsgi.action("migration_complete")
+    @validation.request_body_schema(schema.migration_complete_request_body)
+    @validation.response_body_schema(schema.migration_complete_response_body)
+    @wsgi.Controller.authorize
+    def migration_complete(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
+        """Invokes 2nd phase of share migration."""
+        return self._migration_complete(req, id, body)
+
+    def _migration_complete(self, req, id, body):
         context = req.environ['manila.context']
         try:
             share = self.share_api.get(context, id)
@@ -561,13 +590,26 @@ class ShareController(
         self.share_api.migration_complete(context, share)
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version('2.22', experimental=True)
+    @wsgi.Controller.api_version(
+        '2.22', PRE_GRADUATION_MIGRATION_VERSION, experimental=True)
     @wsgi.action("migration_cancel")
     @wsgi.Controller.authorize
     @validation.request_body_schema(schema.migration_cancel_request_body)
     @validation.response_body_schema(schema.migration_cancel_response_body)
     def migration_cancel(self, req, id, body):
         """Attempts to cancel share migration."""
+        return self._migration_cancel(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION)  # noqa
+    @wsgi.action("migration_cancel")
+    @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.migration_cancel_request_body)
+    @validation.response_body_schema(schema.migration_cancel_response_body)
+    def migration_cancel(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
+        """Attempts to cancel share migration."""
+        return self._migration_cancel(req, id, body)
+
+    def _migration_cancel(self, req, id, body):
         context = req.environ['manila.context']
         try:
             share = self.share_api.get(context, id)
@@ -577,7 +619,8 @@ class ShareController(
         self.share_api.migration_cancel(context, share)
         return webob.Response(status_int=http_client.ACCEPTED)
 
-    @wsgi.Controller.api_version('2.22', experimental=True)
+    @wsgi.Controller.api_version(
+        '2.22', PRE_GRADUATION_MIGRATION_VERSION, experimental=True)
     @wsgi.action("migration_get_progress")
     @wsgi.Controller.authorize
     @validation.request_body_schema(schema.migration_get_progress_request_body)
@@ -585,6 +628,18 @@ class ShareController(
     @validation.response_body_schema(schema.migration_get_progress_response_body_v259, '2.59')  # noqa: E501
     def migration_get_progress(self, req, id, body):
         """Retrieve share migration progress for a given share."""
+        return self._migration_get_progress(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION)  # noqa
+    @wsgi.action("migration_get_progress")
+    @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.migration_get_progress_request_body)
+    @validation.response_body_schema(schema.migration_get_progress_response_body_v259, '2.96')  # noqa: E501
+    def migration_get_progress(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
+        """Retrieve share migration progress for a given share."""
+        return self._migration_get_progress(req, id, body)
+
+    def _migration_get_progress(self, req, id, body):
         context = req.environ['manila.context']
         try:
             share = self.share_api.get(context, id)
@@ -598,12 +653,24 @@ class ShareController(
 
         return self._migration_view_builder.get_progress(req, share, result)
 
-    @wsgi.Controller.api_version('2.22', experimental=True)
+    @wsgi.Controller.api_version(
+        '2.22', PRE_GRADUATION_MIGRATION_VERSION, experimental=True)
     @wsgi.action("reset_task_state")
     @wsgi.Controller.authorize
     @validation.request_body_schema(schema.reset_task_state_request_body)
     @validation.response_body_schema(schema.reset_task_state_response_body)
     def reset_task_state(self, req, id, body):
+        return self._reset_task_state(req, id, body)
+
+    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION)  # noqa
+    @wsgi.action("reset_task_state")
+    @wsgi.Controller.authorize
+    @validation.request_body_schema(schema.reset_task_state_request_body)
+    @validation.response_body_schema(schema.reset_task_state_response_body)
+    def reset_task_state(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
+        return self._reset_task_state(req, id, body)
+
+    def _reset_task_state(self, req, id, body):
         context = req.environ['manila.context']
         try:
             share = self.share_api.get(context, id)

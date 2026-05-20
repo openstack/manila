@@ -929,17 +929,21 @@ class ShareAPITest(test.TestCase):
                           req, {'share': create_args})
         share_api.API.create.assert_not_called()
 
-    def test_migration_start(self):
+    @ddt.data(shares.PRE_GRADUATION_MIGRATION_VERSION,
+              shares.GRADUATION_MIGRATION_VERSION)
+    def test_migration_start(self, microversion):
         share = db_utils.create_share()
         share_network = db_utils.create_share_network()
         share_type = {'share_type_id': 'fake_type_id'}
+        experimental = (
+            microversion == shares.PRE_GRADUATION_MIGRATION_VERSION)
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/%s/action' % share['id'],
             use_admin_context=True,
-            version='2.29')
+            version=microversion,
+            experimental=experimental)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
         context = req.environ['manila.context']
 
         self.mock_object(db, 'share_network_get', mock.Mock(
@@ -1182,16 +1186,25 @@ class ShareAPITest(test.TestCase):
                           self.controller.migration_start, req, share['id'],
                           body=body)
 
-    @ddt.data(constants.TASK_STATE_MIGRATION_ERROR, None)
-    def test_reset_task_state(self, task_state):
+    @ddt.data(
+        (constants.TASK_STATE_MIGRATION_ERROR,
+         shares.PRE_GRADUATION_MIGRATION_VERSION),
+        (constants.TASK_STATE_MIGRATION_ERROR,
+         shares.GRADUATION_MIGRATION_VERSION),
+        (None, shares.PRE_GRADUATION_MIGRATION_VERSION),
+        (None, shares.GRADUATION_MIGRATION_VERSION))
+    @ddt.unpack
+    def test_reset_task_state(self, task_state, microversion):
         share = db_utils.create_share()
+        experimental = (
+            microversion == shares.PRE_GRADUATION_MIGRATION_VERSION)
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/%s/action' % share['id'],
             use_admin_context=True,
-            version='2.22')
+            version=microversion,
+            experimental=experimental)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
 
         update = {'task_state': task_state}
         body = {'reset_task_state': update}
@@ -1272,7 +1285,6 @@ class ShareAPITest(test.TestCase):
             use_admin_context=True, version=LATEST_MICROVERSION)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
         update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
         body = {'reset_task_state': update}
 
@@ -1308,15 +1320,19 @@ class ShareAPITest(test.TestCase):
                           self.controller.reset_task_state, req, share['id'],
                           body=body)
 
-    def test_migration_complete(self):
+    @ddt.data(shares.PRE_GRADUATION_MIGRATION_VERSION,
+              shares.GRADUATION_MIGRATION_VERSION)
+    def test_migration_complete(self, microversion):
         share = db_utils.create_share()
+        experimental = (
+            microversion == shares.PRE_GRADUATION_MIGRATION_VERSION)
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/%s/action' % share['id'],
             use_admin_context=True,
-            version='2.22')
+            version=microversion,
+            experimental=experimental)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
 
         body = {'migration_complete': None}
 
@@ -1353,15 +1369,19 @@ class ShareAPITest(test.TestCase):
                           self.controller.migration_complete, req, share['id'],
                           body=body)
 
-    def test_migration_cancel(self):
+    @ddt.data(shares.PRE_GRADUATION_MIGRATION_VERSION,
+              shares.GRADUATION_MIGRATION_VERSION)
+    def test_migration_cancel(self, microversion):
         share = db_utils.create_share()
+        experimental = (
+            microversion == shares.PRE_GRADUATION_MIGRATION_VERSION)
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/%s/action' % share['id'],
             use_admin_context=True,
-            version='2.22')
+            version=microversion,
+            experimental=experimental)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
 
         body = {'migration_cancel': None}
 
@@ -1398,28 +1418,39 @@ class ShareAPITest(test.TestCase):
                           self.controller.migration_cancel, req, share['id'],
                           body=body)
 
-    def test_migration_get_progress(self):
+    @ddt.data(shares.PRE_GRADUATION_MIGRATION_VERSION,
+              shares.GRADUATION_MIGRATION_VERSION)
+    def test_migration_get_progress(self, microversion):
         share = db_utils.create_share(
             task_state=constants.TASK_STATE_MIGRATION_SUCCESS)
+        experimental = (
+            microversion == shares.PRE_GRADUATION_MIGRATION_VERSION)
         req = fakes.HTTPRequest.blank(
             '/v2/fake/shares/%s/action' % share['id'],
             use_admin_context=True,
-            version='2.22')
+            version=microversion,
+            experimental=experimental)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request.experimental = True
 
         body = {'migration_get_progress': None}
+        api_response = {
+            'total_progress': 50,
+            'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+        }
         expected = {
             'total_progress': 50,
             'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+            'details': {
+                'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+            },
         }
 
         self.mock_object(share_api.API, 'get',
                          mock.Mock(return_value=share))
 
         self.mock_object(share_api.API, 'migration_get_progress',
-                         mock.Mock(return_value=copy.deepcopy(expected)))
+                         mock.Mock(return_value=copy.deepcopy(api_response)))
 
         response = self.controller.migration_get_progress(req, share['id'],
                                                           body=body)

@@ -1,0 +1,11 @@
+---
+prelude: >
+    - |
+    Share migration APIs have graduated from their `experimental feature state
+    <https://docs.openstack.org/manila/latest/contributor/experimental_apis.html>`_
+    from API version ``2.96``. The share migration actions (``migration_start``,
+    ``migration_complete``, ``migration_cancel``, ``migration_get_progress``
+    and ``reset_task_state``) no longer require the inclusion of the
+    ``X-OpenStack-Manila-API-Experimental`` header in API requests starting at
+    version ``2.96``. Older microversions continue to require the experimental
+    header for backward compatibility.
