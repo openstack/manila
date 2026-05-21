@@ -126,7 +126,8 @@ Map this share type to the backend section configured in Manila
 
 .. code-block:: console
 
-    $ openstack share type set --extra_specs share_backend_name=powerflex powerflex
+    $ openstack share type set \
+        --extra-specs share_backend_name=powerflex powerflex
 
 
 Specific configuration for Snapshot support
@@ -141,13 +142,14 @@ creating share type:
 
 .. code-block:: console
 
-    $ openstack share type create --extra_specs snapshot_support=True powerflex False
+    $ openstack share type create \
+        --extra-specs snapshot_support=True powerflex False
 
 Or you can update already existing share type with command:
 
 .. code-block:: console
 
-    $ openstack share type set --extra_specs snapshot_support=True powerflex
+    $ openstack share type set --extra-specs snapshot_support=True powerflex
 
 
 Known restrictions

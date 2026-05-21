@@ -171,7 +171,7 @@ Create GPFS share type and set extra spec
 
 .. code-block:: console
 
-   $ manila type-create --snapshot_support True \
-     --create_share_from_snapshot_support True gpfs False
+   $ openstack share type create --snapshot-support True \
+     --create-share-from-snapshot-support True gpfs False
 
-   $ manila type-key gpfs set share_backend_name=GPFS
+   $ openstack share type set gpfs --extra-specs share_backend_name=GPFS

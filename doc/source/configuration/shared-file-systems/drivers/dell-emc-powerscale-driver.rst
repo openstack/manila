@@ -142,10 +142,10 @@ Mount Snapshot
 To enable snapshot-mount support for a share type, set the following extra
 specification:
 
-.. code-block:: ini
+.. code-block:: console
 
-    openstack share type set <share_type> --extra-spec \
-    mount_snapshot_support="<is> True"
+    $ openstack share type set <share_type> --extra-specs \
+      mount_snapshot_support="<is> True"
 
 Access behavior
 
@@ -160,11 +160,11 @@ PowerScale system supports providing a custom mount point name for
 both NFS and CIFS protocols.
 The mount point name will be prepended and will become the share's mount path.
 
-.. code-block:: ini
+.. code-block:: console
 
-    openstack share type set <share_type> --extra-spec \
-    mount_point_name_support="<is> True"
-    provisioning:mount_point_prefix=<prefix>
+    $ openstack share type set <share_type> --extra-specs \
+      mount_point_name_support="<is> True" \
+      provisioning:mount_point_prefix=<prefix>
 
 For detailed usage instructions, refer to the Manila administration
 documentation:
@@ -227,13 +227,13 @@ Schedule Dedupe job for a share
 
 To schedule Dedupe job for NFS/CIFS share, create share type with extra-specs
 
-.. code-block:: ini
+.. code-block:: console
 
-    openstack share type create <share_type_name> False --extra-specs \
-    dedupe=True
+    $ openstack share type create <share_type_name> False --extra-specs \
+      dedupe=True
 
-    openstack share create <protocol> <size>
-    --name <share_name> --share-type <share_type>
+    $ openstack share create <protocol> <size> \
+      --name <share_name> --share-type <share_type>
 
 On PowerScale, Dedupe job will be scheduled weekly
 on Sunday at 12:00 AM by default for the created

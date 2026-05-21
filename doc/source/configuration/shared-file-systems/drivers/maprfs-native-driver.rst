@@ -120,14 +120,15 @@ MapR-FS volume. For example, to specify advisory volume quota add
 
 .. code-block:: console
 
-    $ manila create MAPRFS 1 --metadata _advisoryquota=10G
+    $ openstack share create MAPRFS 1 --property _advisoryquota=10G
 
 If you need to create a share with your custom backend name or export location
 instead if uuid, you can specify ``_name`` and ``_path`` options:
 
 .. code-block:: console
 
-    $ manila create MAPRFS 1 --metadata _name=example _path=/example
+    $ openstack share create MAPRFS 1 \
+        --property _name=example --property _path=/example
 
 .. WARNING::
    Specifying invalid options will cause an error.

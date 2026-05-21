@@ -140,7 +140,7 @@ Back end configuration
 
    .. code-block:: console
 
-      $ manila type-create --snapshot_support False hsp False
+      $ openstack share type create --snapshot-support False hsp False
 
 #. Restart all Shared File Systems services (``manila-share``,
    ``manila-scheduler`` and ``manila-api``).
@@ -165,9 +165,10 @@ To **manage** a share use:
 
 .. code-block:: console
 
-   $ manila manage [--name <name>] [--description <description>]
-   [--share_type <share_type>] [--driver_options [<key=value>
-   [<key=value> ...]]] <service_host> <protocol> <export_path>
+   $ openstack share adopt [--name <name>] [--description <description>]
+                           [--share-type <share-type>]
+                           [--driver-options [<key=value> [<key=value> ...]]]
+                           <service-host> <protocol> <export-path>
 
 Where:
 
@@ -176,8 +177,8 @@ Where:
 +====================+======================================================+
 |                    | Manila host, backend and share name. For example,    |
 |  ``service_host``  | ``ubuntu@hitachi1#hsp1``. The available hosts can    |
-|                    | be listed with the command: ``manila pool-list``     |
-|                    | (admin only).                                        |
+|                    | be listed with the command:                          |
+|                    | ``openstack share pool list`` (admin only).          |
 +--------------------+---------------------+--------------------------------+
 |  ``protocol``      | Must be **NFS**, the only supported protocol in this |
 |                    | driver version.                                      |
@@ -187,11 +188,11 @@ Where:
 |                    | ``172.24.47.190:/some_share_name``                   |
 +--------------------+------------------------------------------------------+
 
-| To **unmanage** a share use:
+To **unmanage** a share use:
 
 .. code-block:: console
 
-   $ manila unmanage <share>
+   $ openstack share abandon <share>
 
 Where:
 
@@ -199,8 +200,8 @@ Where:
 |  **Parameter**   | **Description**                                         |
 +==================+=========================================================+
 |  ``share``       | ID or name of the share to be unmanaged. This list can  |
-|                  | be fetched with: ``manila list``.                       |
-+------------------+---------------------+-----------------------------------+
+|                  | be fetched with: ``openstack share list``.              |
++------------------+---------------------------------------------------------+
 
 
 Additional notes
@@ -208,5 +209,5 @@ Additional notes
 
 - Shares are thin provisioned. It is reported to manila only the
   real used space in HSP.
-- Administrators should manage the tenant's quota (``manila quota-update``)
+- Administrators should manage the tenant's quota (``openstack share quota set``)
   to control the backend usage.

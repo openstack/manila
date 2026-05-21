@@ -336,7 +336,7 @@ settings determine the subnets visible for HPE 3PAR share access.
 
    .. code-block:: console
 
-      $ manila access-allow <share-id> ip <ip-address>
+      $ openstack share access create <share-id> ip <ip-address>
 
 -  User access rules
 
@@ -350,7 +350,7 @@ settings determine the subnets visible for HPE 3PAR share access.
 
    .. code-block:: console
 
-      $ manila access-allow <share-id> user <user name>
+      $ openstack share access create <share-id> user <user name>
 
    The user name must be an HPE 3PAR user.
 
@@ -383,8 +383,9 @@ UI or using the command line, as follows:
 
 .. code-block:: console
 
-      $ manila --os-username admin --os-tenant-name demo type-create
-      –is_public false <name> false
+      $ openstack share type create \
+          --os-username admin --os-project-name demo \
+          --public false <name> false
 
 The ``<name>`` is the name of the new share type. False at the end specifies
 ``driver_handles_share_servers=False``. The ``driver_handles_share_servers``
@@ -426,8 +427,10 @@ the share type to a tenant.
 
    .. code-block:: console
 
-      $ manila --os-username admin --os-tenant-name demo type-key <share-type>
-      set share_backend_name=HPE3PAR2
+      $ openstack share type set \
+          --os-username admin --os-project-name demo \
+          <share-type> \
+          --extra-specs share_backend_name=HPE3PAR2
 
 -  Using share types to select backends with capabilities
 
