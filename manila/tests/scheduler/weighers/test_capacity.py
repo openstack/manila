@@ -146,6 +146,30 @@ class CapacityWeigherTestCase(test.TestCase):
             'host6', utils.extract_host(last_host.obj.host))
         self.assertEqual(0.0, last_host.weight)
 
+    def test_none_provisioned_capacity_thin_is_treated_as_unknown(self):
+        """None provisioned_capacity_gb in thin path must sort to worst."""
+        host_state = mock.Mock()
+        host_state.free_capacity_gb = 500
+        host_state.total_capacity_gb = 1024
+        host_state.provisioned_capacity_gb = None
+        host_state.max_over_subscription_ratio = 2.0
+        host_state.thin_provisioning = True
+        host_state.reserved_percentage = 0
+        host_state.reserved_snapshot_percentage = 0
+        host_state.reserved_share_extend_percentage = 0
+
+        weigher = capacity.CapacityWeigher()
+        weight_properties = {
+            'size': 1,
+            'share_type': {
+                'extra_specs': {
+                    'capabilities:thin_provisioning': '<is> True',
+                }
+            }
+        }
+        result = weigher._weigh_object(host_state, weight_properties)
+        self.assertEqual(float('-inf'), result)
+
     @ddt.data(
         {'cap_thin': '<is> True',
          'cap_thin_key': 'capabilities:thin_provisioning',
