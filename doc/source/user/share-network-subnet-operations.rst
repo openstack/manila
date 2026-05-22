@@ -7,9 +7,9 @@ Create and manage share network subnets
 .. contents:: :local:
 
 A share network subnet stores network information to create and manage shares.
-To create and manage your share network subnets, you can use ``manila`` client
-commands. You can create multiple subnets in a share network, and if you do
-not specify an availability zone, the subnet you are creating will be
+To create and manage your share network subnets, you can use ``openstack share``
+client commands. You can create multiple subnets in a share network, and if you
+do not specify an availability zone, the subnet you are creating will be
 considered default by the Shared File Systems service. The default subnet
 spans all availability zones. You cannot have more than one default subnet
 per share network. During share server migration, metadata belonging to the
@@ -30,28 +30,28 @@ Create a subnet in an existing share network
 
    .. code-block:: console
 
-      $ manila share-network-subnet-create \
-         sharenetwork1 \
+      $ openstack share network subnet create sharenetwork1 \
          --availability-zone manila-zone-0 \
-         --neutron-net-id a27160ca-5595-4c62-bf54-a04fb7b14316 \
-         --neutron-subnet-id f043f4b0-c05e-493f-bbe9-99689e2187d2
+         --neutron-net-id 5edf25ef-73eb-4635-8be0-8246e7d7417b \
+         --neutron-subnet-id 046cd84a-8938-4240-9ebd-ad5d8be10f20
       +--------------------+--------------------------------------+
-      | Property           | Value                                |
+      | Field              | Value                                |
       +--------------------+--------------------------------------+
-      | id                 | be3ae5ad-a22c-494f-840e-5e3526e34e0f |
+      | id                 | 72cb7e51-7905-48fa-913f-23310d230f2c |
       | availability_zone  | manila-zone-0                        |
-      | share_network_id   | 35f44d3c-8888-429e-b8c7-8a29dead6e5b |
+      | share_network_id   | 07727784-7af1-48d3-b116-804c4b93c5b4 |
       | share_network_name | sharenetwork1                        |
-      | created_at         | 2019-10-09T04:54:48.000000           |
+      | created_at         | 2026-04-03T04:57:26.313257           |
       | segmentation_id    | None                                 |
-      | neutron_subnet_id  | f043f4b0-c05e-493f-bbe9-99689e2187d2 |
+      | neutron_subnet_id  | 046cd84a-8938-4240-9ebd-ad5d8be10f20 |
       | updated_at         | None                                 |
-      | neutron_net_id     | a27160ca-5595-4c62-bf54-a04fb7b14316 |
+      | neutron_net_id     | 5edf25ef-73eb-4635-8be0-8246e7d7417b |
       | ip_version         | None                                 |
       | cidr               | None                                 |
       | network_type       | None                                 |
       | mtu                | None                                 |
       | gateway            | None                                 |
+      | metadata           | {}                                   |
       +--------------------+--------------------------------------+
 
 
@@ -59,18 +59,48 @@ Create a subnet in an existing share network
 
    .. code-block:: console
 
-      $ manila share-network-show sharenetwork1
-      +-----------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-      | Property              | Value                                                                                                                                                                                                                                                                                                                                                                                        |
-      +-----------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-      | id                    | 35f44d3c-8888-429e-b8c7-8a29dead6e5b                                                                                                                                                                                                                                                                                                                                                         |
-      | name                  | sharenetwork1                                                                                                                                                                                                                                                                                                                                                                                |
-      | project_id            | 8c2962a4832743469a336f7c179f7d34                                                                                                                                                                                                                                                                                                                                                             |
-      | created_at            | 2019-10-09T04:19:31.000000                                                                                                                                                                                                                                                                                                                                                                   |
-      | updated_at            | None                                                                                                                                                                                                                                                                                                                                                                                         |
-      | description           | Share Network created for demo purposes                                                                                                                                                                                                                                                                                                                                                      |
-      | share_network_subnets | [{'id': 'be3ae5ad-a22c-494f-840e-5e3526e34e0f', 'availability_zone': 'manila-zone-0', 'created_at': '2019-10-09T04:54:48.000000', 'updated_at': None, 'segmentation_id': None, 'neutron_net_id': 'a27160ca-5595-4c62-bf54-a04fb7b14316', 'neutron_subnet_id': 'f043f4b0-c05e-493f-bbe9-99689e2187d2', 'ip_version': None, 'cidr': None, 'network_type': None, 'mtu': None, 'gateway': None}] |
-      +-----------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      $ openstack share network show sharenetwork1
+      +-----------------------------------+----------------------------------------------------------+
+      | Field                             | Value                                                    |
+      +-----------------------------------+----------------------------------------------------------+
+      | id                                | 07727784-7af1-48d3-b116-804c4b93c5b4                     |
+      | name                              | sharenetwork1                                            |
+      | project_id                        | 58951a7d00fd46f9a98bd038ed5d9e09                         |
+      | created_at                        | 2026-04-03T04:57:15.319508                               |
+      | updated_at                        | None                                                     |
+      | description                       | Share Network created for demo purposes                  |
+      | status                            | active                                                   |
+      | security_service_update_support   | True                                                     |
+      | network_allocation_update_support | True                                                     |
+      | share_network_subnets             |                                                          |
+      |                                   | id = 08be4bbe-1ab0-40d0-aa03-3916604d9cae                |
+      |                                   | availability_zone = None                                 |
+      |                                   | created_at = 2026-04-03T04:57:15.439227                  |
+      |                                   | updated_at = None                                        |
+      |                                   | segmentation_id = None                                   |
+      |                                   | neutron_net_id = 5edf25ef-73eb-4635-8be0-8246e7d7417b    |
+      |                                   | neutron_subnet_id = 046cd84a-8938-4240-9ebd-ad5d8be10f20 |
+      |                                   | ip_version = None                                        |
+      |                                   | cidr = None                                              |
+      |                                   | network_type = None                                      |
+      |                                   | mtu = None                                               |
+      |                                   | gateway = None                                           |
+      |                                   | properties =                                             |
+      |                                   | id = 72cb7e51-7905-48fa-913f-23310d230f2c                |
+      |                                   | availability_zone = manila-zone-0                        |
+      |                                   | created_at = 2026-04-03T04:57:26.313257                  |
+      |                                   | updated_at = None                                        |
+      |                                   | segmentation_id = None                                   |
+      |                                   | neutron_net_id = 5edf25ef-73eb-4635-8be0-8246e7d7417b    |
+      |                                   | neutron_subnet_id = 046cd84a-8938-4240-9ebd-ad5d8be10f20 |
+      |                                   | ip_version = None                                        |
+      |                                   | cidr = None                                              |
+      |                                   | network_type = None                                      |
+      |                                   | mtu = None                                               |
+      |                                   | gateway = None                                           |
+      |                                   | properties =                                             |
+      | security_services                 |                                                          |
+      +-----------------------------------+----------------------------------------------------------+
 
 
 Show a share network subnet
@@ -80,26 +110,26 @@ Show a share network subnet
 
    .. code-block:: console
 
-      $ manila share-network-subnet-show \
-         sharenetwork1 \
-         be3ae5ad-a22c-494f-840e-5e3526e34e0f
+      $ openstack share network subnet show sharenetwork1 \
+         72cb7e51-7905-48fa-913f-23310d230f2c
       +--------------------+--------------------------------------+
-      | Property           | Value                                |
+      | Field              | Value                                |
       +--------------------+--------------------------------------+
-      | id                 | be3ae5ad-a22c-494f-840e-5e3526e34e0f |
+      | id                 | 72cb7e51-7905-48fa-913f-23310d230f2c |
       | availability_zone  | manila-zone-0                        |
-      | share_network_id   | 35f44d3c-8888-429e-b8c7-8a29dead6e5b |
+      | share_network_id   | 07727784-7af1-48d3-b116-804c4b93c5b4 |
       | share_network_name | sharenetwork1                        |
-      | created_at         | 2019-10-09T04:54:48.000000           |
+      | created_at         | 2026-04-03T04:57:26.313257           |
       | segmentation_id    | None                                 |
-      | neutron_subnet_id  | f043f4b0-c05e-493f-bbe9-99689e2187d2 |
+      | neutron_subnet_id  | 046cd84a-8938-4240-9ebd-ad5d8be10f20 |
       | updated_at         | None                                 |
-      | neutron_net_id     | a27160ca-5595-4c62-bf54-a04fb7b14316 |
+      | neutron_net_id     | 5edf25ef-73eb-4635-8be0-8246e7d7417b |
       | ip_version         | None                                 |
       | cidr               | None                                 |
       | network_type       | None                                 |
       | mtu                | None                                 |
       | gateway            | None                                 |
+      | properties         |                                      |
       +--------------------+--------------------------------------+
 
 Delete a share network subnet
@@ -109,26 +139,42 @@ Delete a share network subnet
 
    .. code-block:: console
 
-      $ manila share-network-subnet-delete \
-         sharenetwork1 \
-         be3ae5ad-a22c-494f-840e-5e3526e34e0f
+      $ openstack share network subnet delete sharenetwork1 \
+         72cb7e51-7905-48fa-913f-23310d230f2c
 
 #. Verify that it has been deleted
 
    .. code-block:: console
 
-      $ manila share-network-show sharenetwork1
-      +-----------------------+-----------------------------------------+
-      | Property              | Value                                   |
-      +-----------------------+-----------------------------------------+
-      | id                    | 35f44d3c-8888-429e-b8c7-8a29dead6e5b    |
-      | name                  | sharenetwork1                           |
-      | project_id            | 8c2962a4832743469a336f7c179f7d34        |
-      | created_at            | 2019-10-09T04:19:31.000000              |
-      | updated_at            | None                                    |
-      | description           | Share Network created for demo purposes |
-      | share_network_subnets | []                                      |
-      +-----------------------+-----------------------------------------+
+      $ openstack share network show sharenetwork1
+      +-----------------------------------+----------------------------------------------------------+
+      | Field                             | Value                                                    |
+      +-----------------------------------+----------------------------------------------------------+
+      | id                                | 07727784-7af1-48d3-b116-804c4b93c5b4                     |
+      | name                              | sharenetwork1                                            |
+      | project_id                        | 58951a7d00fd46f9a98bd038ed5d9e09                         |
+      | created_at                        | 2026-04-03T04:57:15.319508                               |
+      | updated_at                        | None                                                     |
+      | description                       | Share Network created for demo purposes                  |
+      | status                            | active                                                   |
+      | security_service_update_support   | True                                                     |
+      | network_allocation_update_support | True                                                     |
+      | share_network_subnets             |                                                          |
+      |                                   | id = 08be4bbe-1ab0-40d0-aa03-3916604d9cae                |
+      |                                   | availability_zone = None                                 |
+      |                                   | created_at = 2026-04-03T04:57:15.439227                  |
+      |                                   | updated_at = None                                        |
+      |                                   | segmentation_id = None                                   |
+      |                                   | neutron_net_id = 5edf25ef-73eb-4635-8be0-8246e7d7417b    |
+      |                                   | neutron_subnet_id = 046cd84a-8938-4240-9ebd-ad5d8be10f20 |
+      |                                   | ip_version = None                                        |
+      |                                   | cidr = None                                              |
+      |                                   | network_type = None                                      |
+      |                                   | mtu = None                                               |
+      |                                   | gateway = None                                           |
+      |                                   | properties =                                             |
+      | security_services                 |                                                          |
+      +-----------------------------------+----------------------------------------------------------+
 
 Share network subnet metadata
 -----------------------------
@@ -139,25 +185,25 @@ Share network subnet metadata
 
      $ openstack share network subnet create sharenetwork1 \
         --property key1=value1 --property key2=value2
-    +--------------------+--------------------------------------+
-    | Field              | Value                                |
-    +--------------------+--------------------------------------+
-    | availability_zone  | None                                 |
-    | cidr               | None                                 |
-    | created_at         | 2024-03-28T15:22:53.291721           |
-    | gateway            | None                                 |
-    | id                 | 9ab933ef-f0cd-409e-8b6b-c3d34073ac44 |
-    | ip_version         | None                                 |
-    | metadata           | {'key1': 'value1', 'key2': 'value2'} |
-    | mtu                | None                                 |
-    | network_type       | None                                 |
-    | neutron_net_id     | None                                 |
-    | neutron_subnet_id  | None                                 |
-    | segmentation_id    | None                                 |
-    | share_network_id   | 35f44d3c-8888-429e-b8c7-8a29dead6e5b |
-    | share_network_name | sharenetwork1                        |
-    | updated_at         | None                                 |
-    +--------------------+--------------------------------------+
+     +--------------------+--------------------------------------+
+     | Field              | Value                                |
+     +--------------------+--------------------------------------+
+     | id                 | 245dd4af-b1cc-4aeb-8f7d-898e16d4d632 |
+     | availability_zone  | None                                 |
+     | share_network_id   | 07727784-7af1-48d3-b116-804c4b93c5b4 |
+     | share_network_name | sharenetwork1                        |
+     | created_at         | 2026-04-03T04:58:02.811583           |
+     | segmentation_id    | None                                 |
+     | neutron_subnet_id  | None                                 |
+     | updated_at         | None                                 |
+     | neutron_net_id     | None                                 |
+     | ip_version         | None                                 |
+     | cidr               | None                                 |
+     | network_type       | None                                 |
+     | mtu                | None                                 |
+     | gateway            | None                                 |
+     | metadata           | {'key1': 'value1', 'key2': 'value2'} |
+     +--------------------+--------------------------------------+
 
 
 * Set metadata items on your share network subnet
@@ -165,7 +211,7 @@ Share network subnet metadata
   .. code-block:: console
 
      $ openstack share network subnet set sharenetwork1 \
-        be3ae5ad-a22c-494f-840e-5e3526e34e0f --property key1=value1 \
+        72cb7e51-7905-48fa-913f-23310d230f2c --property key1=value1 \
         --property key2=value2
 
 
@@ -174,4 +220,4 @@ Share network subnet metadata
   .. code-block:: console
 
      $ openstack share network subnet unset sharenetwork1 \
-        be3ae5ad-a22c-494f-840e-5e3526e34e0f --property key1
+        72cb7e51-7905-48fa-913f-23310d230f2c --property key1
