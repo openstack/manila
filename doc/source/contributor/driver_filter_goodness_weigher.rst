@@ -233,7 +233,7 @@ View the available properties for share types by running:
 
 .. code-block:: console
 
-   $ manila extra-specs-list
+   $ openstack share type list
 
 Driver filter and weigher usage examples
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

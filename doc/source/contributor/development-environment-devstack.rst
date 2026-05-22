@@ -152,7 +152,7 @@ Building your devstack
   clients::
 
     $ source DEVSTACK_DIR/openrc admin demo
-    $ manila service-list
+    $ openstack share service list
 
 * The logs are accessible through ``journalctl``. The following commands let
   you query logs. You may use the ``-f`` option to tail these logs::
