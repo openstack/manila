@@ -1460,6 +1460,55 @@ class ShareAPITest(test.TestCase):
         share_api.API.migration_get_progress.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), share)
 
+    def test_migration_progress_show(self):
+        share = db_utils.create_share(
+            task_state=constants.TASK_STATE_MIGRATION_SUCCESS)
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/migration-progress' % share['id'],
+            use_admin_context=True,
+            version=shares.MIGRATION_PROGRESS_GET_VERSION)
+        req.method = 'GET'
+
+        api_response = {
+            'total_progress': 50,
+            'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+        }
+        expected = {
+            'total_progress': 50,
+            'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+            'details': {
+                'task_state': constants.TASK_STATE_MIGRATION_SUCCESS,
+            },
+        }
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+        self.mock_object(share_api.API, 'migration_get_progress',
+                         mock.Mock(return_value=copy.deepcopy(api_response)))
+
+        response = self.controller.migration_progress_show(
+            req, share['id'])
+
+        self.assertEqual(expected, response)
+        share_api.API.migration_get_progress.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share)
+
+    def test_migration_progress_show_not_found(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/shares/%s/migration-progress' % share['id'],
+            use_admin_context=True,
+            version=shares.MIGRATION_PROGRESS_GET_VERSION)
+        req.method = 'GET'
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(side_effect=exception.NotFound()))
+        self.mock_object(share_api.API, 'migration_get_progress')
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.migration_progress_show, req,
+                          share['id'])
+
     def test_migration_get_progress_not_found(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank(

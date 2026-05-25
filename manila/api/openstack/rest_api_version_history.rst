@@ -514,3 +514,9 @@ user documentation.
 2.97
 ----
   Added ``availability_zone`` filter to share list API.
+
+2.98
+----
+  Added dedicated ``GET /v2/shares/{share_id}/migration-progress``
+  endpoint for querying share migration progress (``migration_get_progress``).
+  The prior POST action remains available even though deprecated.

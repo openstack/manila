@@ -48,6 +48,7 @@ CONF = cfg.CONF
 
 PRE_GRADUATION_MIGRATION_VERSION = '2.95'
 GRADUATION_MIGRATION_VERSION = '2.96'
+MIGRATION_PROGRESS_GET_VERSION = '2.98'
 
 
 class ShareController(
@@ -624,22 +625,35 @@ class ShareController(
     @wsgi.action("migration_get_progress")
     @wsgi.Controller.authorize
     @validation.request_body_schema(schema.migration_get_progress_request_body)
-    @validation.response_body_schema(schema.migration_get_progress_response_body, '2.22', '2.58')  # noqa: E501
-    @validation.response_body_schema(schema.migration_get_progress_response_body_v259, '2.59')  # noqa: E501
+    @validation.response_body_schema(
+        schema.migration_get_progress_response_body, '2.22', '2.58')
+    @validation.response_body_schema(
+        schema.migration_get_progress_response_body_v259, '2.59')
     def migration_get_progress(self, req, id, body):
         """Retrieve share migration progress for a given share."""
-        return self._migration_get_progress(req, id, body)
+        return self._migration_get_progress(req, id)
 
-    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION)  # noqa
+    @wsgi.Controller.api_version(GRADUATION_MIGRATION_VERSION, '2.97')
     @wsgi.action("migration_get_progress")
     @wsgi.Controller.authorize
     @validation.request_body_schema(schema.migration_get_progress_request_body)
-    @validation.response_body_schema(schema.migration_get_progress_response_body_v259, '2.96')  # noqa: E501
+    @validation.response_body_schema(
+        schema.migration_get_progress_response_body_v259,
+        GRADUATION_MIGRATION_VERSION, '2.97')
     def migration_get_progress(self, req, id, body):  # pylint: disable=function-redefined  # noqa F811
         """Retrieve share migration progress for a given share."""
-        return self._migration_get_progress(req, id, body)
+        return self._migration_get_progress(req, id)
 
-    def _migration_get_progress(self, req, id, body):
+    @wsgi.Controller.api_version(MIGRATION_PROGRESS_GET_VERSION)
+    @wsgi.Controller.authorize('migration_get_progress')
+    @validation.response_body_schema(
+        schema.migration_get_progress_response_body_v259,
+        MIGRATION_PROGRESS_GET_VERSION)
+    def migration_progress_show(self, req, id):
+        """Retrieve share migration progress for a given share (GET)."""
+        return self._migration_get_progress(req, id)
+
+    def _migration_get_progress(self, req, id):
         context = req.environ['manila.context']
         try:
             share = self.share_api.get(context, id)

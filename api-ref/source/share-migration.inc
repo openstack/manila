@@ -160,22 +160,30 @@ Request example
    :language: javascript
 
 
-Migration Get Process
-~~~~~~~~~~~~~~~~~~~~~
+.. _migration-get-progress:
 
-.. rest_method::  POST /v2/shares/{share_id}/action
+Migration Get Progress
+~~~~~~~~~~~~~~~~~~~~~~
 
-.. versionadded:: 2.22
+.. rest_method::  GET /v2/shares/{share_id}/migration-progress
 
-.. versionchanged:: 2.96
-   Share Migration APIs are no longer experimental since API version ``2.96``.
+.. versionadded:: 2.98
+
+Obtains progress information of a share migration.
+
+.. note::
+
+   Prior to API version ``2.98``, this API was only available as the
+   ``migration_get_progress`` action on ``POST /v2/shares/{share_id}/action``.
+   See :ref:`Migration Get Progress (DEPRECATED)
+   <migration-get-progress-deprecated>`.
 
 Response codes
 --------------
 
 .. rest_status_code:: success status.yaml
 
-   - 202
+   - 200
 
 .. rest_status_code:: error status.yaml
 
@@ -202,16 +210,79 @@ Response parameters
    - total_progress: total_progress
    - task_state: task_state
 
+Response example
+----------------
+
+.. literalinclude:: samples/share-migration-get-progress-response.json
+   :language: javascript
+
+
+.. _migration-get-progress-deprecated:
+
+Migration Get Progress (DEPRECATED)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+
+   This API is deprecated starting with microversion ``2.98``. For API
+   version ``2.98`` and later, use the
+   :ref:`Migration Get Progress <migration-get-progress>` GET endpoint
+   instead. This POST action remains supported for API versions ``2.22``
+   through ``2.97``.
+
+.. rest_method::  POST /v2/shares/{share_id}/action
+
+.. versionadded:: 2.22
+
+.. versionchanged:: 2.96
+   Share Migration APIs are no longer experimental since API version ``2.96``.
+
+.. versionremoved:: 2.98
+
+Obtains progress information of a share migration.
+
+Response codes
+--------------
+
+.. rest_status_code:: success status.yaml
+
+   - 200
+
+.. rest_status_code:: error status.yaml
+
+   - 400
+   - 401
+   - 403
+   - 404
+   - 409
+
+Request
+-------
+
+.. rest_parameters:: parameters.yaml
+
+   - share_id: share_id
+   - project_id: project_id
+
 Request example
 ---------------
 
-.. literalinclude:: samples/share-migration-get-process-request.json
+.. literalinclude:: samples/share-migration-get-progress-request.json
    :language: javascript
 
-Response_parameters
+Response parameters
 -------------------
 
-.. literalinclude:: samples/share-migration-get-process-response.json
+.. rest_parameters:: parameters.yaml
+
+   - details: migration_progress_details
+   - total_progress: total_progress
+   - task_state: task_state
+
+Response example
+----------------
+
+.. literalinclude:: samples/share-migration-get-progress-response.json
    :language: javascript
 
 
