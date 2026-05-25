@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added ``netapp_dns_domains``,
+    ``netapp_dns_nameservers``, and ``netapp_dns_hosts`` configuration
+    options. In DHSS=True mode, these provide infrastructure DNS to
+    newly created SVMs so they can resolve hostnames (e.g. Barbican
+    KMS endpoints) without requiring a security service. These options
+    use the ONTAP REST API and therefore require the cluster to be
+    running ONTAP 9.12.1 or newer, regardless of ``netapp_use_legacy_client``.
+fixes:
+  - |
+    NetApp ONTAP driver: Fixed
+    `bug #2147659 <https://launchpad.net/bugs/2147659>`_ where SVMs
+    created in DHSS=True mode had no DNS name-service, causing share
+    creation to fail when the SVM needed to resolve infrastructure
+    hostnames such as a Barbican KMS endpoint.
+

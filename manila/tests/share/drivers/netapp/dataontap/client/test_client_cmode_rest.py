@@ -4789,6 +4789,192 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.configure_dns,
                           copy.deepcopy(fake.KERBEROS_SECURITY_SERVICE))
 
+    def test_configure_dns_preserves_existing_with_ss_first(self):
+        dns_config = {
+            'domains': ['infra.example.com'],
+            'dns-ips': ['10.0.0.1'],
+        }
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value=dns_config))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.FAKE_VOL_MOVE_STATUS))
+
+        ss = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        self.client.configure_dns(ss)
+
+        uuid = fake.FAKE_VOL_MOVE_STATUS['records'][0]['uuid']
+        expected_body = {
+            'domains': [ss['domain'], 'infra.example.com'],
+            'servers': [ss['dns_ip'], '10.0.0.1'],
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('/svm/svms', 'get',
+                      query={'name': None, 'fields': 'uuid'}),
+            mock.call(f'/name-services/dns/{uuid}', 'patch',
+                      body=expected_body)])
+
+    def test_configure_dns_for_vserver_create(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.configure_dns_for_vserver(
+            fake.VSERVER_NAME, ['example.com'], ['10.0.0.1'])
+
+        self.client.send_request.assert_called_once_with(
+            '/name-services/dns', 'post',
+            body={'domains': ['example.com'], 'servers': ['10.0.0.1'],
+                  'svm.name': fake.VSERVER_NAME})
+
+    def test_configure_dns_for_vserver_update(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={'domains': ['old.com']}))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=fake.FAKE_VOL_MOVE_STATUS))
+
+        self.client.configure_dns_for_vserver(
+            fake.VSERVER_NAME, ['new.com'], ['10.0.0.2'])
+
+        uuid = fake.FAKE_VOL_MOVE_STATUS['records'][0]['uuid']
+        self.client.send_request.assert_has_calls([
+            mock.call('/svm/svms', 'get',
+                      query={'name': fake.VSERVER_NAME, 'fields': 'uuid'}),
+            mock.call(f'/name-services/dns/{uuid}', 'patch',
+                      body={'domains': ['new.com'],
+                            'servers': ['10.0.0.2']})])
+
+    def test_configure_dns_for_vserver_api_error(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error())
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.configure_dns_for_vserver,
+            fake.VSERVER_NAME, ['example.com'], ['10.0.0.1'])
+
+    def test_get_local_hosts_for_vserver(self):
+        result = {
+            'records': [
+                {'address': '10.0.0.5', 'hostname': 'barbican',
+                 'aliases': ['barbican.local']},
+                {'address': '10.0.0.6', 'hostname': 'keystone'},
+            ]
+        }
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=result))
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+
+        hosts = self.client.get_local_hosts_for_vserver(fake.VSERVER_NAME)
+
+        self.assertEqual({
+            '10.0.0.5': ['barbican', 'barbican.local'],
+            '10.0.0.6': ['keystone'],
+        }, hosts)
+
+    def test_get_local_hosts_for_vserver_not_found(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=netapp_api.api.NaApiError(
+                code=netapp_api.EREST_ENTRY_NOT_FOUND)))
+
+        result = self.client.get_local_hosts_for_vserver(fake.VSERVER_NAME)
+        self.assertEqual({}, result)
+
+    def test_create_local_host_for_vserver(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_local_host_for_vserver(
+            fake.VSERVER_NAME, 'barbican', '10.0.0.5',
+            aliases=['barbican.local'])
+
+        self.client.send_request.assert_called_once_with(
+            '/name-services/local-hosts', 'post',
+            body={'owner.name': fake.VSERVER_NAME,
+                  'address': '10.0.0.5', 'hostname': 'barbican',
+                  'aliases': ['barbican.local']})
+
+    def test_create_local_host_for_vserver_no_aliases(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_local_host_for_vserver(
+            fake.VSERVER_NAME, 'barbican', '10.0.0.5')
+
+        self.client.send_request.assert_called_once_with(
+            '/name-services/local-hosts', 'post',
+            body={'owner.name': fake.VSERVER_NAME,
+                  'address': '10.0.0.5', 'hostname': 'barbican'})
+
+    def test_modify_local_host_for_vserver(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.modify_local_host_for_vserver(
+            fake.VSERVER_NAME, '10.0.0.5', 'barbican-new',
+            aliases=['barbican.local'])
+
+        self.client.send_request.assert_called_once_with(
+            '/name-services/local-hosts/fake-uuid/10.0.0.5', 'patch',
+            body={'hostname': 'barbican-new',
+                  'aliases': ['barbican.local']})
+
+    def test_delete_local_host_for_vserver(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_local_host_for_vserver(
+            fake.VSERVER_NAME, '10.0.0.5')
+
+        self.client.send_request.assert_called_once_with(
+            '/name-services/local-hosts/fake-uuid/10.0.0.5', 'delete')
+
+    def test_delete_local_host_for_vserver_not_found(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=netapp_api.api.NaApiError(
+                code=netapp_api.EREST_ENTRY_NOT_FOUND)))
+
+        self.client.delete_local_host_for_vserver(
+            fake.VSERVER_NAME, '10.0.0.5')
+
+    def test_get_local_hosts_for_vserver_api_error(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error())
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.get_local_hosts_for_vserver, fake.VSERVER_NAME)
+
+    def test_create_local_host_for_vserver_api_error(self):
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error())
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.create_local_host_for_vserver,
+            fake.VSERVER_NAME, 'barbican', '10.0.0.5')
+
+    def test_modify_local_host_for_vserver_api_error(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value='fake-uuid'))
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error())
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.modify_local_host_for_vserver,
+            fake.VSERVER_NAME, '10.0.0.5', 'barbican-new')
+
     def test_get_dns_config_no_response(self):
         self.mock_object(self.client, 'send_request',
                          mock.Mock(side_effect=netapp_api.api.NaApiError))

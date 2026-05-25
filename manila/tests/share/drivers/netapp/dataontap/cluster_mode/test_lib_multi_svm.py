@@ -135,6 +135,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_validate_dns_config')
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
@@ -160,6 +161,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_validate_dns_config')
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
@@ -186,6 +188,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_find_matching_aggregates',
                          mock.Mock(return_value=[]))
         self.mock_object(self.library, '_start_periodic_tasks')
+        self.mock_object(self.library, '_validate_dns_config')
 
         self.library.check_for_setup_error()
 
@@ -221,6 +224,304 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_init_flexgroup.assert_called_once_with(set(fake.AGGREGATES))
         self.assertTrue(self.library.is_flexvol_pool_configured.called)
         self.assertTrue(self.library._find_matching_aggregates.called)
+
+    def test_check_for_setup_error_dns_configured_builds_rest_client(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.client, 'list_non_root_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_initialize_flexgroup_pools')
+        self.mock_object(self.library, 'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+
+        def _set_dns_domains():
+            self.library._dns_domains = ['example.com']
+
+        self.mock_object(self.library, '_validate_dns_config',
+                         mock.Mock(side_effect=_set_dns_domains))
+        mock_get_rest_client = self.mock_object(
+            self.library, '_get_rest_client_for_backend')
+        self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
+                         'check_for_setup_error')
+
+        self.library.check_for_setup_error()
+
+        mock_get_rest_client.assert_called_once_with()
+
+    def test_check_for_setup_error_dns_unsupported_ontap_version(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.client, 'list_non_root_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_initialize_flexgroup_pools')
+        self.mock_object(self.library, 'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+
+        def _set_dns_domains():
+            self.library._dns_domains = ['example.com']
+
+        self.mock_object(self.library, '_validate_dns_config',
+                         mock.Mock(side_effect=_set_dns_domains))
+        # Simulate NetAppRestClient.__init__ raising on ONTAP < 9.12.1.
+        self.mock_object(
+            self.library, '_get_rest_client_for_backend',
+            mock.Mock(side_effect=exception.NetAppException(
+                'REST API requires ONTAP 9.12.1 or later.')))
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'check_for_setup_error')
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.check_for_setup_error)
+        mock_super.assert_not_called()
+
+    def _set_dns_config(self, domains=None, servers=None, hosts=None):
+        conf = self.library.configuration.local_conf
+        conf.set_override('netapp_dns_domains', domains or [])
+        conf.set_override('netapp_dns_nameservers', servers or [])
+        conf.set_override('netapp_dns_hosts', hosts or [])
+
+    def test_validate_dns_config(self):
+        self._set_dns_config(['example.com'], ['10.0.0.1'],
+                             ['barbican:10.0.0.5'])
+
+        self.library._validate_dns_config()
+
+        self.assertEqual(['example.com'], self.library._dns_domains)
+        self.assertEqual(['10.0.0.1'], self.library._dns_nameservers)
+        self.assertEqual({'10.0.0.5': ['barbican']},
+                         self.library._dns_parsed_hosts)
+
+    def test_validate_dns_config_empty(self):
+        self._set_dns_config()
+
+        self.library._validate_dns_config()
+
+        self.assertEqual([], self.library._dns_domains)
+
+    def test_validate_dns_config_domains_without_servers(self):
+        self._set_dns_config(['example.com'])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    def test_validate_dns_config_hosts_without_dns(self):
+        self._set_dns_config(hosts=['barbican:10.0.0.5'])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    def test_validate_dns_config_exceeds_domain_cap(self):
+        self._set_dns_config(['d%d.com' % i for i in range(7)], ['10.0.0.1'])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    def test_validate_dns_config_invalid_host_ip(self):
+        self._set_dns_config(['example.com'], ['10.0.0.1'],
+                             ['barbican:not-an-ip'])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    def test_merge_dns_host_tokens(self):
+        raw = ['host1', 'host2:10.0.0.5', 'host3:10.0.0.6']
+        result = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary.\
+            _merge_dns_host_tokens(raw)
+        self.assertEqual(['host1,host2:10.0.0.5', 'host3:10.0.0.6'], result)
+
+    def test_parse_dns_hosts(self):
+        hosts = ['barbican,barbican.local:10.0.0.5', 'keystone:10.0.0.6']
+        result = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary.\
+            _parse_dns_hosts(hosts)
+        self.assertEqual({
+            '10.0.0.5': ['barbican', 'barbican.local'],
+            '10.0.0.6': ['keystone'],
+        }, result)
+
+    def test_configure_dns_for_vserver(self):
+        self.library._dns_domains = ['example.com']
+        self.library._dns_nameservers = ['10.0.0.1']
+        self.library._dns_parsed_hosts = {'10.0.0.5': ['barbican']}
+        mock_rest = mock.Mock()
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._configure_dns_for_vserver('test_vs')
+
+        mock_rest.configure_dns_for_vserver.assert_called_once_with(
+            'test_vs', ['example.com'], ['10.0.0.1'])
+        mock_rest.create_local_host_for_vserver.assert_called_once_with(
+            'test_vs', 'barbican', '10.0.0.5', aliases=[])
+
+    def test_configure_dns_for_vserver_no_dns(self):
+        self.library._dns_domains = []
+        mock_rest = mock.Mock()
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._configure_dns_for_vserver('test_vs')
+
+        mock_rest.configure_dns_for_vserver.assert_not_called()
+
+    def test_ensure_shares(self):
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_on_vservers')
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'ensure_shares',
+            mock.Mock(return_value={}))
+        ctx = mock.Mock()
+        shares = [fake.SHARE]
+
+        self.library.ensure_shares(ctx, shares)
+
+        mock_reconcile.assert_called_once_with(ctx, shares)
+        mock_super.assert_called_once_with(ctx, shares)
+
+    def test_reconcile_dns_for_vserver(self):
+        self.library._dns_domains = ['infra.example.com']
+        self.library._dns_nameservers = ['10.0.0.1']
+        self.library._dns_parsed_hosts = {'10.0.0.5': ['barbican']}
+        mock_rest = mock.Mock()
+        mock_rest.get_dns_config.return_value = {
+            'domains': ['old.com'], 'dns-ips': ['10.0.0.2']}
+        mock_rest.get_local_hosts_for_vserver.return_value = {}
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._reconcile_dns_for_vserver(
+            'test_vs', ['ad.example.com'], ['10.0.0.3'])
+
+        mock_rest.configure_dns_for_vserver.assert_called_once_with(
+            'test_vs',
+            ['ad.example.com', 'infra.example.com'],
+            ['10.0.0.3', '10.0.0.1'])
+        mock_rest.create_local_host_for_vserver.assert_called_once_with(
+            'test_vs', 'barbican', '10.0.0.5', aliases=[])
+
+    def test_reconcile_dns_for_vserver_already_in_sync(self):
+        self.library._dns_domains = ['example.com']
+        self.library._dns_nameservers = ['10.0.0.1']
+        self.library._dns_parsed_hosts = {}
+        mock_rest = mock.Mock()
+        mock_rest.get_dns_config.return_value = {
+            'domains': ['example.com'], 'dns-ips': ['10.0.0.1']}
+        mock_rest.get_local_hosts_for_vserver.return_value = {}
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._reconcile_dns_for_vserver('test_vs', [], [])
+
+        mock_rest.configure_dns_for_vserver.assert_not_called()
+
+    def test_reconcile_dns_for_vserver_prunes_stale_hosts(self):
+        self.library._dns_domains = ['example.com']
+        self.library._dns_nameservers = ['10.0.0.1']
+        self.library._dns_parsed_hosts = {}
+        mock_rest = mock.Mock()
+        mock_rest.get_dns_config.return_value = {
+            'domains': ['example.com'], 'dns-ips': ['10.0.0.1']}
+        mock_rest.get_local_hosts_for_vserver.return_value = {
+            '10.0.0.99': ['stale-host']}
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._reconcile_dns_for_vserver('test_vs', [], [])
+
+        mock_rest.delete_local_host_for_vserver.assert_called_once_with(
+            'test_vs', '10.0.0.99')
+
+    def test_build_post_update_ss_dns_add(self):
+        network_info = [{'security_services': []}]
+        new_ss = {'id': 'new', 'domain': 'ad.example.com',
+                  'dns_ip': '10.0.0.3'}
+        domains, servers = self.library._build_post_update_ss_dns(
+            network_info, None, new_ss)
+        self.assertEqual(['ad.example.com'], domains)
+        self.assertEqual(['10.0.0.3'], servers)
+
+    def test_build_post_update_ss_dns_replace(self):
+        old_ss = {'id': 'old', 'type': 'active_directory',
+                  'domain': 'old.com', 'dns_ip': '10.0.0.1'}
+        new_ss = {'id': 'new', 'domain': 'new.com', 'dns_ip': '10.0.0.2'}
+        network_info = [{'security_services': [old_ss]}]
+        domains, servers = self.library._build_post_update_ss_dns(
+            network_info, old_ss, new_ss)
+        self.assertEqual(['new.com'], domains)
+        self.assertEqual(['10.0.0.2'], servers)
+
+    def test_validate_dns_config_exceeds_server_cap(self):
+        self._set_dns_config(['example.com'],
+                             ['10.0.0.%d' % i for i in range(4)])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    def test_get_backend_info(self):
+        self.library._dns_domains = ['example.com']
+        self.library._dns_nameservers = ['10.0.0.1']
+        self.library._dns_parsed_hosts = {'10.0.0.2': ['host1', 'alias1']}
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'get_backend_info',
+            mock.Mock(return_value={'snapdir_visibility': 'visible'}))
+        ctx = mock.Mock()
+
+        result = self.library.get_backend_info(ctx)
+
+        mock_super.assert_called_once_with(ctx)
+        self.assertEqual('example.com', result['netapp_dns_domains'])
+        self.assertEqual('10.0.0.1', result['netapp_dns_nameservers'])
+        self.assertEqual('10.0.0.2:host1,alias1', result['netapp_dns_hosts'])
+        self.assertEqual('visible', result['snapdir_visibility'])
+
+    def test_create_share_reconciles_dns(self):
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_share_server')
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'create_share',
+            mock.Mock(return_value='fake_export'))
+        ctx = mock.Mock()
+
+        result = self.library.create_share(ctx, fake.SHARE, fake.SHARE_SERVER)
+
+        mock_reconcile.assert_called_once_with(ctx, fake.SHARE_SERVER)
+        mock_super.assert_called_once_with(ctx, fake.SHARE, fake.SHARE_SERVER)
+        self.assertEqual('fake_export', result)
+
+    def test_reconcile_dns_for_vserver_exceeds_cap(self):
+        self.library._dns_domains = ['d%d.com' % i for i in range(5)]
+        self.library._dns_nameservers = ['10.0.0.1']
+        self.library._dns_parsed_hosts = {}
+        mock_rest = mock.Mock()
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._reconcile_dns_for_vserver(
+            'test_vs', ['ss1.com', 'ss2.com'], [])
+
+        mock_rest.get_dns_config.assert_not_called()
+        mock_rest.configure_dns_for_vserver.assert_not_called()
+
+    def test_check_dns_caps_for_ss_within_limits(self):
+        self.library._dns_domains = ['infra.com']
+        self.library._dns_nameservers = ['10.0.0.1']
+        ss = [{'domain': 'ad.com', 'dns_ip': '10.0.0.2'}]
+
+        result = self.library._check_dns_caps_for_ss(ss)
+
+        self.assertIsNone(result)
+
+    def test_check_dns_caps_for_ss_exceeds_limits(self):
+        self.library._dns_domains = ['d%d.com' % i for i in range(5)]
+        self.library._dns_nameservers = ['10.0.0.1']
+        ss = [{'domain': 'd5.com', 'dns_ip': '10.0.0.2'},
+              {'domain': 'd6.com', 'dns_ip': '10.0.0.3'}]
+
+        result = self.library._check_dns_caps_for_ss(ss)
+
+        self.assertIsNotNone(result)
+        self.assertIn('exceeds', result)
 
     def test_get_vserver_no_share_server(self):
 
@@ -745,6 +1046,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._client,
             'get_ipspace_name_for_vlan_port',
             mock.Mock(return_value=existing_ipspace))
+        mock_configure_dns = self.mock_object(
+            self.library, '_configure_dns_for_vserver')
+        self.mock_object(self.library, '_check_dns_caps_for_ss',
+                         mock.Mock(return_value=None))
 
         self.library._create_vserver(vserver_name, fake.NETWORK_INFO_LIST,
                                      fake.NFS_CONFIG_TCP_UDP_MAX,
@@ -775,6 +1080,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             lif_home_ports=fake_lif_home_ports)
         vserver_client.enable_nfs.assert_called_once_with(
             versions, nfs_config=nfs_config)
+        mock_configure_dns.assert_called_once_with(vserver_name)
         self.library._client.setup_security_services.assert_called_once_with(
             fake.NETWORK_INFO['security_services'], vserver_client,
             vserver_name, False, False)
@@ -814,6 +1120,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'get_ipspace_name_for_vlan_port',
             mock.Mock(return_value=existing_ipspace))
         self.mock_object(self.library, '_create_port_and_broadcast_domain')
+        self.mock_object(self.library, '_check_dns_caps_for_ss',
+                         mock.Mock(return_value=None))
 
         self.library._create_vserver(vserver_name, fake.NETWORK_INFO_LIST,
                                      metadata={'migration_destination': True})
@@ -901,6 +1209,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_setup_network_for_vserver',
                          mock.Mock(side_effect=network_exception))
         self.mock_object(self.library, '_delete_vserver')
+        self.mock_object(self.library, '_check_dns_caps_for_ss',
+                         mock.Mock(return_value=None))
 
         self.assertRaises(network_exception,
                           self.library._create_vserver,
@@ -915,7 +1225,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             vserver_client,
             fake.NETWORK_INFO_LIST,
             fake.IPSPACE,
-            security_services=security_service,
+            security_services=None,
             nfs_config=None)
         self.library._delete_vserver.assert_called_once_with(
             vserver_name,
@@ -3912,8 +4222,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_diff_keys = self.mock_object(
             self.library, '_get_different_keys_for_equal_ss_type',
             mock.Mock(return_value=different_keys))
-        mock_dns_update = self.mock_object(
-            fake_vserver_client, 'update_dns_configuration')
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_vserver')
+        mock_build_dns = self.mock_object(
+            self.library, '_build_post_update_ss_dns',
+            mock.Mock(return_value=([], [])))
         mock_update_krealm = self.mock_object(
             fake_vserver_client, 'update_kerberos_realm')
         mock_modify_ad = self.mock_object(
@@ -3923,22 +4236,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_context, fake.SHARE_SERVER, fake_net_info,
             new_sec_service, current_security_service=curr_sec_service)
 
-        dns_ips = set()
-        domains = set()
-        # we don't need to split and strip since we know that fake have only
-        # on dns-ip and domain configured
-        for ss in existing:
-            if ss['type'] != new_sec_service['type']:
-                dns_ips.add(ss['dns_ip'])
-                domains.add(ss['domain'])
-        dns_ips.add(new_sec_service['dns_ip'])
-        domains.add(new_sec_service['domain'])
-
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
         mock_check_update.assert_called_once_with(
             fake_context, fake.SHARE_SERVER, fake_net_info, new_sec_service,
             current_security_service=curr_sec_service)
+        mock_build_dns.assert_called_once_with(
+            fake_net_info, curr_sec_service, new_sec_service)
+        mock_reconcile.assert_called_once_with(fake.VSERVER1, [], [])
 
         if curr_sec_service is None:
             mock_setup_sec_serv.assert_called_once_with(
@@ -3948,7 +4253,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_diff_keys.assert_called_once_with(curr_sec_service,
                                                    new_sec_service)
             if different_keys:
-                mock_dns_update.assert_called_once_with(dns_ips, domains)
                 if new_type == 'kerberos':
                     mock_update_krealm.assert_called_once_with(new_sec_service)
                 elif new_type == 'active_directory':

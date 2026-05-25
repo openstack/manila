@@ -4550,30 +4550,31 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def configure_dns(self, security_service, vserver_name=None):
-        """Configure DNS address and servers for a vserver."""
-        body = {
-            'domains': [],
-            'servers': []
-        }
-        # NOTE(dviroel): Read the current dns configuration and merge with the
-        # new one. This scenario is expected when 2 security services provide
-        # a DNS configuration, like 'active_directory' and 'ldap'.
+        """Merge security-service DNS into the SVM, SS values first."""
         current_dns_config = self.get_dns_config(vserver_name=vserver_name)
-        domains = set(current_dns_config.get('domains', []))
-        dns_ips = set(current_dns_config.get('dns-ips', []))
+        existing_domains = list(current_dns_config.get('domains', []) or [])
+        existing_servers = list(current_dns_config.get('dns-ips', []) or [])
+
+        ss_domain = security_service['domain']
+        ss_servers = [ip.strip()
+                      for ip in security_service['dns_ip'].split(',')
+                      if ip.strip()]
+
+        def _ordered_unique(*lists):
+            seen, out = set(), []
+            for lst in lists:
+                for item in lst:
+                    if item and item not in seen:
+                        seen.add(item)
+                        out.append(item)
+            return out
+
+        body = {
+            'domains': _ordered_unique([ss_domain], existing_domains),
+            'servers': _ordered_unique(ss_servers, existing_servers),
+        }
 
         svm_uuid = self._get_unique_svm_by_name(vserver_name)
-
-        domains.add(security_service['domain'])
-        for domain in domains:
-            body['domains'].append(domain)
-
-        for dns_ip in security_service['dns_ip'].split(','):
-            dns_ips.add(dns_ip.strip())
-        body['servers'] = []
-        for dns_ip in sorted(dns_ips):
-            body['servers'].append(dns_ip)
-
         try:
             if current_dns_config:
                 self.send_request(f'/name-services/dns/{svm_uuid}',
@@ -4584,6 +4585,94 @@ class NetAppRestClient(object):
         except netapp_api.api.NaApiError as e:
             msg = _("Failed to configure DNS. %s")
             raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def configure_dns_for_vserver(self, vserver_name, domains, nameservers):
+        """Set DNS name-service for an SVM from driver config."""
+        body = {'domains': list(domains), 'servers': list(nameservers)}
+        current = self.get_dns_config(vserver_name=vserver_name)
+        try:
+            if current:
+                svm_uuid = self._get_unique_svm_by_name(vserver_name)
+                self.send_request(f'/name-services/dns/{svm_uuid}',
+                                  'patch', body=body)
+            else:
+                body['svm.name'] = vserver_name
+                self.send_request('/name-services/dns', 'post', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to configure DNS for vserver %(vs)s. %(err)s")
+            raise exception.NetAppException(
+                msg % {'vs': vserver_name, 'err': e.message})
+
+    @na_utils.trace
+    def get_local_hosts_for_vserver(self, vserver_name):
+        """Return {ip: [canonical, *aliases]} of local-host entries."""
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+        query = {'owner.uuid': svm_uuid,
+                 'fields': 'address,hostname,aliases'}
+        try:
+            result = self.send_request('/name-services/local-hosts',
+                                       'get', query=query)
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                return {}
+            msg = _("Failed to get local hosts for vserver %(vs)s. %(err)s")
+            raise exception.NetAppException(
+                msg % {'vs': vserver_name, 'err': e.message})
+        entries = {}
+        for rec in result.get('records', []):
+            addr, host = rec.get('address'), rec.get('hostname')
+            if addr and host:
+                entries[addr] = [host] + (rec.get('aliases') or [])
+        return entries
+
+    @na_utils.trace
+    def create_local_host_for_vserver(self, vserver_name, hostname, address,
+                                      aliases=None):
+        """Create a static hostname:ip entry on the SVM local-hosts table."""
+        body = {'owner.name': vserver_name, 'address': address,
+                'hostname': hostname}
+        if aliases:
+            body['aliases'] = list(aliases)
+        try:
+            self.send_request('/name-services/local-hosts', 'post', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to create local-host %(host)s:%(ip)s on "
+                    "%(vs)s. %(err)s")
+            raise exception.NetAppException(
+                msg % {'host': hostname, 'ip': address,
+                       'vs': vserver_name, 'err': e.message})
+
+    @na_utils.trace
+    def modify_local_host_for_vserver(self, vserver_name, address, hostname,
+                                      aliases=None):
+        """Update hostname/aliases for an existing local-host entry."""
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+        body = {'hostname': hostname,
+                'aliases': list(aliases) if aliases else []}
+        try:
+            self.send_request(
+                f'/name-services/local-hosts/{svm_uuid}/{address}',
+                'patch', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = _("Failed to modify local-host %(ip)s on %(vs)s. %(err)s")
+            raise exception.NetAppException(
+                msg % {'ip': address, 'vs': vserver_name, 'err': e.message})
+
+    @na_utils.trace
+    def delete_local_host_for_vserver(self, vserver_name, address):
+        """Delete a local-host entry by IP."""
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+        try:
+            self.send_request(
+                f'/name-services/local-hosts/{svm_uuid}/{address}',
+                'delete')
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                return
+            msg = _("Failed to delete local-host %(ip)s on %(vs)s. %(err)s")
+            raise exception.NetAppException(
+                msg % {'ip': address, 'vs': vserver_name, 'err': e.message})
 
     @na_utils.trace
     def setup_security_services(self, security_services, vserver_client,

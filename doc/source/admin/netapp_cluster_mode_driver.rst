@@ -100,6 +100,23 @@ If 'driver_handles_share_servers' is False, the manila admin must configure a
 single SVM, along with associated LIFs and protocol services, that will be
 used for provisioning shares.  The SVM is specified in the manila config file.
 
+DNS Configuration for DHSS=True SVMs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In DHSS=True mode, newly created SVMs have no DNS name-service unless a
+security service is attached. SVMs that need to resolve infrastructure
+hostnames (for example, a Barbican KMS endpoint for share encryption) will
+fail without a working resolver.
+
+Set ``netapp_dns_domains`` and ``netapp_dns_nameservers`` in the backend
+stanza of ``manila.conf`` to provide infrastructure DNS to every SVM
+managed by the backend. Optionally, set ``netapp_dns_hosts`` to add
+static hostname:ip fallback entries to the SVM local-hosts table.
+
+When a security service is later attached, its DNS values are merged on
+top of the infrastructure DNS (security-service entries first). The
+driver reconciles DNS on service restart via ``ensure_shares``.
+
 Network approach
 ----------------
 
