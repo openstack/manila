@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added a share driver for Weka storage, operating in
+    ``driver_handles_share_servers=False`` mode and serving shares over the
+    ``WEKAFS`` POSIX client or ``NFS``. Each Manila project maps to its own
+    Weka organization, so ``WEKAFS`` shares are isolated per tenant; this
+    requires a multi-tenant Weka cluster and the ``weka_org_admin_secret``
+    option. See the Weka share driver documentation for the access model and
+    configuration reference.
