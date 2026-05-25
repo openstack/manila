@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed a database purge failure that could occur when purging share
+    access rules. For more details, please check
+    `launchpad bug #2081827 <https://bugs.launchpad.net/manila/+bug/2081827>`_

@@ -6758,6 +6758,35 @@ def _purge_sec_service_associations(context, deleted_age):
 
 
 @require_admin_context
+@context_manager.writer.independent
+def _purge_share_access_map(context, deleted_age):
+    """Purge share_access_map and child share_instance_access_map rows."""
+    access_maps_to_delete = context.session.query(
+        models.ShareAccessMapping
+    ).filter(
+        models.ShareAccessMapping.deleted_at <= deleted_age,
+        models.ShareAccessMapping.deleted == models.ShareAccessMapping.id,
+    ).all()
+
+    for access_map in access_maps_to_delete:
+        try:
+            with context.session.begin_nested():
+                context.session.query(
+                    models.ShareInstanceAccessMapping
+                ).filter_by(access_id=access_map.id).delete(
+                    synchronize_session='fetch')
+                context.session.delete(access_map)
+        except db_exc.DBError:
+            LOG.warning(
+                "Deleting access_map %s failed, skipping.",
+                access_map,
+            )
+
+
+####################
+
+
+@require_admin_context
 def purge_deleted_records(context, age_in_days):
     """Purge soft-deleted records older than(and equal) age from tables."""
 
@@ -6769,6 +6798,7 @@ def purge_deleted_records(context, age_in_days):
     deleted_age = timeutils.utcnow() - datetime.timedelta(days=age_in_days)
 
     _purge_sec_service_associations(context, deleted_age)
+    _purge_share_access_map(context, deleted_age)
 
     metadata = MetaData()
     metadata.reflect(get_engine())
@@ -6787,11 +6817,20 @@ def purge_deleted_records(context, age_in_days):
     tables_without_id = {'async_operation_data', 'backend_info',
                          'drivers_private_data'}
 
+    # Tables handled by dedicated purge helpers above; skip in the main loop
+    # to avoid FK constraint errors from incorrect deletion ordering.
+    tables_with_dedicated_purge = {
+        'share_access_map',
+        'share_network_security_service_association'
+    }
+
     for table in reversed(tables):
         if 'deleted' not in table.columns.keys():
             continue
 
         table_name = table.name
+        if table_name in tables_with_dedicated_purge:
+            continue
         if table_name in model_by_table:
             try:
                 _purge_table_records(
