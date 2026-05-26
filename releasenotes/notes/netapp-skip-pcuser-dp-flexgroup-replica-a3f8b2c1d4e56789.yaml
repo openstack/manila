@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed an issue on the NetApp ONTAP driver during updating access rules for
+    shares having replicas in combination with ``all_squash=true`` metadata.

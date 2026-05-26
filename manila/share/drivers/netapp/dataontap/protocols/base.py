@@ -77,7 +77,7 @@ class NetAppBaseHelper(metaclass=abc.ABCMeta):
         """Deletes NAS share."""
 
     @abc.abstractmethod
-    def update_access(self, share, share_name, rules):
+    def update_access(self, share, share_name, rules, replica=False):
         """Replaces the list of access rules known to the backend storage."""
 
     @abc.abstractmethod
