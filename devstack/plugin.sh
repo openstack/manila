@@ -720,8 +720,8 @@ function _install_nfs_and_samba {
 #   to local.conf
 function install_manilaclient {
     if use_library_from_git "python-manilaclient"; then
-        git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
-        setup_develop $MANILACLIENT_DIR
+        git_clone_by_name "python-manilaclient"
+        setup_dev_lib "python-manilaclient"
     else
         pip_install python-manilaclient
     fi
