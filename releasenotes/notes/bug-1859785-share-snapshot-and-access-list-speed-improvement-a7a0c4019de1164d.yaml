@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Improved share snapshot and access list speed using lazy='selectin'. The
+    sqlalchemy models of share snapshot and access rule relationships previously
+    had lazy='immediate'. This resulted in extra queries when querying for all
+    share snapshot and access rule details.
