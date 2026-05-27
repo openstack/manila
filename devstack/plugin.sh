@@ -125,19 +125,6 @@ function set_config_opts {
     fi
 }
 
-# set_cinder_quotas - Sets Cinder quotas, that is useful for generic driver,
-# which uses Cinder volumes and snapshots.
-function set_cinder_quotas {
-    # Update Cinder configuration to make sure default quotas are enough
-    # for Manila using Generic driver with parallel testing.
-    if is_service_enabled cinder; then
-        CINDER_CONF=${CINDER_CONF:-/etc/cinder/cinder.conf}
-        iniset $CINDER_CONF DEFAULT quota_volumes 50
-        iniset $CINDER_CONF DEFAULT quota_snapshots 50
-        iniset $CINDER_CONF DEFAULT quota_gigabytes 1000
-    fi
-}
-
 function set_backend_availability_zones {
     ENABLED_BACKENDS=$1
     echo_summary "Setting up backend_availability_zone option \
@@ -1143,7 +1130,6 @@ if [[ "$1" == "stack" && "$2" == "install" ]]; then
     install_manilaclient
     echo_summary "Installing Manila"
     install_manila
-    set_cinder_quotas
 elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     echo_summary "Configuring Manila"
     configure_manila
