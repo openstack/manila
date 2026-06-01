@@ -131,9 +131,7 @@ function set_cinder_quotas {
     # Update Cinder configuration to make sure default quotas are enough
     # for Manila using Generic driver with parallel testing.
     if is_service_enabled cinder; then
-        if [[ ! "$CINDER_CONF" ]]; then
-            CINDER_CONF=/etc/cinder/cinder.conf
-        fi
+        CINDER_CONF=${CINDER_CONF:-/etc/cinder/cinder.conf}
         iniset $CINDER_CONF DEFAULT quota_volumes 50
         iniset $CINDER_CONF DEFAULT quota_snapshots 50
         iniset $CINDER_CONF DEFAULT quota_gigabytes 1000
@@ -1184,10 +1182,6 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     # Cinder config update
     if is_service_enabled cinder && [[ -n "$CINDER_OVERSUBSCRIPTION_RATIO" ]]; then
         CINDER_CONF=${CINDER_CONF:-/etc/cinder/cinder.conf}
-        CINDER_ENABLED_BACKENDS=$(iniget $CINDER_CONF DEFAULT enabled_backends)
-        for BN in ${CINDER_ENABLED_BACKENDS//,/ }; do
-            iniset $CINDER_CONF $BN lvm_max_over_subscription_ratio $CINDER_OVERSUBSCRIPTION_RATIO
-        done
         iniset $CINDER_CONF DEFAULT max_over_subscription_ratio $CINDER_OVERSUBSCRIPTION_RATIO
     fi
 elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
