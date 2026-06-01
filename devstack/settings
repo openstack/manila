@@ -30,19 +30,20 @@ OS_CLOUD=${OS_CLOUD:-"devstack-admin"}
 MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://opendev.org}
 MANILA_REPO_ROOT=${MANILA_REPO_ROOT:-openstack}
 
-MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient
-MANILACLIENT_BRANCH=${MANILACLIENT_BRANCH:-master}
-
 # Set up default directories
 MANILA_DIR=${MANILA_DIR:=$DEST/manila}
 MANILA_LOCK_PATH=${MANILA_LOCK_PATH:=$OSLO_LOCK_PATH}
 MANILA_LOCK_PATH=${MANILA_LOCK_PATH:=$MANILA_DIR/manila_locks}
-MANILACLIENT_DIR=${MANILACLIENT_DIR:=$DEST/python-manilaclient}
 MANILA_STATE_PATH=${MANILA_STATE_PATH:=$DATA_DIR/manila}
 
 MANILA_CONF_DIR=${MANILA_CONF_DIR:-/etc/manila}
 MANILA_CONF=$MANILA_CONF_DIR/manila.conf
 MANILA_API_PASTE_INI=$MANILA_CONF_DIR/api-paste.ini
+
+# client settings
+GITREPO["python-manilaclient"]=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient
+GITDIR["python-manilaclient"]=${MANILACLIENT_DIR:-$DEST/python-manilaclient}
+GITBRANCH["python-manilaclient"]=${MANILACLIENT_BRANCH:-master}
 
 # barbican defaults
 BARBICAN_ENDPOINT_TYPE=${BARBICAN_ENDPOINT_TYPE:-internal}
