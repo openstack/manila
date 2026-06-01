@@ -215,13 +215,14 @@ REST_API_VERSION_HISTORY = """
     * 2.94 - Added QoS type and specs APIs.
     * 2.95 - Added Share Replica Metadata to Metadata API
     * 2.96 - Share migration APIs are no longer considered experimental.
+    * 2.97 - Added availability_zone filter to share list API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.96"
+_MAX_API_VERSION = "2.97"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

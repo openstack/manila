@@ -2455,6 +2455,14 @@ class API(base.Base):
             if key in search_opts:
                 filters[key] = search_opts.pop(key)
 
+        if 'availability_zone' in search_opts:
+            az_name = search_opts.pop('availability_zone')
+            try:
+                az = self.db.availability_zone_get(context, az_name)
+                filters['availability_zone_id'] = az['id']
+            except exception.AvailabilityZoneNotFound:
+                return (0, []) if show_count else []
+
         if 'metadata' in search_opts:
             filters['metadata'] = search_opts.pop('metadata')
             if not isinstance(filters['metadata'], dict):

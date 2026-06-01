@@ -1,0 +1,5 @@
+---
+fixes:
+  - Share list API now correctly filters shares by availability zone.
+    Passing availability_zone as a query parameter was silently ignored,
+    returning shares from all availability zones. Fixed in microversion 2.97.

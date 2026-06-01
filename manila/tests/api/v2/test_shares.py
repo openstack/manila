@@ -2087,7 +2087,9 @@ class ShareAPITest(test.TestCase):
               {'use_admin_context': True, 'version': '2.42'},
               {'use_admin_context': False, 'version': '2.42'},
               {'use_admin_context': False, 'version': '2.69'},
-              {'use_admin_context': True, 'version': '2.69'})
+              {'use_admin_context': True, 'version': '2.69'},
+              {'use_admin_context': False, 'version': '2.97'},
+              {'use_admin_context': True, 'version': '2.97'})
     @ddt.unpack
     def test_share_list_summary_with_search_opts(self, use_admin_context,
                                                  version):
@@ -2116,6 +2118,9 @@ class ShareAPITest(test.TestCase):
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.69')):
             search_opts.update({'is_soft_deleted': True})
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.97')):
+            search_opts.update({'availability_zone': 'fake_az'})
         method = 'get_all'
         shares = [
             {'id': 'id1', 'display_name': 'n1'},
@@ -2171,6 +2176,10 @@ class ShareAPITest(test.TestCase):
                 api_version.APIVersionRequest('2.69')):
             search_opts_expected['is_soft_deleted'] = (
                 search_opts['is_soft_deleted'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.97')):
+            search_opts_expected['availability_zone'] = (
+                search_opts['availability_zone'])
 
         policy.check_policy.assert_called_once_with(
             req.environ['manila.context'],
@@ -2272,7 +2281,9 @@ class ShareAPITest(test.TestCase):
               {'use_admin_context': True, 'version': '2.42'},
               {'use_admin_context': False, 'version': '2.42'},
               {'use_admin_context': True, 'version': '2.69'},
-              {'use_admin_context': False, 'version': '2.69'})
+              {'use_admin_context': False, 'version': '2.69'},
+              {'use_admin_context': False, 'version': '2.97'},
+              {'use_admin_context': True, 'version': '2.97'})
     @ddt.unpack
     def test_share_list_detail_with_search_opts(self, use_admin_context,
                                                 version):
@@ -2322,6 +2333,9 @@ class ShareAPITest(test.TestCase):
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.69')):
             search_opts.update({'is_soft_deleted': True})
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.97')):
+            search_opts.update({'availability_zone': 'fake_az'})
         if use_admin_context:
             search_opts['host'] = 'fake_host'
         # fake_key should be filtered for non-admin
@@ -2360,6 +2374,10 @@ class ShareAPITest(test.TestCase):
                 api_version.APIVersionRequest('2.69')):
             search_opts_expected['is_soft_deleted'] = (
                 search_opts['is_soft_deleted'])
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.97')):
+            search_opts_expected['availability_zone'] = (
+                search_opts['availability_zone'])
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
             search_opts_expected['host'] = search_opts['host']
