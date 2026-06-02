@@ -293,7 +293,21 @@ netapp_provisioning_opts = [
                 help='This option enable/disable SMB signing that protects '
                      'the security of the data fabric by making sure that '
                      'traffic between storage systems and clients is not '
-                     'compromised.')
+                     'compromised.'),
+    cfg.ListOpt('netapp_dns_domains',
+                default=[],
+                help='DNS search domains for SVMs (max 6, DHSS=True only). '
+                     'Must be paired with netapp_dns_nameservers.'),
+    cfg.ListOpt('netapp_dns_nameservers',
+                default=[],
+                help='DNS server IPs for SVMs (max 3, DHSS=True only). '
+                     'Must be paired with netapp_dns_domains.'),
+    cfg.ListOpt('netapp_dns_hosts',
+                default=[],
+                help='Static hostname:ip fallbacks for the SVM local-hosts '
+                     'table. Requires netapp_dns_domains and '
+                     'netapp_dns_nameservers. Supports "host1,host2:ip" '
+                     'shorthand for shared IPs.'),
 ]
 
 netapp_cluster_opts = [

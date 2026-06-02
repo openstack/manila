@@ -25,10 +25,12 @@ from manila.share.drivers.netapp.dataontap.cluster_mode.lib_base import Backup
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
+from oslo_utils import netutils
 from oslo_utils import units
 from oslo_utils import uuidutils
 
 from manila.common import constants
+from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.message import message_field
@@ -51,10 +53,16 @@ SERVER_MIGRATE_SVM_DR = 'svm_dr'
 SERVER_MIGRATE_SVM_MIGRATE = 'svm_migrate'
 METADATA_VLAN = 'set_vlan'
 METADATA_MTU = 'set_mtu'
+ONTAP_DNS_DOMAINS_CAP = 6
+ONTAP_DNS_SERVERS_CAP = 3
 
 
 class NetAppCmodeMultiSVMFileStorageLibrary(
         lib_base.NetAppCmodeFileStorageLibrary):
+
+    _dns_domains = []
+    _dns_nameservers = []
+    _dns_parsed_hosts = {}
 
     @na_utils.trace
     def check_for_setup_error(self):
@@ -82,8 +90,240 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     'netapp_aggregate_name_search_pattern is set correctly.')
             raise exception.NetAppException(msg)
 
+        self._validate_dns_config()
+
+        # DNS workflows force REST; surface the existing 9.12.1
+        # version check at startup instead of at first provisioning.
+        if self._dns_domains:
+            self._get_rest_client_for_backend()
+
         (super(NetAppCmodeMultiSVMFileStorageLibrary, self).
             check_for_setup_error())
+
+    @na_utils.trace
+    def _validate_dns_config(self):
+        """Validate netapp_dns_* options and cache parsed values."""
+        domains = self.configuration.safe_get('netapp_dns_domains') or []
+        servers = self.configuration.safe_get('netapp_dns_nameservers') or []
+        raw_hosts = self.configuration.safe_get('netapp_dns_hosts') or []
+
+        if bool(domains) != bool(servers):
+            raise exception.InvalidInput(
+                reason=_('netapp_dns_domains and netapp_dns_nameservers '
+                         'must be set together.'))
+        if len(domains) > ONTAP_DNS_DOMAINS_CAP:
+            raise exception.InvalidInput(
+                reason=_('netapp_dns_domains: max %d entries.')
+                % ONTAP_DNS_DOMAINS_CAP)
+        if len(servers) > ONTAP_DNS_SERVERS_CAP:
+            raise exception.InvalidInput(
+                reason=_('netapp_dns_nameservers: max %d entries.')
+                % ONTAP_DNS_SERVERS_CAP)
+
+        hosts = self._merge_dns_host_tokens(raw_hosts)
+        if hosts and not (domains and servers):
+            raise exception.InvalidInput(
+                reason=_('netapp_dns_hosts requires both '
+                         'netapp_dns_domains and netapp_dns_nameservers.'))
+        for entry in hosts:
+            if ':' not in entry:
+                raise exception.InvalidInput(
+                    reason=_("Invalid netapp_dns_hosts entry %r: "
+                             "expected 'hostname:ip'.") % entry)
+            names_part, sep, ip = entry.partition(':')
+            ip = ip.strip()
+            names = [h.strip() for h in names_part.split(',') if h.strip()]
+            if not names or not ip:
+                raise exception.InvalidInput(
+                    reason=_("Invalid netapp_dns_hosts entry %r.") % entry)
+            if not (netutils.is_valid_ipv4(ip)
+                    or netutils.is_valid_ipv6(ip)):
+                raise exception.InvalidInput(
+                    reason=_("Invalid IP in netapp_dns_hosts: %r.") % ip)
+
+        self._dns_domains = domains
+        self._dns_nameservers = servers
+        self._dns_parsed_hosts = self._parse_dns_hosts(hosts)
+
+    @staticmethod
+    def _merge_dns_host_tokens(raw_tokens):
+        """Re-merge cfg.ListOpt comma-split tokens into host:ip entries."""
+        merged, pending = [], []
+        for tok in raw_tokens:
+            tok = (tok or '').strip()
+            if not tok:
+                continue
+            if ':' in tok:
+                merged.append(','.join(pending + [tok]) if pending else tok)
+                pending = []
+            else:
+                pending.append(tok)
+        if pending:
+            merged.append(','.join(pending))
+        return merged
+
+    @staticmethod
+    def _parse_dns_hosts(hosts):
+        """Parse host:ip entries into {ip: [canonical, *aliases]}."""
+        parsed = {}
+        for entry in hosts:
+            names_part, _, ip = entry.partition(':')
+            ip = ip.strip()
+            names_list = parsed.setdefault(ip, [])
+            for name in names_part.split(','):
+                name = name.strip()
+                if name and name not in names_list:
+                    names_list.append(name)
+        return parsed
+
+    def _get_rest_client_for_backend(self):
+        """Return a REST cluster client for this backend."""
+        return data_motion.get_client_for_backend(
+            self._backend_name, vserver_name=None, force_rest_client=True)
+
+    @na_utils.trace
+    def _configure_dns_for_vserver(self, vserver_name):
+        """Apply infra DNS and local-host entries to a new SVM."""
+        if not self._dns_domains:
+            return
+        rest_client = self._get_rest_client_for_backend()
+        rest_client.configure_dns_for_vserver(
+            vserver_name, self._dns_domains, self._dns_nameservers)
+        for ip, hostnames in self._dns_parsed_hosts.items():
+            rest_client.create_local_host_for_vserver(
+                vserver_name, hostnames[0], ip, aliases=hostnames[1:])
+
+    @na_utils.trace
+    def ensure_shares(self, context, shares):
+        """Reconcile DNS on owning SVMs, then re-export shares."""
+        self._reconcile_dns_on_vservers(context, shares)
+        return super(NetAppCmodeMultiSVMFileStorageLibrary,
+                     self).ensure_shares(context, shares)
+
+    @na_utils.trace
+    def get_backend_info(self, context):
+        info = (super(NetAppCmodeMultiSVMFileStorageLibrary, self)
+                .get_backend_info(context)) or {}
+        info['netapp_dns_domains'] = ','.join(self._dns_domains)
+        info['netapp_dns_nameservers'] = ','.join(self._dns_nameservers)
+        info['netapp_dns_hosts'] = ';'.join(
+            '%s:%s' % (ip, ','.join(names))
+            for ip, names in sorted(self._dns_parsed_hosts.items()))
+        return info
+
+    @na_utils.trace
+    def _reconcile_dns_on_vservers(self, context, shares):
+        """Reconcile DNS on every unique SVM that owns a share."""
+        if not self._dns_domains:
+            return
+        seen = set()
+        for share in (shares or []):
+            ss = share.get('share_server') or {}
+            ss_id = ss.get('id')
+            bd = ss.get('backend_details') or {}
+            vserver_name = bd.get('vserver_name')
+            if not ss_id or ss_id in seen or not vserver_name:
+                continue
+            seen.add(ss_id)
+            try:
+                ss_domains, ss_servers = (
+                    self._get_ss_dns_for_share_server(context, ss))
+                self._reconcile_dns_for_vserver(
+                    vserver_name, ss_domains, ss_servers)
+            except Exception:
+                LOG.exception(
+                    'DNS reconciliation failed for vserver %s.', vserver_name)
+
+    @na_utils.trace
+    def _get_ss_dns_for_share_server(self, context, share_server):
+        """Return (domains, servers) from security services on a share."""
+        sn_id = share_server.get('share_network_id')
+        if not sn_id:
+            return [], []
+        ss_list = db.security_service_get_all_by_share_network(context, sn_id)
+        domains, servers = [], []
+        for ss in (ss_list or []):
+            d = (ss.get('domain') or '').strip()
+            if d and d not in domains:
+                domains.append(d)
+            for ip in (ss.get('dns_ip') or '').split(','):
+                ip = ip.strip()
+                if ip and ip not in servers:
+                    servers.append(ip)
+        return domains, servers
+
+    @na_utils.trace
+    def _reconcile_dns_for_vserver(self, vserver_name,
+                                   ss_domains, ss_servers):
+        """Converge SVM DNS to the union of conf + security-service values."""
+        rest_client = self._get_rest_client_for_backend()
+
+        # Build target: SS first, then conf entries
+        target_domains = list(ss_domains)
+        for d in self._dns_domains:
+            if d not in target_domains:
+                target_domains.append(d)
+        target_servers = list(ss_servers)
+        for s in self._dns_nameservers:
+            if s not in target_servers:
+                target_servers.append(s)
+
+        if (len(target_domains) > ONTAP_DNS_DOMAINS_CAP
+                or len(target_servers) > ONTAP_DNS_SERVERS_CAP):
+            LOG.warning('DNS union exceeds ONTAP caps on vserver %s; '
+                        'skipping reconciliation.', vserver_name)
+            return
+
+        current = rest_client.get_dns_config(vserver_name)
+        cur_domains = list(current.get('domains') or [])
+        cur_servers = list(current.get('dns-ips') or [])
+
+        if (set(target_domains) != set(cur_domains)
+                or set(target_servers) != set(cur_servers)):
+            rest_client.configure_dns_for_vserver(
+                vserver_name, target_domains, target_servers)
+
+        # Reconcile local-hosts: add/update/delete to match config
+        desired = self._dns_parsed_hosts
+        existing = rest_client.get_local_hosts_for_vserver(vserver_name)
+
+        for ip, hostnames in desired.items():
+            canonical, aliases = hostnames[0], hostnames[1:]
+            existing_names = existing.get(ip)
+            if existing_names == hostnames:
+                continue
+            if existing_names is None:
+                rest_client.create_local_host_for_vserver(
+                    vserver_name, canonical, ip, aliases=aliases)
+            else:
+                rest_client.modify_local_host_for_vserver(
+                    vserver_name, ip, canonical, aliases=aliases)
+
+        for ip in existing:
+            if ip not in desired:
+                rest_client.delete_local_host_for_vserver(vserver_name, ip)
+
+    def _check_dns_caps_for_ss(self, security_services):
+        """Return error string if conf + SS DNS would exceed ONTAP caps."""
+        domains, servers = list(self._dns_domains), list(self._dns_nameservers)
+        for ss in (security_services or []):
+            if not isinstance(ss, dict):
+                continue
+            d = (ss.get('domain') or '').strip()
+            if d and d not in domains:
+                domains.append(d)
+            for ip in (ss.get('dns_ip') or '').split(','):
+                ip = ip.strip()
+                if ip and ip not in servers:
+                    servers.append(ip)
+        if (len(domains) > ONTAP_DNS_DOMAINS_CAP
+                or len(servers) > ONTAP_DNS_SERVERS_CAP):
+            return (_("DNS union of manila.conf and security services "
+                      "exceeds ONTAP per-SVM caps (domains=%(nd)d/%(maxd)d, "
+                      "servers=%(ns)d/%(maxs)d).")
+                    % {'nd': len(domains), 'maxd': ONTAP_DNS_DOMAINS_CAP,
+                       'ns': len(servers), 'maxs': ONTAP_DNS_SERVERS_CAP})
+        return None
 
     @na_utils.trace
     def _get_vserver(self, share_server=None, vserver_name=None,
@@ -313,6 +553,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if self._client.vserver_exists(vserver_name):
             msg = _('Vserver %s already exists.')
             raise exception.NetAppException(msg % vserver_name)
+
+        security_services = network_info[0].get('security_services')
+        caps_err = self._check_dns_caps_for_ss(security_services)
+        if caps_err:
+            raise exception.NetAppException(caps_err)
+
         # NOTE(dviroel): check if this vserver will be a data protection server
         is_dp_destination = False
         if metadata and metadata.get('migration_destination') is True:
@@ -369,11 +615,19 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
             vserver_client = self._get_api_client(vserver=vserver_name)
 
-            security_services = network_info[0].get('security_services')
             try:
+                # Network first, then infra DNS, then security services.
+                # This ordering lets configure_dns() merge SS DNS on top
+                # of the infra DNS rather than overwriting it.
                 self._setup_network_for_vserver(
                     vserver_name, vserver_client, network_info, ipspace_name,
-                    security_services=security_services, nfs_config=nfs_config)
+                    security_services=None, nfs_config=nfs_config)
+                self._configure_dns_for_vserver(vserver_name)
+                if security_services:
+                    self._client.setup_security_services(
+                        security_services, vserver_client, vserver_name,
+                        self.configuration.netapp_cifs_aes_encryption,
+                        self.configuration.netapp_cifs_smb_signing)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error("Failed to configure Vserver.")
@@ -917,6 +1171,30 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     def _delete_vserver_peer(self, vserver, peer_vserver):
         self._client.delete_vserver_peer(vserver, peer_vserver)
+
+    @na_utils.trace
+    def create_share(self, context, share, share_server):
+        """Reconcile DNS on reused share servers before provisioning."""
+        self._reconcile_dns_for_share_server(context, share_server)
+        return super(NetAppCmodeMultiSVMFileStorageLibrary,
+                     self).create_share(context, share, share_server)
+
+    @na_utils.trace
+    def _reconcile_dns_for_share_server(self, context, share_server):
+        if not self._dns_domains or not share_server:
+            return
+        bd = share_server.get('backend_details') or {}
+        vserver_name = bd.get('vserver_name')
+        if not vserver_name:
+            return
+        try:
+            ss_domains, ss_servers = (
+                self._get_ss_dns_for_share_server(context, share_server))
+            self._reconcile_dns_for_vserver(
+                vserver_name, ss_domains, ss_servers)
+        except Exception:
+            LOG.exception(
+                'DNS reconciliation failed for vserver %s.', vserver_name)
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None, parent_share=None):
@@ -2345,15 +2623,11 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                              network_info,
                                              new_security_service,
                                              current_security_service=None):
-        current_type = (
-            current_security_service['type'].lower()
-            if current_security_service else '')
         new_type = new_security_service['type'].lower()
 
         vserver_name, vserver_client = self._get_vserver(
             share_server=share_server)
 
-        # Check if this update is supported by our driver
         if not self.check_update_share_server_security_service(
                 context, share_server, network_info, new_security_service,
                 current_security_service=current_security_service):
@@ -2361,6 +2635,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     "by the NetApp driver.")
             LOG.error(msg)
             raise exception.NetAppException(msg)
+
+        # Reconcile DNS before SS setup/modify so probes see the
+        # post-update DNS view (SS + conf entries).
+        ss_domains, ss_servers = self._build_post_update_ss_dns(
+            network_info, current_security_service, new_security_service)
+        self._reconcile_dns_for_vserver(
+            vserver_name, ss_domains, ss_servers)
 
         if current_security_service is None:
             self._client.setup_security_services(
@@ -2382,34 +2663,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             LOG.debug(msg)
             return
 
-        if 'dns_ip' in different_keys:
-            dns_ips = set()
-            domains = set()
-            # Read all dns-ips and domains from other security services
-            for sec_svc in network_info[0]['security_services']:
-                if sec_svc['type'] == current_type:
-                    # skip the one that we are replacing
-                    continue
-                if sec_svc.get('dns_ip') is not None:
-                    for dns_ip in sec_svc['dns_ip'].split(','):
-                        dns_ips.add(dns_ip.strip())
-                if sec_svc.get('domain') is not None:
-                    domains.add(sec_svc['domain'])
-            # Merge with the new dns configuration
-            if new_security_service.get('dns_ip') is not None:
-                for dns_ip in new_security_service['dns_ip'].split(','):
-                    dns_ips.add(dns_ip.strip())
-            if new_security_service.get('domain') is not None:
-                domains.add(new_security_service['domain'])
-
-            # Update vserver DNS configuration
-            vserver_client.update_dns_configuration(dns_ips, domains)
-
         if new_type == 'kerberos':
             if 'server' in different_keys:
-                # NOTE(dviroel): Only IPs will be updated here, new principals
-                # won't be configured here. It is expected that only the IP was
-                # changed, but the KDC remains the same.
                 LOG.debug('Updating kerberos realm on NetApp backend.')
                 vserver_client.update_kerberos_realm(new_security_service)
 
@@ -2424,6 +2679,26 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         LOG.info("Security service configuration was updated for share server "
                  "'%(share_server_id)s'",
                  {'share_server_id': share_server['id']})
+
+    @staticmethod
+    def _build_post_update_ss_dns(network_info, current_ss, new_ss):
+        """Return (domains, servers) for the post-update SS set."""
+        current_id = current_ss.get('id') if current_ss else None
+        effective = [ss for ss in
+                     (network_info[0].get('security_services') or [])
+                     if not (current_id and ss.get('id') == current_id)]
+        if new_ss:
+            effective.append(new_ss)
+        domains, servers = [], []
+        for ss in effective:
+            d = (ss.get('domain') or '').strip()
+            if d and d not in domains:
+                domains.append(d)
+            for ip in (ss.get('dns_ip') or '').split(','):
+                ip = ip.strip()
+                if ip and ip not in servers:
+                    servers.append(ip)
+        return domains, servers
 
     def check_update_share_server_security_service(
             self, context, share_server, network_info,
@@ -2456,6 +2731,21 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                             "in the security service 'domain'.")
                     LOG.info(msg)
                     return False
+
+        # Build the prospective SS set after this add/replace and check caps
+        existing_ss = list(
+            (network_info[0].get('security_services') or [])
+            if network_info else [])
+        prospective = [ss for ss in existing_ss
+                       if not (current_security_service
+                               and (ss.get('type') or '').lower()
+                               == current_type)]
+        prospective.append(new_security_service)
+        caps_err = self._check_dns_caps_for_ss(prospective)
+        if caps_err:
+            LOG.error(caps_err)
+            return False
+
         return True
 
     def check_update_share_server_network_allocations(
