@@ -4116,6 +4116,55 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(test_result, expected_result)
 
+    @ddt.data(None, fake.REMOTE_CLUSTER_NAME)
+    def test_get_cluster_peers(self, remote_cluster_name):
+        """Gets one or more cluster peer relationships."""
+
+        return_value = fake.FAKE_GET_CLUSTER_PEERS_REST
+
+        self.mock_object(self.client, 'get_records',
+                         mock.Mock(return_value=return_value))
+
+        result = self.client.get_cluster_peers(
+            remote_cluster_name=remote_cluster_name)
+
+        expected_query = {
+            'fields': 'name,uuid,status.state,ip_addresses,remote.name,'
+                      'remote.ip_addresses,remote.serial_number',
+        }
+
+        self.client.get_records.assert_called_once_with(
+            '/cluster/peers', query=expected_query, enable_tunneling=False)
+
+        expected_result = [
+            {
+                'active-addresses': [
+                    fake.CLUSTER_ADDRESS_1,
+                ],
+                'peer-addresses': [
+                    fake.CLUSTER_ADDRESS_1,
+                    fake.CLUSTER_ADDRESS_2,
+                ],
+                'availability': 'available',
+                'cluster-name': fake.CLUSTER_NAME,
+                'cluster-uuid': 'fake_uuid',
+                'remote-cluster-name': fake.REMOTE_CLUSTER_NAME,
+                'serial-number': 'fake_serial_number',
+            }
+        ]
+        self.assertEqual(expected_result, result)
+
+    def test_get_cluster_peers_not_found(self):
+        """Returns empty list when no cluster peers found."""
+
+        self.mock_object(self.client, 'get_records',
+                         mock.Mock(return_value={'num_records': 0,
+                                                 'records': []}))
+
+        result = self.client.get_cluster_peers()
+
+        self.assertEqual([], result)
+
     @ddt.data(True, False)
     def test_check_volume_clone_split_completed(self, clone):
         mock__get_volume_by_args = self.mock_object(

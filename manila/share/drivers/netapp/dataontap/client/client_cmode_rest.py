@@ -4091,6 +4091,40 @@ class NetAppRestClient(object):
         return result.get('name')
 
     @na_utils.trace
+    def get_cluster_peers(self, remote_cluster_name=None):
+        """Gets one or more cluster peer relationships."""
+
+        query = {
+            'fields': 'name,uuid,status.state,ip_addresses,remote.name,'
+                      'remote.ip_addresses,remote.serial_number',
+        }
+
+        result = self.get_records(
+            '/cluster/peers', query=query, enable_tunneling=False)
+
+        if not self._has_records(result):
+            return []
+
+        cluster_peers = []
+        for peer in result['records']:
+            remote = peer.get('remote', {})
+            if (remote_cluster_name and
+                    remote.get('name') != remote_cluster_name):
+                continue
+            cluster_peer = {
+                'active-addresses': peer.get('ip_addresses', []),
+                'peer-addresses': remote.get('ip_addresses', []),
+                'availability': peer.get('status', {}).get('state'),
+                'cluster-name': peer.get('name'),
+                'cluster-uuid': peer.get('uuid'),
+                'remote-cluster-name': remote.get('name'),
+                'serial-number': remote.get('serial_number'),
+            }
+            cluster_peers.append(cluster_peer)
+
+        return cluster_peers
+
+    @na_utils.trace
     def check_volume_clone_split_completed(self, volume_name):
         """Check if volume clone split operation already finished."""
         volume = self._get_volume_by_args(vol_name=volume_name,
