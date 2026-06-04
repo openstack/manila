@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver: Fixed share backup failure in ``driver_handles_share_servers=True``
+    (DHSS=True) mode, where the destination backup vserver could not be created because
+    the retention period and logical space reporting parameters were not passed to the
+    vserver creation call. See `bug 2154820
+    <https://bugs.launchpad.net/manila/+bug/2154820>`_ for more details.
