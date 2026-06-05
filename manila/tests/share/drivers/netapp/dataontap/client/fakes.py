@@ -3705,6 +3705,30 @@ FAKE_GET_CLUSTER_NODE_VERSION_REST = {
     ],
 }
 
+FAKE_GET_CLUSTER_PEERS_REST = {
+    "num_records": 1,
+    "records": [
+        {
+            "name": CLUSTER_NAME,
+            "uuid": "fake_uuid",
+            "ip_addresses": [
+                CLUSTER_ADDRESS_1,
+            ],
+            "remote": {
+                "name": REMOTE_CLUSTER_NAME,
+                "serial_number": "fake_serial_number",
+                "ip_addresses": [
+                    CLUSTER_ADDRESS_1,
+                    CLUSTER_ADDRESS_2,
+                ],
+            },
+            "status": {
+                "state": "available",
+            },
+        }
+    ],
+}
+
 FAKE_GET_LICENSES_REST = {
     "records": [
         {
