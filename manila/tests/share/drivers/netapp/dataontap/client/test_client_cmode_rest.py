@@ -300,21 +300,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_get_ontap_version(self, cached):
         self.client.get_ontap_version = self.original_get_ontap_version
-        api_response = {
-            'records': [
-                {
-                    'version': {
-                        'generation': 9,
-                        'major': 11,
-                        'minor': 1,
-                        'full': 'NetApp Release 9.11.1'
-                    }
-                }]
-
-        }
+        api_response = fake.FAKE_GET_ONTAP_VERSION_REST
         return_mock = {
-            'version': 'NetApp Release 9.11.1',
-            'version-tuple': (9, 11, 1)
+            'version': fake.FAKE_GET_ONTAP_VERSION_REST['version']['full'],
+            'version-tuple': (9, 10, 1)
         }
         mock_connect = self.mock_object(self.client.connection,
                                         'get_ontap_version',
@@ -330,10 +319,48 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             mock_connect.assert_called_once()
         else:
             mock_send_request.assert_called_once_with(
-                '/cluster/nodes', 'get', query={'fields': 'version'},
+                '/cluster', 'get', query={'fields': 'version'},
                 enable_tunneling=False)
 
         self.assertEqual(return_mock, result)
+
+    def test_get_ontap_version_svm_scoped_fallback(self):
+        self.client.get_ontap_version = self.original_get_ontap_version
+        cli_response = fake.FAKE_GET_ONTAP_VERSION_CLI_REST
+        expected = {
+            'version': fake.VERSION,
+            'version-tuple': (8, 2, 1)
+        }
+        mock_send_request = self.mock_object(
+            self.client,
+            'send_request',
+            mock.Mock(side_effect=[
+                netapp_api.api.NaApiError(
+                    code=netapp_api.EREST_NOT_AUTHORIZED),
+                cli_response,
+            ]))
+
+        result = self.client.get_ontap_version(self=self.client, cached=False)
+
+        mock_send_request.assert_has_calls([
+            mock.call('/cluster', 'get', query={'fields': 'version'},
+                      enable_tunneling=False),
+            mock.call('/private/cli/version', 'get',
+                      query={'fields': 'version'}),
+        ])
+        self.assertEqual(expected, result)
+
+    def test_get_ontap_version_unexpected_error(self):
+        self.client.get_ontap_version = self.original_get_ontap_version
+        self.mock_object(
+            self.client,
+            'send_request',
+            self._mock_api_error(netapp_api.EREST_VSERVER_NOT_FOUND))
+
+        self.assertRaises(
+            netapp_api.api.NaApiError,
+            lambda: self.client.get_ontap_version(
+                self=self.client, cached=False))
 
     def test__wait_job_result(self):
         response = fake.JOB_SUCCESSFUL_REST
