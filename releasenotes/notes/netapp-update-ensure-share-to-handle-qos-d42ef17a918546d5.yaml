@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `NetApp Driver bug #2114885
+    <https://bugs.launchpad.net/manila/+bug/2114885>`_: The NetApp ONTAP
+    driver restart and ensure operation was updated to handle qos updates
+    with qos type specs. Those actions are meant to apply config changes to
+    existing volumes when qos type specs gets modified.

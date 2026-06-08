@@ -45,6 +45,7 @@ from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import qos_types
 from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import test
@@ -8167,6 +8168,130 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             replica=True)
 
         self.assertEqual(result, 'fake_export_location')
+
+    def test_update_share_with_fixed_qos_type(self):
+        vserver_client = mock.Mock()
+        share = fake_share.fake_share_instance(id='s-1',
+                                               share_server=fake.VSERVER1)
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(
+            self.library, '_generate_volume_tags',
+            mock.Mock(return_value=fake.VOLUME_TAGS))
+        self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
+        provisioning_options = {}
+        self.mock_object(
+            self.library, '_get_provisioning_options_for_share',
+            mock.Mock(return_value=provisioning_options))
+
+        qos_type_specs = {'policy_type': 'fixed', 'max_throughput_iops': 3000}
+        normalized_specs = {
+            'policy_type': 'fixed', 'max_throughput_iops': 3000}
+        self.mock_object(
+            qos_types, 'get_specs_from_share',
+            mock.Mock(return_value=qos_type_specs))
+        self.mock_object(
+            self.library, '_get_normalized_qos_type_specs',
+            mock.Mock(return_value=normalized_specs))
+        mock_create_qos_type = self.mock_object(
+            self.library, '_create_qos_type_policy_group',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_modify_create_qos = self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share')
+        mock_modify_volume = self.mock_object(vserver_client, 'modify_volume')
+        self.mock_object(
+            self.library, '_is_readable_replica',
+            mock.Mock(return_value=False))
+        self.mock_object(
+            self.library, '_create_export',
+            mock.Mock(return_value='fake_export_location'))
+
+        self.library.update_share(share, share_server=fake.VSERVER1)
+
+        mock_create_qos_type.assert_called_once_with(
+            share, fake.VSERVER1, normalized_specs, vserver_client)
+        mock_modify_create_qos.assert_not_called()
+        expected_options = {'qos_policy_group': fake.QOS_POLICY_GROUP_NAME}
+        mock_modify_volume.assert_called_once_with(
+            fake.POOL_NAME,
+            fake.SHARE_NAME,
+            volume_tags=fake.VOLUME_TAGS,
+            **expected_options)
+
+    def test_update_share_with_adaptive_qos_type(self):
+        vserver_client = mock.Mock()
+        share = fake_share.fake_share_instance(id='s-1',
+                                               share_server=fake.VSERVER1)
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_backend_share_name',
+            mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(
+            self.library, '_generate_volume_tags',
+            mock.Mock(return_value=fake.VOLUME_TAGS))
+        self.mock_object(
+            share_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value={}))
+        provisioning_options = {}
+        self.mock_object(
+            self.library, '_get_provisioning_options_for_share',
+            mock.Mock(return_value=provisioning_options))
+
+        qos_type_specs = {
+            'policy_type': 'adaptive',
+            'peak_iops': 3000,
+            'expected_iops': 1000,
+        }
+        normalized_specs = {
+            'policy_type': 'adaptive',
+            'peak_iops': 3000,
+            'expected_iops': 1000,
+        }
+        self.mock_object(
+            qos_types, 'get_specs_from_share',
+            mock.Mock(return_value=qos_type_specs))
+        self.mock_object(
+            self.library, '_get_normalized_qos_type_specs',
+            mock.Mock(return_value=normalized_specs))
+        mock_create_qos_type = self.mock_object(
+            self.library, '_create_qos_type_policy_group',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_modify_create_qos = self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share')
+        mock_modify_volume = self.mock_object(vserver_client, 'modify_volume')
+        self.mock_object(
+            self.library, '_is_readable_replica',
+            mock.Mock(return_value=False))
+        self.mock_object(
+            self.library, '_create_export',
+            mock.Mock(return_value='fake_export_location'))
+
+        self.library.update_share(share, share_server=fake.VSERVER1)
+
+        mock_create_qos_type.assert_called_once_with(
+            share, fake.VSERVER1, normalized_specs, vserver_client)
+        mock_modify_create_qos.assert_not_called()
+        expected_options = {
+            'adaptive_qos_policy_group': fake.QOS_POLICY_GROUP_NAME}
+        mock_modify_volume.assert_called_once_with(
+            fake.POOL_NAME,
+            fake.SHARE_NAME,
+            volume_tags=fake.VOLUME_TAGS,
+            **expected_options)
 
     def test__check_volume_clone_split_completed(self):
         vserver_client = mock.Mock()

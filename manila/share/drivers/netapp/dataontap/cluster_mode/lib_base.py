@@ -4960,10 +4960,25 @@ class NetAppCmodeFileStorageLibrary(object):
         provisioning_options = self._get_provisioning_options_for_share(
             share, vserver, vserver_client=vserver_client, set_qos=False)
 
-        qos_policy_group_name = self._modify_or_create_qos_for_existing_share(
-            share, extra_specs, vserver, vserver_client)
-        if qos_policy_group_name:
-            provisioning_options['qos_policy_group'] = qos_policy_group_name
+        qos_type_specs = qos_types.get_specs_from_share(share)
+        qos_type_specs = self._get_normalized_qos_type_specs(qos_type_specs)
+
+        if qos_type_specs:
+            qos_policy_group_name = self._create_qos_type_policy_group(
+                share, vserver, qos_type_specs, vserver_client)
+            if qos_type_specs.get('policy_type') == self.FIXED_QOS_POLICY_TYPE:
+                provisioning_options['qos_policy_group'] = (
+                    qos_policy_group_name)
+            else:
+                provisioning_options['adaptive_qos_policy_group'] = (
+                    qos_policy_group_name)
+        else:
+            qos_policy_group_name = (
+                self._modify_or_create_qos_for_existing_share(
+                    share, extra_specs, vserver, vserver_client))
+            if qos_policy_group_name:
+                provisioning_options['qos_policy_group'] = (
+                    qos_policy_group_name)
 
         modify_args = {
             'share': share_name,
