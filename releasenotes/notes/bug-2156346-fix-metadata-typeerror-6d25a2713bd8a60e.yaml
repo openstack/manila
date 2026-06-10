@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed TypeError when creating shares without metadata parameter
+    when driver_updatable_metadata is configured and share types
+    have extra_specs that map to metadata keys. For more details,
+    please refer to `launchpad bug 2156346
+    <https://bugs.launchpad.net/manila/+bug/2156346>`_.

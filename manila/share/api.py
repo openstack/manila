@@ -582,7 +582,8 @@ class API(base.Base):
             if metadata_key in driver_keys:
                 metadata_from_share_type.update({metadata_key: v})
 
-        metadata_from_share_type.update(user_metadata)
+        if user_metadata:
+            metadata_from_share_type.update(user_metadata)
         return metadata_from_share_type
 
     def update_share_from_metadata(self, context, share_id, metadata):
