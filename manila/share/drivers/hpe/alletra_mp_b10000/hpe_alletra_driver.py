@@ -25,6 +25,10 @@ from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
     filesetup_handler)
 from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
     fileshare_handler)
+from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
+    filesystem_handler)
+from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
+    snapshot_handler)
 from manila.share.drivers.hpe.alletra_mp_b10000.rest_client import rest_client
 from manila.share import share_types
 
@@ -50,11 +54,19 @@ OPTS = [
 
 
 class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
-    """Driver for the HPE Alletra MP B10000 File"""
+    """Driver for the HPE Alletra MP B10000 File
+
+    Version history::
+
+        1.0.0 - Initial version
+        1.1.0 - Support snapshot functionalities
+    """
 
     # Driver Version
-    VERSION = "1.0.0"
-    MINIMUM_DEVICE_VERSION = "10.5.0"
+    VERSION = "1.1.0"
+
+    # Other Constants
+    ALLETRA_REST_API_TIMEOUT = 120
 
     def __init__(self, *args, **kwargs):
         super().__init__(False, *args, config_opts=[OPTS], **kwargs)
@@ -62,12 +74,18 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
         self.rest_client = None
         self.filesetup_handler = None
         self.fileshare_handler = None
+        self.filesystem_handler = None
+        self.snapshot_handler = None
         self.privatestorage_handler = HPEAlletraPrivateStorageHandler(
             kwargs.get('private_storage'))
+        self.feature_support_handler = None
+
         # Driver capability support
         self.snapshot_support = False
         self.create_share_from_snapshot_support = False
         self.revert_to_snapshot_support = False
+        self.mount_snapshot_support = False
+        self.snapshot_inherit_share_access_support = False
         self.qos = False
 
     def do_setup(self, context):
@@ -105,7 +123,8 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
 
         # Initialize rest client
         self.rest_client = rest_client.HpeAlletraRestClient(
-            wsapi_url, username, password, debug=debug)
+            wsapi_url, username, password, debug=debug,
+            timeout=self.ALLETRA_REST_API_TIMEOUT)
         if existing_session_key is not None:
             self.rest_client.session_key = existing_session_key
         else:
@@ -116,18 +135,25 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
                 LOG.error(msg)
                 raise exception.HPEAlletraB10000DriverException(reason=msg)
 
-        # Initialize Handlers
-        self.filesetup_handler = filesetup_handler.FileSetupHandler(
+        # Initialize handlers
+        device_version = filesetup_handler.FileSetupHandler.get_device_version(
             self.rest_client)
-        self.fileshare_handler = fileshare_handler.FileShareHandler(
-            self.rest_client)
+        self.feature_support_handler = HPEAlletraFeatureSupportHandler(
+            device_version)
         self.driver_helper = HPEAlletraMPB10000ShareDriverHelper(
             self.rest_client)
 
+        self.filesetup_handler = filesetup_handler.FileSetupHandler(
+            self.rest_client, self.feature_support_handler)
+        self.fileshare_handler = fileshare_handler.FileShareHandler(
+            self.rest_client, self.feature_support_handler)
+        self.filesystem_handler = filesystem_handler.FileSystemHandler(
+            self.rest_client, self.feature_support_handler)
+        self.snapshot_handler = snapshot_handler.SnapshotHandler(
+            self.rest_client, self.feature_support_handler)
+
         # 1. Check for R5 version from systems API
-        fe_systems = self.filesetup_handler.get_systems()
-        self.driver_helper._validate_device_version(
-            fe_systems, self.MINIMUM_DEVICE_VERSION)
+        self.feature_support_handler.validate_min_driver_version()
 
         # 2. Check for isFileServiceSupported and File Ports Enabled
         fe_osinfo = self.filesetup_handler.get_osinfo()
@@ -136,6 +162,13 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
         # 3. Check fileservice enabled status
         fe_fileservice = self.filesetup_handler.get_fileservice()
         self.driver_helper._validate_is_fileservice_enabled(fe_fileservice)
+
+        # 4. Feature support checks
+        if self.feature_support_handler.check_min_r6_device_version():
+            self.snapshot_support = True
+            self.revert_to_snapshot_support = True
+            self.mount_snapshot_support = True
+            self.snapshot_inherit_share_access_support = True
 
     def create_share(self, context, share, share_server=None):
         """Create a new manila managed share on backend."""
@@ -207,9 +240,23 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
             self.privatestorage_handler.delete_share_by_id(share['id'])
             return
 
-        self.fileshare_handler.delete_fileshare_by_id(
-            share['id'], be_share_id
-        )
+        try:
+            self.fileshare_handler.delete_fileshare_by_id(
+                share['id'], be_share_id
+            )
+        except exception.HPEAlletraB10000DriverException as e:
+            if 'snapshots fileshare exist' in str(e):
+                msg = (_('Cannot delete share %(share_id)s. '
+                         'Backend filesystem has one or more snapshots. '
+                         'Please manage all snapshots of this share '
+                         'into Manila, delete them, then retry deleting '
+                         'the share. Alternatively, unmanage the share '
+                         'to remove it from Manila without deleting the '
+                         'backend resource.') %
+                       {'share_id': share['id']})
+                LOG.error(msg)
+                raise exception.HPEAlletraB10000DriverException(reason=msg)
+            raise
 
         self.privatestorage_handler.delete_share_by_id(share['id'])
 
@@ -330,6 +377,177 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
                 " unmanage.", {'share_id': share['id'], 'error': str(e)})
 
         self.privatestorage_handler.delete_share_by_id(share['id'])
+
+    def create_snapshot(self, context, snapshot, share_server=None):
+        """Creates a snapshot of a share"""
+
+        # Get and validate parent share from private storage
+        share_id = snapshot['share']['id']
+        (be_share_id, be_share_name, be_filesystem_name,
+         be_sharesetting_name) = (
+            self.privatestorage_handler.get_share_by_id(share_id))
+        self.fileshare_handler._compare_values_with_be_share(
+            be_share_id, be_share_name,
+            be_filesystem_name, be_sharesetting_name)
+
+        # Create snapshot
+        (fe_snap_fileshare,
+         fe_snap_filesystem) = (
+            self.snapshot_handler.create_snapshot(
+                snapshot,
+                be_share_name,
+                be_filesystem_name,
+                be_sharesetting_name))
+
+        self.privatestorage_handler.update_snapshot_by_id(
+            snapshot['id'],
+            fe_snap_fileshare['be_uid'],
+            fe_snap_filesystem['be_uid'],
+            fe_snap_fileshare['be_fileshare_name'],
+            fe_snap_fileshare['be_filesystem_name'],
+            fe_snap_fileshare['be_sharesetting_name'])
+
+        create_snapshot_resp = (
+            self.driver_helper._build_create_snapshot_resp(
+                fe_snap_fileshare['host_ip'],
+                fe_snap_fileshare['mount_path'],
+                fe_snap_fileshare['be_filesystem_name'],
+                snapshot['share'].get('mount_snapshot_support')))
+
+        return create_snapshot_resp
+
+    def delete_snapshot(self, context, snapshot, share_server=None):
+
+        try:
+            (be_snap_share_id, be_snap_filesystem_id, be_snap_share_name,
+             be_snap_filesystem_name, be_snap_sharesetting_name) = (
+                self.privatestorage_handler.get_snapshot_by_id(snapshot['id'])
+            )
+        except Exception as e:
+            LOG.error(
+                "Failed to retrieve snapshot %(snapshot_id)s from private "
+                "storage: %(error)s. Cannot perform automated backend "
+                "cleanup without snapshot metadata. Operators should check "
+                "HPE Alletra backend for orphaned snapshot resources and "
+                "remove them manually if present.",
+                {'snapshot_id': snapshot['id'], 'error': str(e)})
+
+            try:
+                self.privatestorage_handler.delete_snapshot_by_id(
+                    snapshot['id'])
+            except Exception:
+                LOG.debug("Failed to clear private storage for snapshot "
+                          "%(snapshot_id)s during error cleanup.",
+                          {'snapshot_id': snapshot['id']})
+            return
+
+        try:
+            self.snapshot_handler._compare_values_with_be_snap(
+                be_snap_share_id, be_snap_share_name, be_snap_filesystem_name,
+                be_snap_sharesetting_name)
+        except Exception as e:
+            LOG.warning(
+                "Failed to find snap fileshare for %(snapshot_id)s "
+                "in BE: %(error)s. "
+                "Clearing data from private storage and proceeding with"
+                " delete.", {'snapshot_id': snapshot['id'], 'error': str(e)})
+            self.privatestorage_handler.delete_snapshot_by_id(snapshot['id'])
+            return
+
+        self.snapshot_handler.delete_snapshot(snapshot, be_snap_share_id)
+
+        self.privatestorage_handler.delete_snapshot_by_id(snapshot['id'])
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server=None):
+
+        (be_snap_share_id, be_snap_filesystem_id, be_snap_share_name,
+         be_snap_filesystem_name, be_snap_sharesetting_name) = (
+            self.privatestorage_handler.get_snapshot_by_id(snapshot['id'])
+        )
+        share_id = snapshot['share']['id']
+        (be_share_id, be_share_name, be_filesystem_name,
+         be_sharesetting_name) = (
+            self.privatestorage_handler.get_share_by_id(share_id))
+
+        be_filesystem_size = self.snapshot_handler.revert_to_snapshot(
+            snapshot, be_filesystem_name, be_snap_filesystem_name
+        )
+
+        return math.ceil(be_filesystem_size / 1024)
+
+    def snapshot_update_access(self, context, snapshot, access_rules,
+                               add_rules=None, delete_rules=None,
+                               share_server=None):
+        """Update access rules for a mountable snapshot.
+
+        Alletra snapshots always inherit the parent share's access rules,
+        so the driver reports snapshot_inherit_share_access_support and the
+        backend offers no way to set independent snapshot rules. Nothing is
+        applied here.
+        """
+        pass
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+
+        # Get and validate parent share from private storage
+        share_id = snapshot['share']['id']
+        (be_share_id, be_share_name, be_filesystem_name,
+         be_sharesetting_name) = (
+            self.privatestorage_handler.get_share_by_id(share_id))
+        self.fileshare_handler._compare_values_with_be_share(
+            be_share_id, be_share_name,
+            be_filesystem_name, be_sharesetting_name)
+
+        (fe_snap_fileshare,
+         fe_snap_filesystem) = self.snapshot_handler.manage_snapshot(
+            snapshot, be_filesystem_name)
+
+        self.privatestorage_handler.update_snapshot_by_id(
+            snapshot['id'],
+            fe_snap_fileshare['be_uid'],
+            fe_snap_filesystem['be_uid'],
+            fe_snap_fileshare['be_fileshare_name'],
+            fe_snap_fileshare['be_filesystem_name'],
+            fe_snap_fileshare['be_sharesetting_name'])
+
+        manage_snapshot_resp = self.driver_helper._build_manage_snapshot_resp(
+            fe_snap_fileshare['host_ip'],
+            fe_snap_fileshare['mount_path'],
+            fe_snap_filesystem['be_filesystem_size'],
+            fe_snap_fileshare['be_filesystem_name'],
+            snapshot['share'].get('mount_snapshot_support'))
+
+        return manage_snapshot_resp
+
+    def unmanage_snapshot(self, snapshot):
+        """Remove snapshot from manila management without deleting backend"""
+
+        try:
+            (be_snap_share_id, be_snap_filesystem_id, be_snap_share_name,
+             be_snap_filesystem_name, be_snap_sharesetting_name) = (
+                self.privatestorage_handler.get_snapshot_by_id(snapshot['id'])
+            )
+        except Exception as e:
+            LOG.warning(
+                "Failed to retrieve snapshot %(snapshot_id)s "
+                "from private storage: %(error)s. "
+                "Skipping remaining unmanage operations.", {
+                    'snapshot_id': snapshot['id'], 'error': str(e)})
+            return
+
+        try:
+            self.snapshot_handler._compare_values_with_be_snap(
+                be_snap_share_id, be_snap_share_name,
+                be_snap_filesystem_name, be_snap_sharesetting_name)
+        except Exception as e:
+            LOG.warning(
+                "Failed to find snapshot %(snapshot_id)s in BE: %(error)s. "
+                "Clearing data from private storage and proceeding with"
+                " unmanage.", {
+                    'snapshot_id': snapshot['id'], 'error': str(e)})
+
+        self.privatestorage_handler.delete_snapshot_by_id(snapshot['id'])
 
     def get_backend_info(self, context):
         """Return backend configuration info for ensure_shares validation."""
@@ -476,6 +694,9 @@ class HPEAlletraMPB10000ShareDriver(driver.ShareDriver):
             'create_share_from_snapshot_support':
                 self.create_share_from_snapshot_support,
             'revert_to_snapshot_support': self.revert_to_snapshot_support,
+            'mount_snapshot_support': self.mount_snapshot_support,
+            'snapshot_inherit_share_access_support': (
+                self.snapshot_inherit_share_access_support),
         }
         # Update the stats
         super(HPEAlletraMPB10000ShareDriver, self)._update_share_stats(data)
@@ -489,32 +710,6 @@ class HPEAlletraMPB10000ShareDriverHelper(object):
 
     def __init__(self, rest_client, **kwargs):
         self.rest_client = rest_client
-
-    # do_setup()
-    def _validate_device_version(self, fe_systems, minimum_device_version):
-        """Validate that device version meets minimum requirements."""
-        device_version = fe_systems['version']
-        LOG.info("Device version on %(api_url)s is "
-                 "%(device_version)s", {'api_url': self.rest_client.api_url,
-                                        'device_version': device_version})
-
-        version_parts = device_version.split('.')
-        major = int(version_parts[0])
-        minor = int(version_parts[1])
-
-        min_version_parts = minimum_device_version.split('.')
-        min_major = int(min_version_parts[0])
-        min_minor = int(min_version_parts[1])
-
-        if major < min_major or (major == min_major and minor < min_minor):
-            msg = _(
-                "File on Alletra MP B10000 is not supported "
-                "for device version %(version)s. "
-                "Minimum required version is %(min_version)s") % {
-                'version': device_version,
-                'min_version': minimum_device_version}
-            LOG.error(msg)
-            raise exception.HPEAlletraB10000DriverException(reason=msg)
 
     def _validate_is_file_service_supported(self, fe_osinfo):
         is_file_service_supported = fe_osinfo['be_is_fileservice_supported']
@@ -562,9 +757,45 @@ class HPEAlletraMPB10000ShareDriverHelper(object):
             'export_locations': export_data}
         return manage_share_resp
 
+    # create_snapshot()
+    def _build_create_snapshot_resp(
+            self,
+            hostip,
+            mountpath,
+            provider_location,
+            mount_snapshot_support):
+
+        create_snapshot_resp = {
+            'provider_location': provider_location,
+        }
+        if mount_snapshot_support:
+            create_snapshot_resp['export_locations'] = (
+                self._build_export_data_resp(hostip, mountpath))
+        return create_snapshot_resp
+
+    # manage_snapshot()
+    def _build_manage_snapshot_resp(
+            self,
+            hostip,
+            mountpath,
+            be_filesystem_size,
+            provider_location,
+            mount_snapshot_support):
+
+        be_filesystem_size_gb = math.ceil(be_filesystem_size / 1024)
+        manage_snapshot_resp = {
+            'size': be_filesystem_size_gb,
+            'provider_location': provider_location,
+        }
+        if mount_snapshot_support:
+            export_data = self._build_export_data_resp(hostip, mountpath)
+            manage_snapshot_resp['export_locations'] = export_data
+        return manage_snapshot_resp
+
     def _build_export_data_resp(self, hostip, mountpath):
         share_path = hostip + ':' + mountpath
-        export_location = {"path": share_path}
+        export_location = {"path": share_path, "is_admin_only": False,
+                           "metadata": {}}
         export_data = []
         export_data.append(export_location)
         return export_data
@@ -574,14 +805,20 @@ class HPEAlletraPrivateStorageHandler(object):
     def __init__(self, private_storage):
         self.private_storage = private_storage
 
+    # Fileshare
+    PS_BE_SHARE_ID = 'alletra_be_share_id'
+    PS_BE_SHARE_NAME = 'alletra_be_share_name'
+    PS_BE_FILESYSTEM_NAME = 'alletra_be_filesystem_name'
+    PS_BE_SHARESETTING_NAME = 'alletra_be_sharesetting_name'
+
     def update_share_by_id(self, fe_share_id, be_share_id, be_share_name,
                            be_filesystem_name, be_sharesetting_name):
         """Update private storage with backend share details."""
         self.private_storage.update(fe_share_id, {
-            'alletra_be_share_id': be_share_id,
-            'alletra_be_share_name': be_share_name,
-            'alletra_be_filesystem_name': be_filesystem_name,
-            'alletra_be_sharesetting_name': be_sharesetting_name
+            self.PS_BE_SHARE_ID: be_share_id,
+            self.PS_BE_SHARE_NAME: be_share_name,
+            self.PS_BE_FILESYSTEM_NAME: be_filesystem_name,
+            self.PS_BE_SHARESETTING_NAME: be_sharesetting_name
         })
 
     def get_share_by_id(self, fe_share_id):
@@ -603,11 +840,11 @@ class HPEAlletraPrivateStorageHandler(object):
         self._validate_get_values_from_private_storage(
             fe_share_id, ps_share_data)
 
-        be_share_id = ps_share_data.get('alletra_be_share_id')
-        be_share_name = ps_share_data.get('alletra_be_share_name')
-        be_filesystem_name = ps_share_data.get('alletra_be_filesystem_name')
+        be_share_id = ps_share_data.get(self.PS_BE_SHARE_ID)
+        be_share_name = ps_share_data.get(self.PS_BE_SHARE_NAME)
+        be_filesystem_name = ps_share_data.get(self.PS_BE_FILESYSTEM_NAME)
         be_sharesetting_name = ps_share_data.get(
-            'alletra_be_sharesetting_name')
+            self.PS_BE_SHARESETTING_NAME)
         return (be_share_id, be_share_name,
                 be_filesystem_name, be_sharesetting_name)
 
@@ -622,11 +859,11 @@ class HPEAlletraPrivateStorageHandler(object):
 
     def _validate_get_values_from_private_storage(
             self, fe_share_id, ps_share_data):
-        be_share_id = ps_share_data.get('alletra_be_share_id')
-        be_share_name = ps_share_data.get('alletra_be_share_name')
-        be_filesystem_name = ps_share_data.get('alletra_be_filesystem_name')
+        be_share_id = ps_share_data.get(self.PS_BE_SHARE_ID)
+        be_share_name = ps_share_data.get(self.PS_BE_SHARE_NAME)
+        be_filesystem_name = ps_share_data.get(self.PS_BE_FILESYSTEM_NAME)
         be_sharesetting_name = ps_share_data.get(
-            'alletra_be_sharesetting_name')
+            self.PS_BE_SHARESETTING_NAME)
 
         if be_share_id is None:
             msg = _("Unable to read alletra_be_share_id "
@@ -655,3 +892,153 @@ class HPEAlletraPrivateStorageHandler(object):
                     "%(fe_share_id)s.") % {'fe_share_id': fe_share_id}
             LOG.error(msg)
             raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+    # Snapshot
+    PS_BE_SNAP_SHARE_ID = 'alletra_be_snap_share_id'
+    PS_BE_SNAP_FILESYSTEM_ID = 'alletra_be_snap_filesystem_id'
+    PS_BE_SNAP_SHARE_NAME = 'alletra_be_snap_share_name'
+    PS_BE_SNAP_FILESYSTEM_NAME = 'alletra_be_snap_filesystem_name'
+    PS_BE_SNAP_SHARESETTING_NAME = 'alletra_be_snap_sharesetting_name'
+
+    def update_snapshot_by_id(self, fe_snapshot_id, be_share_id,
+                              be_filesystem_id, be_share_name,
+                              be_filesystem_name, be_sharesetting_name):
+        """Update private storage with backend snapshot details."""
+        self.private_storage.update(fe_snapshot_id, {
+            self.PS_BE_SNAP_SHARE_ID: be_share_id,
+            self.PS_BE_SNAP_FILESYSTEM_ID: be_filesystem_id,
+            self.PS_BE_SNAP_SHARE_NAME: be_share_name,
+            self.PS_BE_SNAP_FILESYSTEM_NAME: be_filesystem_name,
+            self.PS_BE_SNAP_SHARESETTING_NAME: be_sharesetting_name
+        })
+
+    def get_snapshot_by_id(self, fe_snapshot_id):
+        if fe_snapshot_id is None:
+            msg = _("Invalid fe_snapshot_id received from manila API "
+                    "%(fe_snapshot_id)s.") % {'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.InvalidInput(msg)
+
+        ps_share_data = self.private_storage.get(fe_snapshot_id)
+
+        if ps_share_data is None:
+            msg = _("Snapshot %(snapshot_id)s not found in private storage. "
+                    "Snapshot may have been deleted or private storage "
+                    "is corrupted.") % {'snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        self._validate_get_snapshot_values_from_private_storage(
+            fe_snapshot_id, ps_share_data)
+
+        be_snap_share_id = ps_share_data.get(self.PS_BE_SNAP_SHARE_ID)
+        be_snap_filesystem_id = ps_share_data.get(
+            self.PS_BE_SNAP_FILESYSTEM_ID)
+        be_snap_share_name = ps_share_data.get(self.PS_BE_SNAP_SHARE_NAME)
+        be_snap_filesystem_name = ps_share_data.get(
+            self.PS_BE_SNAP_FILESYSTEM_NAME)
+        be_snap_sharesetting_name = ps_share_data.get(
+            self.PS_BE_SNAP_SHARESETTING_NAME)
+        return (be_snap_share_id, be_snap_filesystem_id, be_snap_share_name,
+                be_snap_filesystem_name, be_snap_sharesetting_name)
+
+    def delete_snapshot_by_id(self, fe_snapshot_id):
+        if fe_snapshot_id is None:
+            msg = _("Invalid fe_snapshot_id received from manila API "
+                    "%(fe_snapshot_id)s.") % {'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.InvalidInput(msg)
+
+        self.private_storage.delete(fe_snapshot_id)
+
+    def _validate_get_snapshot_values_from_private_storage(
+            self, fe_snapshot_id, ps_share_data):
+        be_snap_share_id = ps_share_data.get(self.PS_BE_SNAP_SHARE_ID)
+        be_snap_filesystem_id = ps_share_data.get(
+            self.PS_BE_SNAP_FILESYSTEM_ID)
+        be_snap_share_name = ps_share_data.get(self.PS_BE_SNAP_SHARE_NAME)
+        be_snap_filesystem_name = ps_share_data.get(
+            self.PS_BE_SNAP_FILESYSTEM_NAME)
+        be_snap_sharesetting_name = ps_share_data.get(
+            self.PS_BE_SNAP_SHARESETTING_NAME)
+
+        if be_snap_share_id is None:
+            msg = _("Unable to read alletra_be_snap_share_id "
+                    "from manila private storage "
+                    "for %(fe_snapshot_id)s.") % {
+                        'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        if be_snap_filesystem_id is None:
+            msg = _("Unable to read alletra_be_snap_filesystem_id "
+                    "from manila private storage "
+                    "for %(fe_snapshot_id)s.") % {
+                        'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        if be_snap_share_name is None:
+            msg = _("Unable to read alletra_be_snap_share_name "
+                    "from manila private storage for "
+                    "%(fe_snapshot_id)s.") % {'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        if be_snap_filesystem_name is None:
+            msg = _("Unable to read alletra_be_snap_filesystem_name"
+                    " from manila private storage for "
+                    "%(fe_snapshot_id)s.") % {'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        if be_snap_sharesetting_name is None:
+            msg = _("Unable to read alletra_be_snap_sharesetting_name"
+                    " from manila private storage for "
+                    "%(fe_snapshot_id)s.") % {'fe_snapshot_id': fe_snapshot_id}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+
+class HPEAlletraFeatureSupportHandler(object):
+    R5_MIN_DEVICE_VERSION = "10.5.0"
+    R6_MIN_DEVICE_VERSION = "10.6.0"
+
+    def __init__(self, device_version):
+        self.device_version = device_version
+
+    def validate_min_driver_version(self):
+        """Validate that device version meets minimum requirements."""
+        if not self.check_min_r5_device_version():
+            msg = _(
+                "File on Alletra MP B10000 is not supported "
+                "for device version %(version)s. "
+                "Minimum required version is %(min_version)s") % {
+                'version': self.device_version,
+                'min_version': self.R5_MIN_DEVICE_VERSION}
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+    def check_min_r5_device_version(self):
+        return self._check_device_version(self.R5_MIN_DEVICE_VERSION)
+
+    def check_min_r6_device_version(self):
+        return self._check_device_version(self.R6_MIN_DEVICE_VERSION)
+
+    # Helpers
+    def _check_device_version(self, feature_min_version):
+        """Check that device version meets minimum requirements."""
+        device_version = self.device_version
+
+        version_parts = device_version.split('.')
+        major = int(version_parts[0])
+        minor = int(version_parts[1])
+
+        min_version_parts = feature_min_version.split('.')
+        min_major = int(min_version_parts[0])
+        min_minor = int(min_version_parts[1])
+
+        if major < min_major or (major == min_major and minor < min_minor):
+            return False
+
+        return True

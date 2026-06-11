@@ -35,3 +35,6 @@ BE_DEFAULT_CLIENT_INFO_LIST = [
         "options": DEFAULT_SQUASH_OPTION_1
     }
 ]
+
+# Backend errors
+BE_CLIENT_IP_NOT_FOUND_ERROR = "Client IP not found in file share setting"

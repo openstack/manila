@@ -1,0 +1,8 @@
+---
+features:
+  - |
+      HPE Alletra MP B10000 Driver: Added support for share snapshots.
+      This allows users to create/delete snapshots, revert a share to
+      a snapshot, mount snapshots, and manage/unmanage snapshots using
+      the Manila API. Snapshot operations require HPE Alletra MP B10000
+      firmware version 10.6.0 or later.

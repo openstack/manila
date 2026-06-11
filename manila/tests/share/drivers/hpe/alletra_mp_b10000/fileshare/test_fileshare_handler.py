@@ -19,6 +19,9 @@ import ddt
 
 from manila import exception
 from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
+    constants
+)
+from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
     fileshare_handler as fileshare
 )
 import manila.share.drivers.hpe.alletra_mp_b10000.fileshare.helpers as helpers
@@ -74,10 +77,14 @@ class FileShareHandlerCreateTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # create_fileshare()
@@ -411,6 +418,88 @@ class FileShareHandlerCreateTestCase(test.TestCase):
             extra_specs
         )
 
+    def test_validate_create_fileshare_mount_support_with_inherit(self):
+        """Test validation failure when reduce has invalid value."""
+        fe_create_fileshare = {
+            'id': FE_CREATE_SHARE_ID,
+            'name': FE_CREATE_SHARE_NAME,
+            'size': 10
+        }
+        extra_specs = {'mount_snapshot_support': 'True',
+                       'snapshot_inherit_share_access_support': 'True'}
+
+        self.handler.validator.validate_create_fileshare_fe_req(
+            fe_create_fileshare,
+            extra_specs)
+
+    def test_validate_create_fileshare_mount_support_without_inherit(self):
+        """Test validation failure when reduce has invalid value."""
+        fe_create_fileshare = {
+            'id': FE_CREATE_SHARE_ID,
+            'name': FE_CREATE_SHARE_NAME,
+            'size': 10
+        }
+        extra_specs = {'mount_snapshot_support': 'True'}
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.handler.validator.validate_create_fileshare_fe_req,
+            fe_create_fileshare,
+            extra_specs
+        )
+
+    @ddt.data('True', 'true', '<is> True', '<is> true')
+    def test_validate_create_fileshare_mount_support_bool_formats(
+            self, spec_value):
+        """Test both '<is> True' and bare 'True' spec formats are accepted."""
+        fe_create_fileshare = {
+            'id': FE_CREATE_SHARE_ID,
+            'name': FE_CREATE_SHARE_NAME,
+            'size': 10
+        }
+        extra_specs = {
+            'mount_snapshot_support': spec_value,
+            'snapshot_inherit_share_access_support': spec_value}
+
+        self.handler.validator.validate_create_fileshare_fe_req(
+            fe_create_fileshare,
+            extra_specs)
+
+    @ddt.data('False', 'false', '<is> False', '<is> false')
+    def test_validate_create_fileshare_mount_support_inherit_false(
+            self, inherit_value):
+        """Test mount_snapshot_support fails when inherit is False."""
+        fe_create_fileshare = {
+            'id': FE_CREATE_SHARE_ID,
+            'name': FE_CREATE_SHARE_NAME,
+            'size': 10
+        }
+        extra_specs = {
+            'mount_snapshot_support': '<is> True',
+            'snapshot_inherit_share_access_support': inherit_value}
+
+        self.assertRaises(
+            exception.InvalidInput,
+            self.handler.validator.validate_create_fileshare_fe_req,
+            fe_create_fileshare,
+            extra_specs
+        )
+
+    @ddt.data('False', '<is> False')
+    def test_validate_create_fileshare_mount_support_disabled(
+            self, mount_value):
+        """Test inherit is not required when mount_snapshot_support is off."""
+        fe_create_fileshare = {
+            'id': FE_CREATE_SHARE_ID,
+            'name': FE_CREATE_SHARE_NAME,
+            'size': 10
+        }
+        extra_specs = {'mount_snapshot_support': mount_value}
+
+        self.handler.validator.validate_create_fileshare_fe_req(
+            fe_create_fileshare,
+            extra_specs)
+
     # Conversion tests
     def test_convert_fileshare_to_be_model(self):
         """Test conversion of fileshare to backend model."""
@@ -548,10 +637,14 @@ class FileShareHandlerGetTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # get_fileshares()
@@ -892,6 +985,47 @@ class FileShareHandlerGetTestCase(test.TestCase):
             be_fileshare
         )
 
+    def test_validate_get_fileshare_by_id_be_resp_r6_success(self):
+        """Test validation succeeds on r6 device with detailedState."""
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = True
+
+        be_fileshare = {
+            'uid': BE_FILESHARE_UID,
+            'name': BE_FILESHARE_NAME,
+            'filesystem': {'name': BE_FILESYSTEM_NAME},
+            'sharesettings': {'name': BE_SHARESETTING_NAME},
+            'hostip': BE_HOST_IP,
+            'mountpath': BE_MOUNT_PATH,
+            'detailedState': 'STATE_NORMAL'
+        }
+
+        # Should not raise
+        self.handler.validator.validate_get_fileshare_by_id_be_resp(
+            be_fileshare)
+
+    def test_validate_get_fileshare_by_id_be_resp_r6_missing_state(self):
+        """Test validation fails on r6 device when detailedState missing."""
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = True
+
+        be_fileshare = {
+            'uid': BE_FILESHARE_UID,
+            'name': BE_FILESHARE_NAME,
+            'filesystem': {'name': BE_FILESYSTEM_NAME},
+            'sharesettings': {'name': BE_SHARESETTING_NAME},
+            'hostip': BE_HOST_IP,
+            'mountpath': BE_MOUNT_PATH
+            # 'detailedState' intentionally absent
+        }
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.validator.
+            validate_get_fileshare_by_id_be_resp,
+            be_fileshare
+        )
+
     # Conversion tests for get methods
     def test_convert_fileshares_to_fe_model(self):
         """Test conversion of fileshares backend response to fe model"""
@@ -930,7 +1064,7 @@ class FileShareHandlerGetTestCase(test.TestCase):
             BE_MOUNT_PATH)
 
     def test_convert_fileshare_by_id_to_fe_model(self):
-        """Test conversion of fileshare by id backend response to fe model."""
+        """Test conversion without r6 device (no detailedState)."""
         be_fileshare = {
             'uid': BE_FILESHARE_UID,
             'name': BE_FILESHARE_NAME,
@@ -958,6 +1092,30 @@ class FileShareHandlerGetTestCase(test.TestCase):
         self.assertEqual(
             result['mount_path'],
             BE_MOUNT_PATH)
+        self.assertNotIn('be_detailed_state', result)
+
+    def test_convert_fileshare_by_id_to_fe_model_r6_device(self):
+        """Test conversion with r6 device includes detailedState."""
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = True
+
+        be_fileshare = {
+            'uid': BE_FILESHARE_UID,
+            'name': BE_FILESHARE_NAME,
+            'filesystem': {'name': BE_FILESYSTEM_NAME},
+            'sharesettings': {'name': BE_SHARESETTING_NAME},
+            'hostip': BE_HOST_IP,
+            'mountpath': BE_MOUNT_PATH,
+            'detailedState': 'STATE_NORMAL'
+        }
+
+        result = self.handler.convert.convert_fileshare_by_id_to_fe_model(
+            be_fileshare)
+
+        self.assertEqual(result['be_uid'], BE_FILESHARE_UID)
+        self.assertEqual(result['host_ip'], BE_HOST_IP)
+        self.assertEqual(result['mount_path'], BE_MOUNT_PATH)
+        self.assertEqual(result['be_detailed_state'], 'STATE_NORMAL')
 
 
 @ddt.ddt
@@ -970,10 +1128,14 @@ class FileShareHandlerDeleteTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # delete_fileshare_by_id()
@@ -1094,10 +1256,14 @@ class FileShareHandlerEditTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # edit_fileshare_by_id()
@@ -1259,6 +1425,67 @@ class FileShareHandlerEditTestCase(test.TestCase):
         self.assertIsNone(result)
 
         # Verify rest client post was called
+        self.mock_rest_client.post.assert_called_once()
+
+    def test_edit_fileshare_by_id_client_ip_not_found_ignored(self):
+        """Test client-IP-not-found backend error is ignored on rule update."""
+        fe_fileshare_id = 'abcd5678-e29b-41d4-a716-446655441000'
+        be_fileshare_uid = '12345678e29b41d4a716446655442000'
+        be_filesystem_name = BE_FILESYSTEM_NAME
+        extra_specs = {}
+        expand_filesystem = False
+        fe_existing_size = None
+        fe_new_size = None
+        update_access_rules = True
+        fe_new_access_rules = [
+            {'access_type': 'ip',
+             'access_to': '192.168.1.0/24', 'access_level': 'rw'}
+        ]
+
+        # Backend rejects the update because the client IP it tried to
+        # remove is not present in the file share setting
+        self.mock_rest_client.post.side_effect = (
+            exception.HPEAlletraB10000DriverException(
+                reason=constants.BE_CLIENT_IP_NOT_FOUND_ERROR))
+
+        # Execute edit_fileshare_by_id - should swallow the error
+        result = self.handler.edit_fileshare_by_id(
+            fe_fileshare_id, be_fileshare_uid, be_filesystem_name,
+            extra_specs, expand_filesystem, fe_existing_size, fe_new_size,
+            update_access_rules, fe_new_access_rules)
+
+        # Verify result is None and the error was not re-raised
+        self.assertIsNone(result)
+        self.mock_rest_client.post.assert_called_once()
+
+    def test_edit_fileshare_by_id_other_error_reraised(self):
+        """Test that unrelated backend errors are re-raised on rule update."""
+        fe_fileshare_id = 'abcd5678-e29b-41d4-a716-446655441000'
+        be_fileshare_uid = '12345678e29b41d4a716446655442000'
+        be_filesystem_name = BE_FILESYSTEM_NAME
+        extra_specs = {}
+        expand_filesystem = False
+        fe_existing_size = None
+        fe_new_size = None
+        update_access_rules = True
+        fe_new_access_rules = [
+            {'access_type': 'ip',
+             'access_to': '192.168.1.0/24', 'access_level': 'rw'}
+        ]
+
+        # Backend fails with an unrelated error
+        self.mock_rest_client.post.side_effect = (
+            exception.HPEAlletraB10000DriverException(
+                reason="Some other backend failure"))
+
+        # Execute edit_fileshare_by_id and expect the error to propagate
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.edit_fileshare_by_id,
+            fe_fileshare_id, be_fileshare_uid, be_filesystem_name,
+            extra_specs, expand_filesystem, fe_existing_size, fe_new_size,
+            update_access_rules, fe_new_access_rules)
+
         self.mock_rest_client.post.assert_called_once()
 
     def test_edit_fileshare_by_id_task_failure(self):
@@ -1956,10 +2183,14 @@ class FileShareHandlerManageTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # manage_fileshare()
@@ -2964,10 +3195,14 @@ class FileShareHandlerHelpersTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # _get_fileshare_by_name()
@@ -3044,6 +3279,56 @@ class FileShareHandlerHelpersTestCase(test.TestCase):
             be_fileshare_name,
             be_filesystem_name,
             be_sharesetting_name
+        )
+
+    # _get_fileshare_by_filesystem_name()
+    def test_get_fileshare_by_filesystem_name_success(self):
+        """Test successful get fileshare by filesystem name."""
+        be_fileshares = {
+            'members': {
+                BE_FILESHARE_UID: {
+                    'uid': BE_FILESHARE_UID,
+                    'name': BE_FILESHARE_NAME,
+                    'filesystem': {'name': BE_FILESYSTEM_NAME},
+                    'sharesettings': {'name': BE_SHARESETTING_NAME},
+                    'hostip': BE_HOST_IP,
+                    'mountpath': BE_MOUNT_PATH
+                }
+            }
+        }
+
+        self.mock_rest_client.get.return_value = (None, be_fileshares)
+
+        result = self.handler._get_fileshare_by_filesystem_name(
+            BE_FILESYSTEM_NAME)
+
+        self.mock_rest_client.get.assert_called_once_with('/fileshares')
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result['be_uid'], BE_FILESHARE_UID)
+        self.assertEqual(
+            result['be_filesystem_name'], BE_FILESYSTEM_NAME)
+
+    def test_get_fileshare_by_filesystem_name_not_found(self):
+        """Test get fileshare by filesystem name raises not found exception"""
+        be_fileshares = {
+            'members': {
+                BE_FILESHARE_UID: {
+                    'uid': BE_FILESHARE_UID,
+                    'name': BE_FILESHARE_NAME,
+                    'filesystem': {'name': BE_FILESYSTEM_NAME},
+                    'sharesettings': {'name': BE_SHARESETTING_NAME},
+                    'hostip': BE_HOST_IP,
+                    'mountpath': BE_MOUNT_PATH
+                }
+            }
+        }
+
+        self.mock_rest_client.get.return_value = (None, be_fileshares)
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler._get_fileshare_by_filesystem_name,
+            BE_MISSING_FILESYSTEM_NAME
         )
 
     # _get_fileshare_by_hostip_mountpath()
@@ -3398,10 +3683,14 @@ class FileShareHandlerShareTypeValidationTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
 
         # Initialize handler
         self.handler = fileshare.FileShareHandler(
-            self.mock_rest_client
+            self.mock_rest_client,
+            self.mock_feature_support_handler
         )
 
     # Reduce option validation

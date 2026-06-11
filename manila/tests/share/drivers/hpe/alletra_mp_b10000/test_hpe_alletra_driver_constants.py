@@ -22,6 +22,7 @@ SHARE_BACKEND_NAME = 'backend1'
 # Backend resource naming prefixes
 BE_FILESYSTEM_PREFIX = 'manilafs-'
 BE_SHARESETTING_PREFIX = 'manilass-'
+BE_SNAP_FILESYSTEM_PREFIX = 'share-snapshot-'
 
 # do_setup test constants
 EXPECTED_SYSTEMS = {'version': '10.5.0'}
@@ -66,4 +67,39 @@ BACKEND_FILESHARE = {
     'be_sharesetting_name': EXPECTED_BE_SHARESETTING_NAME,
     'host_ip': EXPECTED_HOST_IP,
     'mount_path': EXPECTED_MOUNT_PATH,
+}
+
+# Snapshot test constants
+EXPECTED_SNAP_ID = 'b2c3d4e5-f6a7-5890-b123-456789abcdef'
+EXPECTED_SNAP_BE_SHARE_ID = 'cd94c0298416aa6bb2f63e484f6c7ccd'
+EXPECTED_SNAP_BE_FILESYSTEM_ID = 'ef12d4408527bb7cc3074f595070d8dd'
+EXPECTED_SNAP_BE_SHARE_NAME = EXPECTED_BE_SHARE_NAME
+EXPECTED_SNAP_BE_FILESYSTEM_NAME = (
+    BE_SNAP_FILESYSTEM_PREFIX + EXPECTED_SNAP_ID)
+EXPECTED_SNAP_BE_SHARESETTING_NAME = EXPECTED_BE_SHARESETTING_NAME
+EXPECTED_SNAP_MOUNT_PATH = (
+    '/file/' + EXPECTED_SNAP_BE_FILESYSTEM_NAME
+    + '/' + EXPECTED_SNAP_BE_SHARE_NAME
+)
+
+SNAPSHOT_INFO = {
+    'id': EXPECTED_SNAP_ID,
+    'share_id': EXPECTED_SHARE_ID,
+    'share': SHARE_INFO,
+}
+
+BACKEND_SNAP_FILESHARE = {
+    'be_uid': EXPECTED_SNAP_BE_SHARE_ID,
+    'be_fileshare_name': EXPECTED_SNAP_BE_SHARE_NAME,
+    'be_filesystem_name': EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+    'be_sharesetting_name': EXPECTED_SNAP_BE_SHARESETTING_NAME,
+    'host_ip': EXPECTED_HOST_IP,
+    'mount_path': EXPECTED_SNAP_MOUNT_PATH,
+}
+
+BACKEND_SNAP_FILESYSTEM = {
+    'be_uid': EXPECTED_SNAP_BE_FILESYSTEM_ID,
+    'be_filesystem_name': EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+    'be_filesystem_size': 2048,
+    'be_filesystem_reduce': True,
 }

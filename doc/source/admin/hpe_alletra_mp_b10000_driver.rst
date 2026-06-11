@@ -29,6 +29,10 @@ The following operations are supported with HPE Alletra MP B10000:
 - Extend shares
 - Manage existing shares
 - Unmanage shares
+- Create/delete snapshots
+- Manage/unmanage snapshots
+- Revert to snapshot
+- Mountable snapshot
 
 Share networks are not supported. Shares are created directly on the HPE
 Alletra MP B10000 array without the use of a share server or service VM.
@@ -38,6 +42,18 @@ Network connectivity is set up outside of Manila.
 
    Most operations described in this document can also be performed through
    the OpenStack Horizon dashboard. This document focuses on CLI commands.
+
+Requirements
+------------
+
+On the HPE Alletra MP B10000 array:
+
+- Device version 10.5.0 or later.
+- The HPE Alletra MP B10000 file service must be enabled.
+
+.. note::
+
+   Device version 10.6.0 or later is required for snapshot operations.
 
 Share Types
 -----------
@@ -149,6 +165,49 @@ The following common extra specs are also supported by Alletra MP B10000:
 
       $ openstack share type set alletra_nfs --extra-specs thin_provisioning=true
 
+**snapshot_support**
+   Controls whether snapshots are enabled for shares of this type. Set to
+   ``True`` to allow snapshot creation. Requires device version 10.6.0 or later.
+
+   Example:
+
+   .. code-block:: console
+
+      $ openstack share type set alletra_nfs --extra-specs snapshot_support=True
+
+**revert_to_snapshot_support**
+   Controls whether shares of this type can be reverted to a snapshot.
+   Requires ``snapshot_support=True``. Requires device version 10.6.0 or later.
+
+   Example:
+
+   .. code-block:: console
+
+      $ openstack share type set alletra_nfs --extra-specs revert_to_snapshot_support=True
+
+**mount_snapshot_support**
+   Controls whether snapshots of this share type can be directly mounted by
+   clients. Requires ``snapshot_support=True`` and
+   ``snapshot_inherit_share_access_support=True``. Requires device version
+   10.6.0 or later.
+
+   Example:
+
+   .. code-block:: console
+
+      $ openstack share type set alletra_nfs --extra-specs mount_snapshot_support=True snapshot_inherit_share_access_support=True
+
+**snapshot_inherit_share_access_support**
+   Must be set to ``True`` when ``mount_snapshot_support`` is ``True``.
+   On Alletra MP B10000, snapshot access rules are always inherited from the
+   parent share and cannot be managed independently. Requires device version 10.6.0 or later.
+
+   Example:
+
+   .. code-block:: console
+
+      $ openstack share type set alletra_nfs --extra-specs snapshot_inherit_share_access_support=True
+
 .. note::
 
    Modifying share type extra specs after shares have been created is not
@@ -241,6 +300,48 @@ command in OpenStack to update the latest export paths.
 Refer to :ref:`recalculating the shares export location <shared_file_systems_services_manage.rst>`
 for details on manually triggering the ensure shares operation.
 
+Snapshot Operations
+-------------------
+
+The driver supports creating and deleting snapshots (``snapshot_support``),
+reverting a share to its last snapshot (``revert_to_snapshot_support``),
+and exporting snapshots for mounting (``mount_snapshot_support``).
+
+.. note::
+
+   When ``mount_snapshot_support`` is set to ``True`` in the share type,
+   ``snapshot_inherit_share_access_support`` must also be set to ``True``.
+   On Alletra MP B10000, snapshot access rules are always inherited from
+   the parent share and cannot be managed independently.
+
+Managing Existing Snapshots
+---------------------------
+
+The driver supports bringing existing snapshots on the HPE Alletra array
+into Manila management using the manage operation.
+
+The ``provider_location`` required by manage snapshot is the
+backend snapshot **filesystem name** on the Alletra array.
+
+Prerequisites for Manage Snapshot Operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Before managing an existing snapshot, ensure the following:
+
+#. **Snapshot state must match share type**: If ``mount_snapshot_support``
+   is ``True``, the backend snapshot filesystem must be in online state.
+   Otherwise, it must be in offline state.
+
+   To change the snapshot filesystem state on the Alletra array:
+
+   .. code-block:: console
+
+      $ setfilesystem -online <filesystem_name>
+      $ setfilesystem -offline <filesystem_name>
+
+#. **Filesystem size alignment**: The backend snapshot filesystem size must
+   be a multiple of 1 GiB. If not, the manage operation will fail.
+
 Driver Capabilities
 -------------------
 
@@ -248,8 +349,14 @@ The HPE Alletra MP B10000 driver reports the following capabilities:
 
 - Storage protocol: NFS
 - driver_handles_share_servers: False
+- Thin provisioning support
+- Dedupe and compression support
 - Share extend support
-- Manage/unmanage support
+- Manage/unmanage share support
+- Snapshot support (create/delete)
+- Revert to snapshot support
+- Mountable snapshot support
+- Manage/unmanage snapshot support
 
 Restrictions and Limitations
 ----------------------------
@@ -259,6 +366,7 @@ The HPE Alletra MP B10000 driver has the following restrictions:
 - Only NFS protocol is supported; CIFS/SMB is not supported
 - Share networks are not supported (driver_handles_share_servers must be False)
 - Share shrink is not currently supported
+- Creating a share from a snapshot is not supported
 - Share migration is not supported
 - Share replication is not supported
 - Share groups and consistency groups are not supported
