@@ -20,6 +20,7 @@ class ShareGroupSnapshotViewBuilder(common.ViewBuilder):
     """Model a share group snapshot API response as a python dictionary."""
 
     _collection_name = "share_group_snapshot"
+    _collection_route_name = "share-group-snapshots"
 
     def summary_list(self, request, group_snaps):
         """Show a list of share_group_snapshots without many details."""

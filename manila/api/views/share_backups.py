@@ -21,6 +21,7 @@ class BackupViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'share_backups'
+    _collection_route_name = "share-backups"
     _collection_links = 'share_backup_links'
 
     _detail_version_modifiers = [
