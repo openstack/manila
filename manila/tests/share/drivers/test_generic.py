@@ -288,6 +288,9 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_format_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
+        self.fake_conf.share_volume_fstype = 'ext4'
+        self.fake_conf.set_zero_reserved_blocks = True
+
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=('', '')))
         self.mock_object(self._driver, '_is_device_file_available')
@@ -295,11 +298,103 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._format_device(self.server, volume)
 
         self._driver._is_device_file_available.assert_called_once_with(
-            self.server, volume)
-        self._driver._ssh_exec.assert_called_once_with(
-            self.server,
-            ['sudo', 'mkfs.%s' % self.fake_conf.share_volume_fstype,
-             volume['mountpoint']])
+            self.server, volume
+        )
+
+        executed_commands = [
+            call[0][1] for call in self._driver._ssh_exec.call_args_list]
+
+        self.assertIn(
+            ['sudo', f'mkfs.{self.fake_conf.share_volume_fstype}',
+                volume['mountpoint']],
+            executed_commands,
+            "Expected mkfs command not executed"
+        )
+
+        if self.fake_conf.share_volume_fstype.startswith('ext'):
+            self.assertIn(
+                ['sudo', 'tune2fs', '-m', '0', volume['mountpoint']],
+                executed_commands,
+                "Expected tune2fs command not executed for ext filesystem"
+            )
+
+    def test_format_device_runs_tune2fs_for_ext_filesystems(self):
+        """Ensure tune2fs is run for ext filesystems when flag is True."""
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.fake_conf.share_volume_fstype = 'ext4'
+        self.fake_conf.set_zero_reserved_blocks = True
+
+        self.mock_object(self._driver, '_ssh_exec', mock.Mock())
+        self.mock_object(self._driver, '_is_device_file_available')
+
+        self._driver._format_device(self.server, volume)
+
+        calls = [
+            call[0][1] for call in self._driver._ssh_exec.call_args_list]
+        self.assertIn(
+            ['sudo', 'mkfs.ext4', 'fake_mount_point'], calls,
+            "mkfs.ext4 should be executed"
+        )
+        self.assertIn(
+            ['sudo', 'tune2fs', '-m', '0', 'fake_mount_point'], calls,
+            "tune2fs should be executed for ext filesystems"
+        )
+
+    def test_format_device_skips_tune2fs_for_non_ext(self):
+        """Ensure tune2fs is skipped for non-ext filesystems."""
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.fake_conf.share_volume_fstype = 'xfs'
+        self.fake_conf.set_zero_reserved_blocks = True
+
+        self.mock_object(self._driver, '_ssh_exec', mock.Mock())
+        self.mock_object(self._driver, '_is_device_file_available')
+
+        self._driver._format_device(self.server, volume)
+
+        calls = [
+            call[0][1] for call in self._driver._ssh_exec.call_args_list]
+        self.assertIn(['sudo', 'mkfs.xfs', 'fake_mount_point'], calls)
+        self.assertNotIn(
+            ['sudo', 'tune2fs', '-m', '0', 'fake_mount_point'], calls)
+
+    def test_format_device_skips_tune2fs_if_config_disabled(self):
+        """Ensure tune2fs is skipped if set_zero_reserved_blocks is False."""
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.fake_conf.share_volume_fstype = 'ext4'
+        self.fake_conf.set_zero_reserved_blocks = False
+
+        self.mock_object(self._driver, '_ssh_exec', mock.Mock())
+        self.mock_object(self._driver, '_is_device_file_available')
+
+        self._driver._format_device(self.server, volume)
+
+        calls = [
+            call[0][1] for call in self._driver._ssh_exec.call_args_list]
+        self.assertIn(['sudo', 'mkfs.ext4', 'fake_mount_point'], calls)
+        self.assertNotIn(
+            ['sudo', 'tune2fs', '-m', '0', 'fake_mount_point'], calls)
+
+    @mock.patch('manila.share.drivers.generic.LOG.warning')
+    def test_format_device_logs_warning_if_tune2fs_fails(self, mock_log):
+        """Ensure tune2fs failure logs a warning instead of crashing."""
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.fake_conf.share_volume_fstype = 'ext4'
+        self.fake_conf.set_zero_reserved_blocks = True
+
+        def fake_exec(server, cmd):
+            if 'tune2fs' in cmd:
+                raise Exception("tune2fs failed")
+
+        self.mock_object(
+            self._driver, '_ssh_exec', mock.Mock(side_effect=fake_exec))
+        self.mock_object(self._driver, '_is_device_file_available')
+
+        # Should not raise
+        self._driver._format_device(self.server, volume)
+
+        mock_log.assert_called_once()
+        self.assertIn(
+            "Failed to set reserved blocks", mock_log.call_args[0][0])
 
     def test_mount_device_not_present(self):
         server = {'instance_id': 'fake_server_id'}
