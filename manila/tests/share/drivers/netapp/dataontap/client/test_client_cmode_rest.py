@@ -4129,7 +4129,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             remote_cluster_name=remote_cluster_name)
 
         expected_query = {
-            'fields': 'name,uuid,status.state,ip_addresses,remote.name,'
+            'fields': 'name,uuid,status.state,remote.name,'
                       'remote.ip_addresses,remote.serial_number',
         }
 
@@ -4140,6 +4140,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             {
                 'active-addresses': [
                     fake.CLUSTER_ADDRESS_1,
+                    fake.CLUSTER_ADDRESS_2,
                 ],
                 'peer-addresses': [
                     fake.CLUSTER_ADDRESS_1,
