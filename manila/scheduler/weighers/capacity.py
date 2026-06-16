@@ -78,10 +78,17 @@ class CapacityWeigher(base_host.BaseHostWeigher):
             if use_thin_logic and thin_provisioning:
                 # NOTE(xyang): Calculate virtual free capacity for thin
                 # provisioning.
-                free = math.floor(
-                    total * host_state.max_over_subscription_ratio -
-                    host_state.provisioned_capacity_gb -
-                    total * reserved)
+                if host_state.provisioned_capacity_gb is not None:
+                    free = math.floor(
+                        total * host_state.max_over_subscription_ratio -
+                        host_state.provisioned_capacity_gb -
+                        total * reserved)
+                else:
+                    # None is treated same as 'unknown'
+                    if CONF.capacity_weight_multiplier > 0:
+                        free = float('-inf')
+                    else:
+                        free = float('inf')
             else:
                 # NOTE(xyang): Calculate how much free space is left after
                 # taking into account the reserved space.
