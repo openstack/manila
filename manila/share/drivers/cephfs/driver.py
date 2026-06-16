@@ -983,6 +983,9 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                   {"be": self.backend_name, "sg_id": snap_dict['id'],
                    "sn": snap_dict["share_group_id"]})
 
+        # First, try the CephFS subvolumegroup snapshot rm command
+        # for existing group snapshots that were created before the feature
+        # was deprecated
         argdict = {
             "vol_name": self.volname,
             "group_name": snap_dict["share_group_id"],
@@ -990,23 +993,36 @@ class CephFSDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             "force": True,
         }
 
-        rados_command(
-            self.rados_client, "fs subvolumegroup snapshot rm", argdict)
+        try:
+            rados_command(
+                self.rados_client, "fs subvolumegroup snapshot rm", argdict)
+            LOG.debug("[%(be)s]: Successfully deleted group snapshot %(snap)s "
+                      "using CephFS subvolumegroup command.",
+                      {"be": self.backend_name, "snap": snap_dict['id']})
+            return None, []
+        except exception.ShareBackendException as e:
+            LOG.warning("[%(be)s]: CephFS subvolumegroup snapshot rm failed "
+                        "for group snapshot %(snap)s: %(error)s. "
+                        "Falling back to generic deletion method.",
+                        {"be": self.backend_name, "snap": snap_dict['id'],
+                         "error": e})
 
-        return None, []
+            # Fall back to the generic implementation from the parent class
+            # This will delete each snapshot member individually
+            return super(CephFSDriver, self).delete_share_group_snapshot(
+                context, snap_dict, share_server=share_server)
 
     def create_share_group_snapshot(self, context, snap_dict,
                                     share_server=None):
-        # create a FS group snapshot
-        LOG.debug("[%(be)s]: create_share_group_snapshot: share_group=%(id)s, "
-                  "snapshot=%(sn)s.",
-                  {"be": self.backend_name, "id": snap_dict['share_group_id'],
-                   "sn": snap_dict["id"]})
+        # CephFS no longer supports native group snapshots, so use
+        # the generic implementation from the parent class which creates
+        # individual snapshots for each share in the group
+        LOG.debug("share_group=%(id)s, snapshot=%(sn)s. Using generic "
+                  "implementation.", {"id": snap_dict['share_group_id'],
+                                      "sn": snap_dict["id"]})
 
-        msg = _("Share group snapshot feature is no longer supported in "
-                "mainline CephFS (existing group snapshots can still be "
-                "listed and deleted).")
-        raise exception.ShareBackendException(msg=msg)
+        return super(CephFSDriver, self).create_share_group_snapshot(
+            context, snap_dict, share_server=share_server)
 
     def _get_clone_status(self, share):
         """Check the status of a newly cloned share."""
