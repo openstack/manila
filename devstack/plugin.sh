@@ -299,8 +299,7 @@ function configure_manila {
 
     write_uwsgi_config "$MANILA_UWSGI_CONF" "$MANILA_WSGI" "/share" "" "manila-api"
 
-    if [[ "$MANILA_ENFORCE_SCOPE" == True ]] ; then
-        iniset $MANILA_CONF oslo_policy enforce_scope true
+    if [[ "$MANILA_ENFORCE_NEW_DEFAULTS" == True ]] ; then
         iniset $MANILA_CONF oslo_policy enforce_new_defaults true
         OS_CLOUD="devstack-admin"
     fi
@@ -857,7 +856,7 @@ function update_tempest {
             iniset $TEMPEST_CONFIG share image_password $MANILA_SERVICE_INSTANCE_PASSWORD
         fi
         iniset $TEMPEST_CONFIG share image_with_share_tools $MANILA_SERVICE_IMAGE_NAME
-        iniset $TEMPEST_CONFIG enforce_scope manila "$MANILA_ENFORCE_SCOPE"
+        iniset $TEMPEST_CONFIG enforce_scope manila "$MANILA_ENFORCE_NEW_DEFAULTS"
 
         # If testing a stable branch, we need to ensure we're testing with supported
         # API micro-versions; so set the versions from code if we're not testing the

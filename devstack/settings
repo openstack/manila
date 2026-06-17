@@ -195,9 +195,14 @@ MANILA_DATA_COPY_CHECK_HASH=${MANILA_DATA_COPY_CHECK_HASH:=True}
 MANILA_SETUP_IPV6=${MANILA_SETUP_IPV6:=False}
 MANILA_RESTORE_IPV6_DEFAULT_ROUTE=${MANILA_RESTORE_IPV6_DEFAULT_ROUTE:=True}
 
-# This option controls whether or not to enforce scope when evaluating policies. Learn more:
-# https://docs.openstack.org/oslo.policy/latest/configuration/index.html#oslo_policy.enforce_scope
-MANILA_ENFORCE_SCOPE=$(trueorfalse False MANILA_ENFORCE_SCOPE)
+# This option controls whether or not to use the new defaults when evaluating policies. Learn more:
+# https://docs.openstack.org/oslo.policy/latest/configuration/index.html#oslo_policy.enforce_new_defaults
+# MANILA_ENFORCE_SCOPE is a deprecated alias for MANILA_ENFORCE_NEW_DEFAULTS.
+MANILA_ENFORCE_NEW_DEFAULTS=$(trueorfalse False MANILA_ENFORCE_NEW_DEFAULTS)
+# Support the deprecated MANILA_ENFORCE_SCOPE variable as a fallback.
+if [[ -n "${MANILA_ENFORCE_SCOPE}" ]]; then
+    MANILA_ENFORCE_NEW_DEFAULTS=$(trueorfalse False MANILA_ENFORCE_SCOPE)
+fi
 
 # Enable manila services
 # ----------------------
