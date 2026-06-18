@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Filtering of share servers has been moved fully to the database layer,
+    removing API-side post-processing. This is expected to improve response
+    times in large deployments. (Launchpad #2139386)

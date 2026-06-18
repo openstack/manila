@@ -20,6 +20,7 @@ from oslo_utils import uuidutils
 from manila.common import constants
 from manila import context
 from manila import db
+from manila.db.sqlalchemy import models
 from manila.message import message_levels
 
 
@@ -218,6 +219,17 @@ def create_snapshot_access(**kwargs):
     return _create_db_row(db.share_snapshot_access_create, access, kwargs)
 
 
+def _extract_share_server_network(data):
+    share_network = models.ShareNetwork()
+    share_network_name = data.pop('share_network_name', None)
+    if share_network_name:
+        share_network["name"] = share_network_name
+    project_id = data.pop('project_id', None)
+    if project_id:
+        share_network["project_id"] = project_id
+    return share_network
+
+
 def create_share_server(**kwargs):
     """Create a share server object."""
     backend_details = kwargs.pop('backend_details', {})
@@ -225,10 +237,15 @@ def create_share_server(**kwargs):
         'host': 'host1',
         'status': constants.STATUS_ACTIVE
     }
+    share_network = _extract_share_server_network(kwargs)
     share_srv = _create_db_row(db.share_server_create, srv, kwargs)
     if backend_details:
         db.share_server_backend_details_set(
             context.get_admin_context(), share_srv['id'], backend_details)
+    if share_network:
+        subnet = models.ShareNetworkSubnet()
+        subnet['share_network'] = share_network
+        share_srv["share_network_subnets"] = [subnet]
     return db.share_server_get(context.get_admin_context(),
                                share_srv['id'])
 

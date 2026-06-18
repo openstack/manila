@@ -5863,19 +5863,19 @@ def share_server_get_all_with_filters(context, filters):
 def _share_server_get_all_with_filters(context, filters):
     query = _share_server_get_query(context)
 
-    if filters.get('host'):
-        query = query.filter_by(host=filters.get('host'))
-    if filters.get('status'):
-        query = query.filter_by(status=filters.get('status'))
-    if filters.get('source_share_server_id'):
-        query = query.filter_by(
-            source_share_server_id=filters.get('source_share_server_id'))
-    if filters.get('encryption_key_ref'):
-        query = query.filter_by(
-            encryption_key_ref=filters.get('encryption_key_ref'))
-    if filters.get('identifier'):
-        query = query.filter_by(identifier=filters.get('identifier'))
-    if filters.get('share_network_id'):
+    needs_network_join = (
+        filters.get("project_id") or filters.get("share_network")
+        or filters.get("share_network_id"))
+
+    if needs_network_join:
+        query = query.join(
+            models.ShareServer.share_network_subnets
+        ).join(
+            models.ShareNetwork,
+            models.ShareNetwork.id
+            == models.ShareNetworkSubnet.share_network_id
+        )
+    elif filters.get('share_network_subnet_id'):
         query = query.join(
             models.ShareServerShareNetworkSubnetMapping,
             models.ShareServerShareNetworkSubnetMapping.share_server_id ==
@@ -5884,9 +5884,46 @@ def _share_server_get_all_with_filters(context, filters):
             models.ShareNetworkSubnet,
             models.ShareNetworkSubnet.id ==
             models.ShareServerShareNetworkSubnetMapping.share_network_subnet_id
-        ).filter(
-            models.ShareNetworkSubnet.share_network_id ==
-            filters.get('share_network_id'))
+        )
+
+    share_server_filter_keys = (
+        "id", "deleted", "host", "is_auto_deletable", "identifier",
+        "task_state", "source_share_server_id", "status",
+        "security_service_update_support",
+        "network_allocation_update_support",
+        "encryption_key_ref")
+    all_valid_filter_keys = set(share_server_filter_keys) | {
+        'share_network_subnet_id', 'project_id', 'share_network',
+        'share_network_id'}
+    if any(key not in all_valid_filter_keys for key in filters):
+        return []
+    share_server_filters = {
+        key: filters[key]
+        for key in share_server_filter_keys
+        if key in filters
+    }
+    if share_server_filters:
+        query = query.filter_by(**share_server_filters)
+
+    if filters.get('share_network_subnet_id'):
+        query = query.filter(
+            models.ShareNetworkSubnet.id ==
+            filters.get('share_network_subnet_id'))
+
+    if filters.get('project_id'):
+        query = query.filter(
+            models.ShareNetwork.project_id == filters.get('project_id'))
+
+    if filters.get('share_network'):
+        query = query.filter(
+            or_(
+                models.ShareNetwork.id == filters.get('share_network'),
+                models.ShareNetwork.name == filters.get('share_network')))
+
+    if filters.get('share_network_id'):
+        query = query.filter(
+            models.ShareNetwork.id == filters.get('share_network_id'))
+
     return query.all()
 
 

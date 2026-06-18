@@ -143,7 +143,6 @@ class FakeShareServer(object):
             'share_network_subnet_ids',
             [sn['id'] for sn in self.share_network_subnets])
         self.status = kwargs.get('status', constants.STATUS_ACTIVE)
-        self.project_id = 'fake_project_id'
         self.identifier = kwargs.get('identifier', 'fake_id')
         self.is_auto_deletable = kwargs.get('is_auto_deletable', False)
         self.task_state = kwargs.get('task_state')
@@ -156,13 +155,22 @@ class FakeShareServer(object):
         self.share_network_id = kwargs.get('share_network_id', 'fake_sn_id')
         self.encryption_key_ref = kwargs.get('encryption_key_ref', None)
 
+        self.share_network = kwargs.get("has_share_network", True) or None
+        if self.share_network:
+            self.project_id = kwargs.get('project_id', 'fake_project_id')
+            self.share_network_name = (kwargs.get('share_network_name')
+                                       or self.share_network_id)
+        else:
+            self.project_id = ''
+            self.share_network_name = ''
+
     def __getitem__(self, item):
         return getattr(self, item)
 
 
 def fake_share_server_get_all():
     fake_share_servers = [
-        FakeShareServer(),
+        FakeShareServer(share_network_name='fake_sn_name'),
         FakeShareServer(id='fake_server_id_2',
                         host='fake_host_2',
                         share_network_subnets=[{
@@ -170,6 +178,7 @@ def fake_share_server_get_all():
                             'share_network_id': 'fake_sn_id_2',
                             }],
                         share_network_id='fake_sn_id_2',
+                        project_id='fake_project_id_2',
                         identifier='fake_id_2',
                         task_state=None,
                         is_auto_deletable=True,
@@ -180,8 +189,10 @@ def fake_share_server_get_all():
     return fake_share_servers
 
 
-def fake_share_server_get():
-    return FakeShareServer(created_at=None)
+def fake_share_server_get(share_network_name=None):
+    return FakeShareServer(
+        share_network_name=share_network_name,
+        created_at=None)
 
 
 class FakeRequestAdmin(object):
@@ -222,7 +233,7 @@ class ShareServerControllerTest(test.TestCase):
             policy, 'check_policy', mock.Mock(return_value=True))
         self.controller = share_servers.ShareServerController()
         self.resource_name = self.controller.resource_name
-        self.mock_object(db_api, 'share_server_get_all',
+        self.mock_object(db_api, 'share_server_get_all_with_filters',
                          mock.Mock(return_value=fake_share_server_get_all()))
 
     def _prepare_request(self, url, use_admin_context,
@@ -236,114 +247,111 @@ class ShareServerControllerTest(test.TestCase):
     def test_index_no_filters(self):
         request, ctxt = self._prepare_request(url='/v2/share-servers/',
                                               use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
-        result = self.controller.index(request)
+        self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
-        self.assertEqual(fake_share_server_list, result)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {})
 
     def test_index_host_filter(self):
+        host = fake_share_server_list['share_servers'][0]['host']
         request, ctxt = self._prepare_request(
-            url='/index?host=%s'
-                % fake_share_server_list['share_servers'][0]['host'],
+            url='/index?host=%s' % host,
             use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
-        result = self.controller.index(request)
+        self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
-        self.assertEqual([fake_share_server_list['share_servers'][0]],
-                         result['share_servers'])
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'host': host})
 
     def test_index_status_filter(self):
         request, ctxt = self._prepare_request(url='/index?status=%s' %
                                                   constants.STATUS_ERROR,
                                               use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
+        self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[fake_share_server_get_all()[1]]))
         result = self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'status': constants.STATUS_ERROR})
         self.assertEqual([fake_share_server_list['share_servers'][1]],
                          result['share_servers'])
 
     def test_index_project_id_filter(self):
+        project_id = fake_share_server_get_all()[0].project_id
         request, ctxt = self._prepare_request(
-            url='/index?project_id=%s'
-                % fake_share_server_get_all()[0].project_id,
+            url='/index?project_id=%s' % project_id,
             use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
+        self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[fake_share_server_get_all()[0]]))
         result = self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
-
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'project_id': project_id})
         self.assertEqual([fake_share_server_list['share_servers'][0]],
                          result['share_servers'])
 
     def test_index_share_network_filter_by_name(self):
+        sn_name = (
+            fake_share_server_list['share_servers'][0]['share_network_name'])
         request, ctxt = self._prepare_request(
-            url='/index?host=%s'
-                % fake_share_server_list['share_servers'][0]['host'],
+            url='/index?share_network=%s' % sn_name,
             use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
+        self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[fake_share_server_get_all()[0]]))
         result = self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'share_network': sn_name})
         self.assertEqual([fake_share_server_list['share_servers'][0]],
                          result['share_servers'])
 
     def test_index_share_network_filter_by_id(self):
+        sn_id = fake_share_network_get_list['share_networks'][0]['id']
         request, ctxt = self._prepare_request(
-            url='/index?share_network=%s'
-                % fake_share_network_get_list['share_networks'][0]['id'],
+            url='/index?share_network=%s' % sn_id,
             use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
+        self.mock_object(
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[fake_share_server_get_all()[0]]))
         result = self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'share_network': sn_id})
         self.assertEqual([fake_share_server_list['share_servers'][0]],
                          result['share_servers'])
 
     def test_index_fake_filter(self):
         request, ctxt = self._prepare_request(url='/index?fake_key=fake_value',
                                               use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=[fake_share_network_get_list['share_networks'][0],
-                         fake_share_network_get_list['share_networks'][1]]))
+        self.mock_object(db_api, 'share_server_get_all_with_filters',
+                         mock.Mock(return_value=[]))
         result = self.controller.index(request)
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'fake_key': 'fake_value'})
         self.assertEqual(0, len(result['share_servers']))
 
     def test_index_share_network_not_found(self):
+        identifier = fake_share_server_get_all()[0].identifier
         request, ctxt = self._prepare_request(
-            url='/index?identifier=%s'
-                % fake_share_server_get_all()[0].identifier,
+            url='/index?identifier=%s' % identifier,
             use_admin_context=True)
         self.mock_object(
-            db_api, 'share_network_get',
-            mock.Mock(side_effect=exception.ShareNetworkNotFound(
-                share_network_id='fake')))
+            db_api, 'share_server_get_all_with_filters',
+            mock.Mock(return_value=[FakeShareServer(has_share_network=False)]))
 
         result = self.controller.index(request)
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'identifier': identifier})
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
         exp_share_server = fake_share_server_list['share_servers'][0].copy()
@@ -353,20 +361,16 @@ class ShareServerControllerTest(test.TestCase):
                          result['share_servers'])
 
     def test_index_share_network_not_found_filter_project(self):
+        project_id = fake_share_server_get_all()[0].project_id
         request, ctxt = self._prepare_request(
-            url='/index?project_id=%s'
-                % fake_share_server_get_all()[0].project_id,
+            url='/index?project_id=%s' % project_id,
             use_admin_context=True)
-        self.mock_object(
-            db_api, 'share_network_get',
-            mock.Mock(side_effect=exception.ShareNetworkNotFound(
-                share_network_id='fake')))
 
-        result = self.controller.index(request)
-        db_api.share_server_get_all.assert_called_once_with(ctxt)
+        self.controller.index(request)
+        db_api.share_server_get_all_with_filters.assert_called_once_with(
+            ctxt, {'project_id': project_id})
         policy.check_policy.assert_called_once_with(
             ctxt, self.resource_name, 'index')
-        self.assertEqual(0, len(result['share_servers']))
 
     @ddt.data({'version': '2.70', 'share_network_name': ''},
               {'version': '2.90', 'share_network_name': 'fake_sn_name'},
@@ -374,10 +378,11 @@ class ShareServerControllerTest(test.TestCase):
               {'version': '2.68', 'share_network_name': 'fake_sn_name'})
     @ddt.unpack
     def test_show(self, version, share_network_name):
-        self.mock_object(db_api, 'share_server_get',
-                         mock.Mock(return_value=fake_share_server_get()))
-        request, ctxt = self._prepare_request('/show', use_admin_context=True,
-                                              version=version)
+        self.mock_object(
+            db_api, 'share_server_get',
+            mock.Mock(return_value=fake_share_server_get(share_network_name)))
+        request, ctxt = self._prepare_request(
+            '/show', use_admin_context=True, version=version)
 
         share_network = copy.deepcopy(
             fake_share_network_get_list['share_networks'][0])
@@ -399,8 +404,6 @@ class ShareServerControllerTest(test.TestCase):
         if version < '2.90':
             share_server.pop('encryption_key_ref')
 
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            return_value=share_network))
         result = self.controller.show(
             request,
             share_server['id'])
@@ -413,20 +416,15 @@ class ShareServerControllerTest(test.TestCase):
 
     @ddt.data(
         {'share_server_side_effect': exception.ShareServerNotFound(
-            share_server_id="foo"),
-            'share_net_side_effect': mock.Mock()},
+            share_server_id="foo")},
         {'share_server_side_effect': mock.Mock(
-            return_value=fake_share_server_get()),
-            'share_net_side_effect': exception.ShareNetworkNotFound(
-                share_network_id="foo")})
+            return_value=FakeShareServer(created_at=None,
+                                         has_share_network=False))})
     @ddt.unpack
-    def test_show_server_not_found(self, share_server_side_effect,
-                                   share_net_side_effect):
+    def test_show_server_not_found(self, share_server_side_effect):
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(side_effect=share_server_side_effect))
         request, ctxt = self._prepare_request('/show', use_admin_context=True)
-        self.mock_object(db_api, 'share_network_get', mock.Mock(
-            side_effect=share_net_side_effect))
         self.assertRaises(
             exc.HTTPNotFound, self.controller.show, request,
             fake_share_server_get_result['share_server']['id'])
@@ -435,11 +433,6 @@ class ShareServerControllerTest(test.TestCase):
             ctxt, self.resource_name, 'show')
         db_api.share_server_get.assert_called_once_with(
             ctxt, fake_share_server_get_result['share_server']['id'])
-        if isinstance(share_net_side_effect, exception.ShareNetworkNotFound):
-            exp_share_net_id = (fake_share_server_get()
-                                .share_network_subnets[0]['share_network_id'])
-            db_api.share_network_get.assert_called_once_with(
-                ctxt, exp_share_net_id)
 
     def test_details(self):
         self.mock_object(db_api, 'share_server_get',
