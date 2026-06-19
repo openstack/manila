@@ -3711,9 +3711,6 @@ FAKE_GET_CLUSTER_PEERS_REST = {
         {
             "name": CLUSTER_NAME,
             "uuid": "fake_uuid",
-            "ip_addresses": [
-                CLUSTER_ADDRESS_1,
-            ],
             "remote": {
                 "name": REMOTE_CLUSTER_NAME,
                 "serial_number": "fake_serial_number",

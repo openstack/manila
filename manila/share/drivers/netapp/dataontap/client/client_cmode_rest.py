@@ -4095,7 +4095,7 @@ class NetAppRestClient(object):
         """Gets one or more cluster peer relationships."""
 
         query = {
-            'fields': 'name,uuid,status.state,ip_addresses,remote.name,'
+            'fields': 'name,uuid,status.state,remote.name,'
                       'remote.ip_addresses,remote.serial_number',
         }
 
@@ -4112,7 +4112,7 @@ class NetAppRestClient(object):
                     remote.get('name') != remote_cluster_name):
                 continue
             cluster_peer = {
-                'active-addresses': peer.get('ip_addresses', []),
+                'active-addresses': remote.get('ip_addresses', []),
                 'peer-addresses': remote.get('ip_addresses', []),
                 'availability': peer.get('status', {}).get('state'),
                 'cluster-name': peer.get('name'),
