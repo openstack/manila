@@ -95,7 +95,7 @@ class API(object):
         "status": "ACTIVE",
         "subnets": ["fake_subnet_id"],
         "name": "fake_network",
-        "tenant_id": "fake_tenant_id",
+        "project_id": "fake_project_id",
         "shared": False,
         "id": "fake_id",
         "router:external": False,
@@ -106,7 +106,7 @@ class API(object):
         "allowed_address_pairs": [],
         "admin_state_up": True,
         "network_id": "fake_network_id",
-        "tenant_id": "fake_tenant_id",
+        "project_id": "fake_project_id",
         "extra_dhcp_opts": [],
         "device_owner": "fake",
         "binding:capabilities": {"port_filter": True},
@@ -122,20 +122,20 @@ class API(object):
 
     def get_all_admin_project_networks(self):
         net1 = self.network.copy()
-        net1['tenant_id'] = self.admin_project_id
+        net1['project_id'] = self.admin_project_id
         net1['id'] = uuidutils.generate_uuid()
 
         net2 = self.network.copy()
-        net2['tenant_id'] = self.admin_project_id
+        net2['project_id'] = self.admin_project_id
         net2['id'] = uuidutils.generate_uuid()
         return [net1, net2]
 
-    def create_port(self, tenant_id, network_id, subnet_id=None,
+    def create_port(self, project_id, network_id, subnet_id=None,
                     fixed_ip=None, device_owner=None, device_id=None):
         port = self.port.copy()
         port['network_id'] = network_id
         port['admin_state_up'] = True
-        port['tenant_id'] = tenant_id
+        port['project_id'] = project_id
         if fixed_ip:
             fixed_ip_dict = {'ip_address': fixed_ip}
             if subnet_id:
@@ -204,8 +204,8 @@ class API(object):
         network['id'] = network_uuid
         return network
 
-    def network_create(self, tenant_id, name):
+    def network_create(self, project_id, name):
         network = self.network.copy()
-        network['tenant_id'] = tenant_id
+        network['project_id'] = project_id
         network['name'] = name
         return network
