@@ -47,6 +47,9 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
 
         cifs_exist = self._client.cifs_share_exists(share_name)
         export_path = self._client.get_volume_junction_path(share_name)
+        if not export_path:
+            msg = _('Could not find junction path for share %s.')
+            raise exception.NetAppException(msg % share_name)
         if ensure_share_already_exists and not cifs_exist:
             msg = _("The expected CIFS share %(share_name)s was not found.")
             msg_args = {'share_name': share_name}

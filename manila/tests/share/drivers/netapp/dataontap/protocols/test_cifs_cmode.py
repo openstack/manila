@@ -78,6 +78,16 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
             self.mock_client.set_volume_security_style.assert_called_once_with(
                 fake.SHARE_NAME, security_style='ntfs')
 
+    def test_create_share_no_junction_path(self):
+
+        self.mock_client.cifs_share_exists.return_value = False
+        self.mock_client.get_volume_junction_path.return_value = ''
+
+        self.assertRaises(exception.NetAppException,
+                          self.helper.create_share,
+                          fake.CIFS_SHARE, fake.SHARE_NAME)
+        self.mock_client.create_cifs_share.assert_not_called()
+
     def test_create_share_ensure_not_exist_error(self):
 
         self.mock_client.cifs_share_exists.return_value = False

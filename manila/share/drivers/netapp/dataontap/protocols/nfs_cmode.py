@@ -22,6 +22,7 @@ from oslo_utils import netutils
 
 from manila.common import constants
 from manila import exception
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.protocols import base
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -67,6 +68,10 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
             export_path = volume_info['junction-path']
         else:
             export_path = self._client.get_volume_junction_path(share_name)
+
+        if not export_path:
+            msg = _('Could not find junction path for share %s.')
+            raise exception.NetAppException(msg % share_name)
 
         # Return a callback that may be used for generating export paths
         # for this share.

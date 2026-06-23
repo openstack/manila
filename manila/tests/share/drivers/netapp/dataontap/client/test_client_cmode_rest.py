@@ -1026,13 +1026,11 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                       body=body)])
 
     def test_get_volume_junction_path(self):
-        return_value = fake.GENERIC_EXPORT_POLICY_RESPONSE_AND_VOLUMES
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        return_value = {'nas': {'path': fake.VOLUME_JUNCTION_PATH}}
 
-        query = {
-            'name': fake.SHARE_NAME,
-            'fields': 'nas.path'
-        }
-
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
         self.mock_object(self.client, 'send_request',
                          mock.Mock(return_value=return_value))
 
@@ -1040,10 +1038,27 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         expected = fake.VOLUME_JUNCTION_PATH
 
-        self.client.send_request.assert_called_once_with('/storage/volumes/',
-                                                         'get', query=query)
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=fake.SHARE_NAME)
+        self.client.send_request.assert_called_once_with(
+            f'/storage/volumes/{volume["uuid"]}', 'get',
+            query={'fields': 'nas.path'})
 
         self.assertEqual(result, expected)
+
+    @ddt.data({}, {'nas': {}}, {'nas': {'path': ''}})
+    def test_get_volume_junction_path_not_found(self, return_value):
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=return_value))
+
+        result = self.client.get_volume_junction_path(fake.SHARE_NAME)
+
+        self.assertFalse(result)
+        client_cmode_rest.LOG.warning.assert_called_once()
 
     def test_get_volume_snapshot_attributes(self):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST

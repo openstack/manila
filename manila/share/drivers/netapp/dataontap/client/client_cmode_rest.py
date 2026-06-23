@@ -912,12 +912,24 @@ class NetAppRestClient(object):
     @na_utils.trace
     def get_volume_junction_path(self, volume_name, is_style_cifs=False):
         """Gets a volume junction path."""
+        volume = self._get_volume_by_args(vol_name=volume_name)
+        vol_uuid = volume['uuid']
+
         query = {
-            'name': volume_name,
             'fields': 'nas.path'
         }
-        result = self.send_request('/storage/volumes/', 'get', query=query)
-        return result['records'][0]['nas']['path']
+
+        # NOTE: Use the instance endpoint by UUID.
+        # /storage/volumes may omit nas.path in collection responses,
+        # while /storage/volumes/{uuid} returns it reliably.
+        result = self.send_request(
+            f'/storage/volumes/{vol_uuid}', 'get', query=query)
+
+        junction_path = result.get('nas', {}).get('path')
+        if not junction_path:
+            LOG.warning('Could not get junction path for volume %s: '
+                        'nas.path is empty.', volume_name)
+        return junction_path
 
     @na_utils.trace
     def get_volume_snapshot_attributes(self, volume_name):

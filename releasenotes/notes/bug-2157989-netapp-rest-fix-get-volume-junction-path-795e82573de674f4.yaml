@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+   `Bug #2157989 <https://launchpad.net/bugs/2157989>`_ has been
+    fixed where driver-assisted share server migration would fail
+    when using NetApp ONTAP's REST API client.
