@@ -488,7 +488,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.create_share(ctx, fake.SHARE, fake.SHARE_SERVER)
 
         mock_reconcile.assert_called_once_with(ctx, fake.SHARE_SERVER)
-        mock_super.assert_called_once_with(ctx, fake.SHARE, fake.SHARE_SERVER)
+        mock_super.assert_called_once_with(
+            ctx, fake.SHARE, fake.SHARE_SERVER)
         self.assertEqual('fake_export', result)
 
     def test_reconcile_dns_for_vserver_exceeds_cap(self):

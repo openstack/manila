@@ -268,6 +268,11 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                                                   fallback_delete,
                                                   share_server)
 
+    def delete_share_group(self, context, share_group_dict,
+                           share_server=None):
+        return self.library.delete_share_group(
+            context, share_group_dict, share_server)
+
     def create_share_group_from_share_group_snapshot(
             self, context, share_group_dict, snapshot_dict,
             share_server=None):

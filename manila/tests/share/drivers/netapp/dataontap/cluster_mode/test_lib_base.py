@@ -38,6 +38,7 @@ from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.client import rest_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import performance
@@ -3788,9 +3789,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_create_cgsnapshot(self):
 
         vserver_client = mock.Mock()
+        vserver_client.features.CG_SNAPSHOT = False
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
 
         result = self.library.create_cgsnapshot(
             self.context,
@@ -3810,6 +3815,86 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual((None, None), result)
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
+
+    def test_create_cgsnapshot_rest_existing_cg(self):
+        """CG-REST-001: REST path creates CG snapshot when CG exists."""
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        cg_client.get_cg_volume_names.return_value = set([
+            self.library._get_backend_share_name(
+                fake.CG_SNAPSHOT_MEMBER_1['share_id']),
+            self.library._get_backend_share_name(
+                fake.CG_SNAPSHOT_MEMBER_2['share_id']),
+        ])
+        cg_client.create_cg_snapshot.return_value = 'fake_cg_snap_uuid'
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(side_effect=lambda key, field=None: {
+                (fake.CONSISTENCY_GROUP_ID, 'cg_uuid'): 'fake_cg_uuid',
+            }.get((key, field))))
+        mock_update = self.mock_object(self.library.private_storage, 'update')
+
+        result = self.library.create_cgsnapshot(
+            self.context, fake.CG_SNAPSHOT,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertEqual((None, None), result)
+        snapshot_name = self.library._get_backend_cg_snapshot_name(
+            fake.CG_SNAPSHOT['id'])
+        cg_client.create_cg_snapshot.assert_called_once_with(
+            'fake_cg_uuid', snapshot_name)
+        mock_update.assert_called_once_with(
+            fake.CG_SNAPSHOT_ID, {'cg_snapshot_uuid': 'fake_cg_snap_uuid'})
+        self.assertFalse(vserver_client.create_cg_snapshot.called)
+
+    def test_create_cgsnapshot_rest_no_cg_creates_new(self):
+        """CG-REST-001: REST path creates CG and snapshot when no CG stored."""
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        cg_client.create_cg.return_value = 'new_cg_uuid'
+        cg_client.create_cg_snapshot.return_value = 'fake_cg_snap_uuid'
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
+        mock_update = self.mock_object(self.library.private_storage, 'update')
+        self.mock_object(
+            self.library, '_get_backend_cg_name',
+            mock.Mock(return_value='fake_cg_name'))
+
+        result = self.library.create_cgsnapshot(
+            self.context, fake.CG_SNAPSHOT,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertEqual((None, None), result)
+        share_names = [
+            self.library._get_backend_share_name(
+                fake.CG_SNAPSHOT_MEMBER_1['share_id']),
+            self.library._get_backend_share_name(
+                fake.CG_SNAPSHOT_MEMBER_2['share_id']),
+        ]
+        self.assertFalse(cg_client.get_cg_uuid.called)
+        cg_client.create_cg.assert_called_once_with(
+            'fake_cg_name', share_names)
+        snapshot_name = self.library._get_backend_cg_snapshot_name(
+            fake.CG_SNAPSHOT['id'])
+        cg_client.create_cg_snapshot.assert_called_once_with(
+            'new_cg_uuid', snapshot_name)
+        mock_update.assert_any_call(
+            fake.CONSISTENCY_GROUP_ID, {'cg_uuid': 'new_cg_uuid'})
+        mock_update.assert_any_call(
+            fake.CG_SNAPSHOT_ID, {'cg_snapshot_uuid': 'fake_cg_snap_uuid'})
 
     def test_create_cgsnapshot_no_members(self):
 
@@ -3834,11 +3919,15 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_delete_cgsnapshot(self):
 
         vserver_client = mock.Mock()
+        vserver_client.features.CG_SNAPSHOT = False
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
         mock_delete_snapshot = self.mock_object(self.library,
                                                 '_delete_snapshot')
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
 
         result = self.library.delete_cgsnapshot(
             self.context,
@@ -3861,6 +3950,61 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual((None, None), result)
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
+
+    def test_delete_cgsnapshot_rest(self):
+        """CG-REST-002: REST path deletes CG snapshot by UUID."""
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(side_effect=lambda key, field=None: {
+                (fake.CONSISTENCY_GROUP_ID, 'cg_uuid'): 'fake_cg_uuid',
+                (fake.CG_SNAPSHOT_ID, 'cg_snapshot_uuid'): 'fake_snap_uuid',
+            }.get((key, field))))
+        mock_ps_delete = self.mock_object(
+            self.library.private_storage, 'delete')
+
+        result = self.library.delete_cgsnapshot(
+            self.context, fake.CG_SNAPSHOT,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertEqual((None, None), result)
+        cg_client.delete_cg_snapshot.assert_called_once_with(
+            'fake_cg_uuid', 'fake_snap_uuid')
+        mock_ps_delete.assert_called_once_with(
+            fake.CG_SNAPSHOT_ID, 'cg_snapshot_uuid')
+
+    def test_delete_cgsnapshot_rest_falls_through_for_pre_upgrade(self):
+        """CG-REST-002: Falls through to per-vol delete for old snapshots."""
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        # No cg_snapshot_uuid stored (pre-upgrade snapshot)
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
+        mock_delete_snapshot = self.mock_object(self.library,
+                                                '_delete_snapshot')
+
+        result = self.library.delete_cgsnapshot(
+            self.context, fake.CG_SNAPSHOT,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertEqual((None, None), result)
+        self.assertFalse(cg_client.delete_cg_snapshot.called)
+        # Falls through to per-volume deletion
+        self.assertTrue(mock_delete_snapshot.called)
 
     def test_delete_cgsnapshot_no_members(self):
 
@@ -3887,6 +4031,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_delete_cgsnapshot_snapshots_not_found(self):
 
         vserver_client = mock.Mock()
+        vserver_client.features.CG_SNAPSHOT = False
         mock_get_vserver = self.mock_object(
             self.library, '_get_vserver',
             mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
@@ -3894,6 +4039,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library, '_delete_snapshot',
             mock.Mock(side_effect=exception.SnapshotResourceNotFound(
                 name='fake')))
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
 
         result = self.library.delete_cgsnapshot(
             self.context,
@@ -3936,6 +4084,204 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(1, lib_base.LOG.warning.call_count)
         mock_get_vserver.assert_called_once_with(
             share_server=fake.SHARE_SERVER)
+
+    def test__get_backend_cg_name(self):
+        fake_ts = 1753000000000000
+        mock_utcnow = self.mock_object(
+            timeutils, 'utcnow',
+            mock.Mock(return_value=mock.Mock(
+                timestamp=mock.Mock(return_value=fake_ts / 1e6))))
+
+        result = self.library._get_backend_cg_name()
+
+        self.assertEqual('cg_share_1753000000000000', result)
+        mock_utcnow.assert_called_once()
+
+    def test__get_or_create_cg_uuid_existing(self):
+
+        cg_client = mock.Mock()
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value='fake_cg_uuid'))
+        mock_update = self.mock_object(
+            self.library.private_storage, 'update')
+
+        result = self.library._get_or_create_cg_uuid(
+            'fake_sg_id', ['vol1', 'vol2'], cg_client)
+
+        self.assertEqual('fake_cg_uuid', result)
+        self.assertFalse(cg_client.create_cg.called)
+        self.assertFalse(mock_update.called)
+
+    def test__get_or_create_cg_uuid_create(self):
+
+        cg_client = mock.Mock()
+        cg_client.create_cg.return_value = 'new_cg_uuid'
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
+        mock_update = self.mock_object(
+            self.library.private_storage, 'update')
+        self.mock_object(
+            self.library, '_get_backend_cg_name',
+            mock.Mock(return_value='cg_share_123'))
+
+        result = self.library._get_or_create_cg_uuid(
+            'fake_sg_id', ['vol1', 'vol2'], cg_client)
+
+        self.assertEqual('new_cg_uuid', result)
+        self.assertFalse(cg_client.get_cg_uuid.called)
+        cg_client.create_cg.assert_called_once_with(
+            'cg_share_123', ['vol1', 'vol2'])
+        mock_update.assert_called_once_with(
+            'fake_sg_id', {'cg_uuid': 'new_cg_uuid'})
+
+    def test_delete_share_group_with_cg(self):
+
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value='fake_cg_uuid'))
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        mock_delete = self.mock_object(
+            self.library.private_storage, 'delete')
+
+        result = self.library.delete_share_group(
+            self.context, fake.CONSISTENCY_GROUP,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertIsNone(result)
+        cg_client.delete_cg.assert_called_once_with('fake_cg_uuid')
+        mock_delete.assert_called_once_with(fake.CONSISTENCY_GROUP['id'])
+
+    def test_delete_share_group_no_cg(self):
+
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
+        mock_get_vserver = self.mock_object(self.library, '_get_vserver')
+
+        result = self.library.delete_share_group(
+            self.context, fake.CONSISTENCY_GROUP,
+            share_server=fake.SHARE_SERVER)
+
+        self.assertIsNone(result)
+        self.assertFalse(mock_get_vserver.called)
+
+    def test__add_share_to_group_no_cg_client(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.features.CG_SNAPSHOT = False
+        mock_lock = self.mock_object(lib_base.coordination, 'Lock')
+
+        self.library._add_share_to_group(
+            fake.SHARE, 'fake_sg_id', vserver_client,
+            vserver=fake.VSERVER1)
+
+        self.assertFalse(mock_lock.called)
+
+    def test__add_share_to_group_existing_cg(self):
+
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(lib_base.coordination, 'Lock', mock.MagicMock())
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value='fake_cg_uuid'))
+
+        self.library._add_share_to_group(
+            fake.SHARE, 'fake_sg_id', vserver_client,
+            vserver=fake.VSERVER1)
+
+        volume_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        cg_client.add_volumes_to_cg.assert_called_once_with(
+            'fake_cg_uuid', [volume_name])
+
+    def test__add_share_to_group_stale_cg_uuid_recreates_cg(self):
+        """If stored CG UUID is gone from ONTAP, clear it and create new CG."""
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        cg_client.add_volumes_to_cg.side_effect = (
+            netapp_api.NaApiError(code=rest_api.EREST_CG_NOT_FOUND))
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(lib_base.coordination, 'Lock', mock.MagicMock())
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value='stale_cg_uuid'))
+        mock_delete = self.mock_object(self.library.private_storage, 'delete')
+        mock_create = self.mock_object(
+            self.library, '_get_or_create_cg_uuid')
+
+        self.library._add_share_to_group(
+            fake.SHARE, 'fake_sg_id', vserver_client,
+            vserver=fake.VSERVER1)
+
+        mock_delete.assert_called_once_with('fake_sg_id', 'cg_uuid')
+        volume_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        mock_create.assert_called_once_with('fake_sg_id', [volume_name],
+                                            cg_client)
+
+    def test__add_share_to_group_creates_cg(self):
+
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(lib_base.coordination, 'Lock', mock.MagicMock())
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
+        mock_create = self.mock_object(
+            self.library, '_get_or_create_cg_uuid')
+
+        self.library._add_share_to_group(
+            fake.SHARE, 'fake_sg_id', vserver_client,
+            vserver=fake.VSERVER1)
+
+        volume_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        mock_create.assert_called_once_with(
+            'fake_sg_id', [volume_name], cg_client)
+
+    def test__add_share_to_group_creates_cg_with_existing_members(self):
+
+        vserver_client = mock.Mock()
+        cg_client = mock.Mock()
+        other_instance_id = 'other-instance-id-1234'
+        existing_members = [
+            {'id': other_instance_id},
+            {'id': fake.SHARE['id']},  # current share — must be filtered
+        ]
+        self.mock_object(
+            self.library, '_get_rest_client_for_cg_operations',
+            mock.Mock(return_value=cg_client))
+        self.mock_object(lib_base.coordination, 'Lock', mock.MagicMock())
+        self.mock_object(
+            self.library.private_storage, 'get',
+            mock.Mock(return_value=None))
+        mock_create = self.mock_object(
+            self.library, '_get_or_create_cg_uuid')
+
+        self.library._add_share_to_group(
+            fake.SHARE, 'fake_sg_id', vserver_client,
+            vserver=fake.VSERVER1, share_group_members=existing_members)
+
+        volume_name = self.library._get_backend_share_name(fake.SHARE['id'])
+        other_volume_name = self.library._get_backend_share_name(
+            other_instance_id)
+        mock_create.assert_called_once_with(
+            'fake_sg_id', [other_volume_name, volume_name], cg_client)
 
     def test_adjust_qos_policy_with_volume_resize_no_cluster_creds(self):
         self.library._have_cluster_creds = False

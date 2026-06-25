@@ -705,7 +705,16 @@ class ShareDriver(object):
         return self.configuration.safe_get('share_unmount_template')
 
     def create_share(self, context, share, share_server=None):
-        """Is called to create share."""
+        """Is called to create share.
+
+        :param context: The request context.
+        :param share: The share model. When the share belongs to a share group,
+            the model may include a ``share_group_members`` key containing a
+            list of all share instances currently in the group. Drivers can
+            use this to maintain backend group-level constructs (e.g. a
+            consistency group) when a new member is added.
+        :param share_server: The share server model or None.
+        """
         raise NotImplementedError()
 
     def create_share_from_snapshot(self, context, share, snapshot,

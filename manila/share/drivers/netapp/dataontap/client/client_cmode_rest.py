@@ -140,6 +140,7 @@ class NetAppRestClient(object):
             self.get_ontap_version(cached=True)['version-tuple'] >= (9, 19, 1))
         self.features.add_feature('AUTOSIZE_RESET_REST',
                                   supported=ontap_9_19_1)
+        self.features.add_feature('CG_SNAPSHOT', supported=True)
 
     @na_utils.trace
     def is_svm_dr_supported(self):
@@ -350,6 +351,112 @@ class NetAppRestClient(object):
             return False
         else:
             return True
+
+    @na_utils.trace
+    def create_cg(self, cg_name, volume_names):
+        """Create a consistency group on ONTAP via REST."""
+        body = {
+            'name': cg_name,
+            'svm': {'name': self.vserver},
+            'volumes': [
+                {'name': volume_name,
+                 'provisioning_options': {'action': 'add'}}
+                for volume_name in volume_names
+            ],
+        }
+        self.send_request('/application/consistency-groups', 'post', body=body)
+        return self._get_cg_uuid(cg_name)
+
+    @na_utils.trace
+    def _get_cg_uuid(self, cg_name):
+        """Look up a consistency group UUID by name."""
+        query = {
+            'name': cg_name,
+            'svm.name': self.vserver,
+        }
+        result = self.send_request('/application/consistency-groups', 'get',
+                                   query=query)
+        if not self._has_records(result):
+            msg = _('Consistency group %s was not found on the backend.')
+            raise exception.NetAppException(msg % cg_name)
+        return result['records'][0]['uuid']
+
+    @na_utils.trace
+    def get_cg_volume_names(self, cg_uuid):
+        """Return the set of FlexVol names currently in a consistency group."""
+        query = {'fields': 'volumes.name'}
+        result = self.send_request(
+            '/application/consistency-groups/%s' % cg_uuid, 'get', query=query)
+        if not result:
+            return set()
+        return {volume['name'] for volume in result.get('volumes', [])}
+
+    @na_utils.trace
+    def add_volumes_to_cg(self, cg_uuid, volume_names):
+        """Add existing FlexVols to a consistency group via PATCH."""
+        if not volume_names:
+            return
+
+        body = {
+            'volumes': [
+                {'name': volume_name,
+                 'provisioning_options': {'action': 'add'}}
+                for volume_name in volume_names
+            ],
+        }
+        self.send_request('/application/consistency-groups/%s' % cg_uuid,
+                          'patch', body=body)
+        LOG.debug('Added volumes %(vols)s to consistency group %(uuid)s.',
+                  {'vols': volume_names, 'uuid': cg_uuid})
+
+    @na_utils.trace
+    def create_cg_snapshot(self, cg_uuid, snapshot_name):
+        """Create a crash-consistent snapshot of a consistency group."""
+        body = {
+            'name': snapshot_name,
+            'consistency_type': 'crash',
+        }
+        self.send_request(
+            '/application/consistency-groups/%s/snapshots' % cg_uuid, 'post',
+            body=body)
+
+        query = {'name': snapshot_name, 'fields': 'uuid'}
+        result = self.send_request(
+            '/application/consistency-groups/%s/snapshots' % cg_uuid, 'get',
+            query=query)
+        if not self._has_records(result):
+            msg = _('Consistency group snapshot %s was not found after '
+                    'creation.')
+            raise exception.NetAppException(msg % snapshot_name)
+        return result['records'][0]['uuid']
+
+    @na_utils.trace
+    def delete_cg_snapshot(self, cg_uuid, snapshot_uuid):
+        """Delete a consistency group snapshot (404 is treated as success)."""
+        try:
+            self.send_request(
+                '/application/consistency-groups/%s/snapshots/%s'
+                % (cg_uuid, snapshot_uuid), 'delete')
+        except netapp_api.api.NaApiError as e:
+            if e.code == netapp_api.EREST_ENTRY_NOT_FOUND:
+                LOG.warning('Consistency group snapshot %s was already '
+                            'deleted.', snapshot_uuid)
+            else:
+                raise
+
+    @na_utils.trace
+    def delete_cg(self, cg_uuid):
+        """Delete a consistency group (member volumes are not deleted)."""
+        try:
+            self.send_request(
+                '/application/consistency-groups/%s' % cg_uuid, 'delete')
+        except netapp_api.api.NaApiError as e:
+            if e.code in (netapp_api.EREST_ENTRY_NOT_FOUND,
+                          netapp_api.EREST_CG_NOT_FOUND):
+                LOG.warning('Consistency group %s was already deleted.',
+                            cg_uuid)
+            else:
+                raise
 
     @na_utils.trace
     def get_licenses(self):
@@ -2621,7 +2728,7 @@ class NetAppRestClient(object):
         try:
             self.send_request(f'/storage/volumes/{uuid}', 'patch',
                               body=body, wait_on_accepted=False)
-        except netapp_api.NaApiError as e:
+        except netapp_api.api.NaApiError as e:
             if e.code in (netapp_api.EVOLUMEDOESNOTEXIST,
                           netapp_api.EVOLNOTCLONE,
                           netapp_api.EVOLOPNOTUNDERWAY):
@@ -2677,7 +2784,7 @@ class NetAppRestClient(object):
                                  DELETED_PREFIX + snapshot_name)
             msg = _('Soft-deleted snapshot %(snap)s on volume %(vol)s.')
             LOG.info(msg, msg_args)
-        except netapp_api.NaApiError as e:
+        except netapp_api.api.NaApiError as e:
             if e.code == netapp_api.EREST_SNAPSHOT_NOT_FOUND:
                 msg = _('Snapshot %(snap)s on volume %(vol)s not found.')
                 LOG.debug(msg, msg_args)
@@ -2696,7 +2803,7 @@ class NetAppRestClient(object):
         """Deletes a volume snapshot, or renames & splits if delete fails."""
         try:
             self.delete_snapshot(volume_name, snapshot_name)
-        except netapp_api.NaApiError:
+        except netapp_api.api.NaApiError:
             self.rename_snapshot_and_split_clones(volume_name, snapshot_name)
 
     @na_utils.trace
@@ -6609,7 +6716,7 @@ class NetAppRestClient(object):
 
         try:
             self._delete_port_and_broadcast_domains_for_ipspace(ipspace_name)
-        except netapp_api.NaApiError as e:
+        except netapp_api.api.NaApiError as e:
             msg = _('Broadcast Domains of IPspace %s not deleted. '
                     'Reason: %s') % (ipspace_name, e)
             LOG.warning(msg)
@@ -6620,7 +6727,7 @@ class NetAppRestClient(object):
         }
         try:
             self.send_request('/network/ipspaces', 'delete', query=query)
-        except netapp_api.NaApiError as e:
+        except netapp_api.api.NaApiError as e:
             msg = _('IPspace %s not deleted. Reason: %s') % (ipspace_name, e)
             LOG.warning(msg)
             return False

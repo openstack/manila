@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: add REST-based consistency group snapshot lifecycle
+    for share groups on ONTAP >= 9.11.1.
