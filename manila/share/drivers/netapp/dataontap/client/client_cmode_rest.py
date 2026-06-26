@@ -275,22 +275,28 @@ class NetAppRestClient(object):
         }
 
         try:
-            response = self.send_request('/cluster/nodes', 'get', query=query,
+            # NOTE: Unlike collection endpoints such as /cluster/nodes, the
+            # /cluster endpoint returns a single object, so the version is
+            # read directly from the response instead of from 'records'. On
+            # the supported ONTAP releases (9.12.1+) this endpoint is also
+            # reachable by SVM-scoped accounts; the /private/cli fallback
+            # below covers older releases that deny SVM access to /cluster.
+            response = self.send_request('/cluster', 'get', query=query,
                                          enable_tunneling=False)
-            records = response.get('records')[0]
 
             return {
-                'version': records['version']['full'],
-                'version-tuple': (records['version']['generation'],
-                                  records['version']['major'],
-                                  records['version']['minor']),
+                'version': response['version']['full'],
+                'version-tuple': (response['version']['generation'],
+                                  response['version']['major'],
+                                  response['version']['minor']),
             }
         except netapp_api.api.NaApiError as e:
             if e.code != netapp_api.EREST_NOT_AUTHORIZED:
                 raise
 
-            # NOTE(nahimsouza): SVM scoped account is not authorized to access
-            # the /cluster/nodes endpoint, that's why we use /private/cli
+            # NOTE: Older ONTAP versions might not authorize an
+            # SVM scoped account to access the /cluster endpoint, that's why
+            # we keep /private/cli as a safety net fallback.
 
             response = self.send_request('/private/cli/version', 'get',
                                          query=query)

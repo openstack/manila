@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver: the ONTAP version is now retrieved through the
+    ``/cluster`` REST endpoint, which is reachable by both cluster-scoped and
+    SVM-scoped accounts, instead of ``/cluster/nodes``, which SVM-scoped
+    accounts are not authorized to access. The ``/private/cli`` endpoint is
+    retained only as a fallback for older releases.

@@ -3762,6 +3762,16 @@ FAKE_GET_CLUSTER_PEERS_REST = {
     ],
 }
 
+FAKE_GET_ONTAP_VERSION_CLI_REST = {
+    "records": [
+        {
+            "version": {
+                "full": VERSION,
+            }
+        }
+    ],
+}
+
 FAKE_GET_LICENSES_REST = {
     "records": [
         {
