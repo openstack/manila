@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `Bug #2156345 <https://launchpad.net/bugs/2156345>`_: Fixed two issues
+    in the NetApp ONTAP REST driver. First, ``modify_volume`` for FlexVol
+    no longer passes the target aggregate to the volume lookup, which
+    previously caused failures when cloning across pools. Second,
+    ``volume_clone_split_status`` now handles a null
+    ``clone.split_complete_percent`` from ONTAP without raising a TypeError.

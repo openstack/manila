@@ -2529,6 +2529,10 @@ class NetAppRestClient(object):
 
         vol = response.get('records')[0]
         percent = vol.get('clone.split_complete_percent')
+        if percent is None:
+            # ONTAP returns null for clone.split_complete_percent when
+            # split has not been initiated or has already completed.
+            return na_utils.CLONE_SPLIT_STATUS_UNKNOWN
         try:
             if int(percent) < 100:
                 return na_utils.CLONE_SPLIT_STATUS_ONGOING
@@ -3093,8 +3097,14 @@ class NetAppRestClient(object):
             is_flexgroup = False
             aggregates = aggregate_name
 
+        # For FlexVol, do not filter by aggregate when looking up the volume.
+        # After a FlexClone creation, the volume resides on the parent's
+        # aggregate which may differ from the destination aggregate (e.g.
+        # cross-pool snapshot creation). For FlexGroup, the aggregate list
+        # is needed to correctly identify the volume.
+        lookup_aggregate = aggregates if is_flexgroup else None
         volume = self._get_volume_by_args(vol_name=volume_name,
-                                          aggregate_name=aggregates)
+                                          aggregate_name=lookup_aggregate)
 
         self.send_request('/storage/volumes/' + volume['uuid'],
                           'patch', body=body)

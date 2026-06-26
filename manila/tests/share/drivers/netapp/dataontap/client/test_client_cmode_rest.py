@@ -2507,6 +2507,47 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             f'/storage/volumes/{fake_uuid}', 'patch', body=body,
             wait_on_accepted=False)
 
+    def test_volume_clone_split_status_not_found(self):
+        """Volume not found => CLONE_SPLIT_STATUS_FINISHED."""
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value={'num_records': 0,
+                                                 'records': []}))
+        result = self.client.volume_clone_split_status(fake.VOLUME_NAMES[0])
+        self.assertEqual(netapp_utils.CLONE_SPLIT_STATUS_FINISHED, result)
+
+    def test_volume_clone_split_status_none_percent(self):
+        """split_complete_percent=None => UNKNOWN without raising."""
+        resp = {'num_records': 1,
+                'records': [{'name': fake.VOLUME_NAMES[0]}]}
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=resp))
+        result = self.client.volume_clone_split_status(fake.VOLUME_NAMES[0])
+        self.assertEqual(netapp_utils.CLONE_SPLIT_STATUS_UNKNOWN, result)
+
+    def test_volume_clone_split_status_ongoing(self):
+        """split_complete_percent < 100 => CLONE_SPLIT_STATUS_ONGOING."""
+        resp = {'num_records': 1,
+                'records': [
+                    {'name': fake.VOLUME_NAMES[0],
+                     'clone.split_complete_percent': 42}
+                ]}
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=resp))
+        result = self.client.volume_clone_split_status(fake.VOLUME_NAMES[0])
+        self.assertEqual(netapp_utils.CLONE_SPLIT_STATUS_ONGOING, result)
+
+    def test_volume_clone_split_status_finished(self):
+        """split_complete_percent == 100 => CLONE_SPLIT_STATUS_FINISHED."""
+        resp = {'num_records': 1,
+                'records': [
+                    {'name': fake.VOLUME_NAMES[0],
+                     'clone.split_complete_percent': 100}
+                ]}
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=resp))
+        result = self.client.volume_clone_split_status(fake.VOLUME_NAMES[0])
+        self.assertEqual(netapp_utils.CLONE_SPLIT_STATUS_FINISHED, result)
+
     def test_rename_snapshot(self):
         volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
         mock_get_volume = self.mock_object(
@@ -2903,6 +2944,28 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         }
         self.client.send_request.assert_called_once_with(
             '/storage/volumes/' + volume['uuid'], 'patch', body=body)
+
+    def test_modify_volume_flexvol_lookup_ignores_aggregate(self):
+        """FlexVol clone-to-different-pool.
+
+        Aggregate must NOT be passed to _get_volume_by_args so the volume
+        is found on its current aggregate.
+        """
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+        self.mock_object(self.client, '_is_snaplock_enabled_volume',
+                         mock.Mock(return_value=False))
+        volume = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
+        mock_get_volume = self.mock_object(
+            self.client, '_get_volume_by_args',
+            mock.Mock(return_value=volume))
+
+        self.client.modify_volume(fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME)
+
+        # aggregate_name must be None for FlexVol so the lookup succeeds
+        # even when the clone still resides on the source aggregate.
+        mock_get_volume.assert_called_once_with(
+            vol_name=fake.SHARE_NAME, aggregate_name=None)
 
     def test__parse_timestamp(self):
         test_time_str = '2022-11-25T14:41:20+00:00'
