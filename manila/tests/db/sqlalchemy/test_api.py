@@ -2077,6 +2077,54 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             self.ctxt, filters)
         self.assertEqual(4, len(instances))
 
+    def test_share_snapshot_instance_get_all_with_filters_host(self):
+        host_a = 'node@backend1'
+        host_b = 'node@backend2'
+        si_a1 = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE,
+            share_id='fake_share_id_host_a1',
+            host=host_a)
+        si_a2 = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE,
+            share_id='fake_share_id_host_a2',
+            host='%s#pool1' % host_a)
+        si_b = db_utils.create_share_instance(
+            status=constants.STATUS_AVAILABLE,
+            share_id='fake_share_id_host_b',
+            host=host_b)
+        share_a1 = db_utils.create_share(
+            id='fake_share_id_host_a1', instances=[si_a1])
+        share_a2 = db_utils.create_share(
+            id='fake_share_id_host_a2', instances=[si_a2])
+        share_b = db_utils.create_share(
+            id='fake_share_id_host_b', instances=[si_b])
+        snap_a1 = db_utils.create_snapshot(
+            id='snap_host_a1', share_id=share_a1['id'])
+        snap_a2 = db_utils.create_snapshot(
+            id='snap_host_a2', share_id=share_a2['id'])
+        snap_b = db_utils.create_snapshot(
+            id='snap_host_b', share_id=share_b['id'])
+        si_a1_snap = db_utils.create_snapshot_instance(
+            snap_a1['id'],
+            status=constants.STATUS_DELETING,
+            share_instance_id=si_a1['id'])
+        si_a2_snap = db_utils.create_snapshot_instance(
+            snap_a2['id'],
+            status=constants.STATUS_DELETING,
+            share_instance_id=si_a2['id'])
+        db_utils.create_snapshot_instance(
+            snap_b['id'],
+            status=constants.STATUS_DELETING,
+            share_instance_id=si_b['id'])
+
+        instances = db_api.share_snapshot_instance_get_all_with_filters(
+            self.ctxt, {'host': host_a, 'statuses': constants.STATUS_DELETING})
+
+        instance_ids = [i['id'] for i in instances]
+        self.assertEqual(2, len(instances))
+        self.assertIn(si_a1_snap['id'], instance_ids)
+        self.assertIn(si_a2_snap['id'], instance_ids)
+
     def test_share_snapshot_instance_create(self):
         snapshot = db_utils.create_snapshot(with_share=True)
         share = snapshot['share']
