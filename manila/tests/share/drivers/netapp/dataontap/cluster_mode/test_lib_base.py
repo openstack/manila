@@ -442,7 +442,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._have_cluster_creds = True
         self.mock_object(self.library._client,
                          'get_node_for_aggregate',
-                         mock.Mock(return_value=fake.CLUSTER_NODE))
+                         mock.Mock(return_value={
+                             'home_node': fake.CLUSTER_NODE,
+                             'owner_node': 'fake_owner'
+                         }))
 
         result = self.library._get_aggregate_node(fake.AGGREGATE)
 

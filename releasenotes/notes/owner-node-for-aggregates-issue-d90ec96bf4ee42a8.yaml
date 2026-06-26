@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Added `get_owner_node_for_aggregate()` function to both ZAPI and
+    REST API clients to retrieve the current owner node of an aggregate
+    instead of only the home node. This distinction is critical in
+    failover scenarios where the aggregate owner may differ from its
+    home node. Updated the performance library to use the owner node
+    instead of the home node when retrieving performance data

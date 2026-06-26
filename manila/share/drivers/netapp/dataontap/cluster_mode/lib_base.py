@@ -464,11 +464,14 @@ class NetAppCmodeFileStorageLibrary(object):
     def _get_aggregate_node(self, aggregate_name, cluster_client=None):
         """Get home node for the specified aggregate, or None."""
         if cluster_client:
-            return cluster_client.get_node_for_aggregate(aggregate_name)
+            node_info = cluster_client.get_node_for_aggregate(aggregate_name)
         elif self._have_cluster_creds:
-            return self._client.get_node_for_aggregate(aggregate_name)
+            node_info = self._client.get_node_for_aggregate(aggregate_name)
         else:
             return None
+        if node_info:
+            return node_info.get('home_node')
+        return None
 
     def get_default_filter_function(self, pool=None):
         """Get the default filter_function string."""

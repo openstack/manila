@@ -596,7 +596,7 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def get_node_for_aggregate(self, aggregate_name):
-        """Get home node for the specified aggregate.
+        """Get home and owner node for the specified aggregate.
 
         This API could return None, most notably if it was sent
         to a Vserver LIF, so the caller must be able to handle that case.
@@ -605,20 +605,34 @@ class NetAppRestClient(object):
         if not aggregate_name:
             return None
 
-        fields = 'name,home_node.name'
+        fields = 'name,home_node.name,node.name'
 
         try:
             aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
                                          fields=fields)
         except netapp_api.api.NaApiError as e:
             if e.code == netapp_api.EREST_NOT_AUTHORIZED:
-                LOG.debug("Could not get the home node of aggregate %s: "
+                LOG.debug("Could not get the nodes of aggregate %s: "
                           "command not authorized.", aggregate_name)
                 return None
             else:
                 raise
 
-        return aggrs[0]['home_node']['name'] if aggrs else None
+        if not aggrs:
+            return None
+        aggr = aggrs[0]
+        home_node = None
+        owner_node = None
+
+        if (aggr.get('home_node') and aggr['home_node'].get('name')
+                and aggr.get('node') and aggr['node'].get('name')):
+            home_node = aggr['home_node']['name']
+            owner_node = aggr['node']['name']
+
+        return {
+            'home_node': home_node,
+            'owner_node': owner_node,
+        }
 
     @na_utils.trace
     def get_aggregate_disk_types(self, aggregate_name):

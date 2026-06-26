@@ -1275,6 +1275,42 @@ AGGR_GET_NODE_RESPONSE = etree.XML("""
     'node': NODE_NAME
 })
 
+AGGR_GET_OWNER_NODE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-ownership-attributes>
+          <owner-name>%(node)s</owner-name>
+        </aggr-ownership-attributes>
+        <aggregate-name>%(aggr)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'node': NODE_NAME
+})
+
+AGGR_GET_OWNER_NODE_FAILOVER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-ownership-attributes>
+          <owner-name>%(owner_node)s</owner-name>
+          <home-name>%(home_node)s</home-name>
+        </aggr-ownership-attributes>
+        <aggregate-name>%(aggr)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'owner_node': NODE_NAME2,
+    'home_node': NODE_NAME
+})
+
 AGGR_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -3805,6 +3841,9 @@ AGGR_GET_ITER_RESPONSE_REST = {
         {
             "uuid": "fake_uuid_1",
             "name": "fake_aggr1",
+            "node": {
+                "name": "fake_owner_node_name"
+            },
             "home_node": {
                 "name": "fake_home_node_name"
             },
@@ -3906,6 +3945,35 @@ AGGR_GET_ITER_RESPONSE_REST = {
         }
     ],
     "num_records": 2,
+}
+
+AGGR_GET_OWNER_NODE_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid_1",
+            "name": "fake_aggr1",
+            "node": {
+                "name": NODE_NAME
+            },
+        }
+    ],
+    "num_records": 1,
+}
+
+AGGR_GET_OWNER_NODE_FAILOVER_RESPONSE_REST = {
+    "records": [
+        {
+            "uuid": "fake_uuid_1",
+            "name": "fake_aggr1",
+            "node": {
+                "name": NODE_NAME2
+            },
+            "home_node": {
+                "name": NODE_NAME
+            },
+        }
+    ],
+    "num_records": 1,
 }
 
 EFFECTIVE_TYPE = 'fake_effective_type1'
