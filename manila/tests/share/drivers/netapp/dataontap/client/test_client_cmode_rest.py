@@ -2352,8 +2352,36 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertTrue(flexgroup_supported)
 
+    def test_is_svm_dr_supported(self):
+        self.assertTrue(self.client.is_svm_dr_supported())
+
+    def test_is_svm_migrate_supported(self):
+        self.assertTrue(self.client.is_svm_migrate_supported())
+
     def test_reset_volume_autosize(self):
-        """Test reset_volume_autosize method."""
+        """Test reset_volume_autosize uses public REST API on >= 9.19.1."""
+        self.client.features.add_feature('AUTOSIZE_RESET_REST', supported=True)
+        volume = fake.VOLUME
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        mock_sr = self.mock_object(self.client, 'send_request')
+
+        volume_name = fake.VOLUME_NAMES[0]
+        vserver_name = fake.VSERVER_NAME
+
+        self.client.reset_volume_autosize(volume_name, vserver_name)
+
+        self.client._get_volume_by_args.assert_called_once_with(
+            vol_name=volume_name)
+        expected_body = {'autosize': {'reset': True}}
+        mock_sr.assert_called_once_with(
+            '/storage/volumes/' + volume['uuid'], 'patch',
+            body=expected_body)
+
+    def test_reset_volume_autosize_legacy(self):
+        """Test reset_volume_autosize uses private CLI on ONTAP < 9.19.1."""
+        self.client.features.add_feature('AUTOSIZE_RESET_REST',
+                                         supported=False)
         mock_sr = self.mock_object(self.client, 'send_request')
 
         volume_name = fake.VOLUME_NAMES[0]
@@ -2362,20 +2390,23 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.client.reset_volume_autosize(volume_name, vserver_name)
 
         expected_query = {
-            "vserver": vserver_name,
-            "volume": volume_name
+            'vserver': vserver_name,
+            'volume': volume_name,
         }
-        expected_body = {
-            "autosize-reset": "true"
-        }
-
+        expected_body = {'autosize-reset': 'true'}
         mock_sr.assert_called_once_with(
             '/private/cli/volume', 'patch',
             query=expected_query, body=expected_body)
 
-    def test_reset_volume_autosize_api_error(self):
-        """Test reset_volume_autosize method handles API errors."""
-        mock_sr = self.mock_object(
+    @ddt.data(True, False)
+    def test_reset_volume_autosize_api_error(self, use_public_api):
+        """Test reset_volume_autosize raises on API errors."""
+        self.client.features.add_feature('AUTOSIZE_RESET_REST',
+                                         supported=use_public_api)
+        volume = fake.VOLUME
+        self.mock_object(self.client, '_get_volume_by_args',
+                         mock.Mock(return_value=volume))
+        self.mock_object(
             self.client, 'send_request',
             mock.Mock(side_effect=netapp_api.api.NaApiError(
                 code='fake_code', message='fake_message')))
@@ -2388,7 +2419,44 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             self.client.reset_volume_autosize,
             volume_name, vserver_name)
 
-        self.assertTrue(mock_sr.called)
+        self.assertTrue(self.client.send_request.called)
+
+    def test_get_volume_autosize_attributes(self):
+        volume_name = fake.VOLUME_NAMES[0]
+        mock_get_volume = self.mock_object(
+            self.client, '_get_volume_by_args',
+            mock.Mock(return_value={'uuid': fake.FAKE_UUID}))
+        mock_sr = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.VOLUME_AUTOSIZE_RECORD_REST))
+
+        result = self.client.get_volume_autosize_attributes(volume_name)
+
+        mock_get_volume.assert_called_once_with(vol_name=volume_name)
+        mock_sr.assert_called_once_with(
+            f'/storage/volumes/{fake.FAKE_UUID}', 'get',
+            query={'fields': 'autosize'})
+        self.assertEqual(fake.VOLUME_AUTOSIZE_ATTRS_REST, result)
+
+    def test_get_volume_autosize_attributes_missing(self):
+        volume_name = fake.VOLUME_NAMES[0]
+        self.mock_object(
+            self.client, '_get_volume_by_args',
+            mock.Mock(return_value={'uuid': fake.FAKE_UUID}))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value={'uuid': fake.FAKE_UUID}))
+
+        result = self.client.get_volume_autosize_attributes(volume_name)
+
+        expected = {
+            'mode': None,
+            'grow-threshold-percent': None,
+            'shrink-threshold-percent': None,
+            'maximum-size': None,
+            'minimum-size': None,
+        }
+        self.assertEqual(expected, result)
 
     @ddt.data(True, False)
     def test_is_flexgroup_volume(self, is_flexgroup):
@@ -4420,6 +4488,93 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         result = self.client._list_vservers()
         self.assertListEqual([], result)
 
+    @ddt.data('data', 'admin', None)
+    def test_list_vservers_public(self, vserver_type):
+        api_response = fake.VSERVER_DATA_LIST_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers(vserver_type=vserver_type)
+
+        expected_query = {
+            'fields': 'name',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('/svm/svms', 'get', query=expected_query,
+                      enable_tunneling=False)])
+        self.assertListEqual(
+            [fake.VSERVER_NAME, fake.VSERVER_NAME_2], result)
+
+    def test_list_vservers_public_default(self):
+        api_response = fake.VSERVER_DATA_LIST_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers()
+
+        expected_query = {
+            'fields': 'name',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('/svm/svms', 'get', query=expected_query,
+                      enable_tunneling=False)])
+        self.assertListEqual(
+            [fake.VSERVER_NAME, fake.VSERVER_NAME_2], result)
+
+    def test_list_vservers_public_not_found(self):
+        api_response = fake.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers()
+
+        self.assertListEqual([], result)
+
+    def test_get_data_lif_details_for_nodes(self):
+        api_response = fake.DATA_LIF_CAPACITY_DETAILS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_data_lif_details_for_nodes()
+
+        expected_query = {
+            'fields': 'limit-for-node,count-for-node,node',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/private/cli/network/interface/capacity/details', 'get',
+            query=expected_query)
+        self.assertListEqual(fake.DATA_LIF_DETAILS_FOR_NODES, result)
+
+    def test_get_data_lif_details_for_nodes_underscore_keys(self):
+        api_response = fake.DATA_LIF_CAPACITY_DETAILS_RESPONSE_REST_UNDERSCORE
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_data_lif_details_for_nodes()
+
+        expected_query = {
+            'fields': 'limit-for-node,count-for-node,node',
+        }
+        self.client.send_request.assert_called_once_with(
+            '/private/cli/network/interface/capacity/details', 'get',
+            query=expected_query)
+        self.assertListEqual(fake.DATA_LIF_DETAILS_FOR_NODES, result)
+
+    def test_get_data_lif_details_for_nodes_empty(self):
+        api_response = fake.NO_RECORDS_RESPONSE_REST
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_data_lif_details_for_nodes()
+
+        self.assertListEqual([], result)
+
     def test_get_ems_log_destination_vserver(self):
         mock_list_vservers = self.mock_object(
             self.client,
@@ -5417,6 +5572,49 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(netapp_api.api.NaApiError,
                           self.client.remove_preferred_dcs,
                           fake_ss, fake.FAKE_UUID)
+
+    @ddt.data(
+        (fake.CIFS_SECURITY_SERVICE, fake.CIFS_DOMAIN_DISCOVERY_NONE_REST),
+        (fake.CIFS_SECURITY_SERVICE_3, fake.CIFS_DOMAIN_DISCOVERY_SITE_REST),
+        ({'server': None, 'default_ad_site': None},
+         fake.CIFS_DOMAIN_DISCOVERY_ALL_REST),
+    )
+    @ddt.unpack
+    def test_configure_cifs_options(self, security_service, expected_body):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.configure_cifs_options(security_service, fake.VSERVER_NAME)
+
+        self.client._get_unique_svm_by_name.assert_called_once_with(
+            fake.VSERVER_NAME)
+        self.client.send_request.assert_called_once_with(
+            f'/protocols/cifs/domains/{fake.FAKE_UUID}',
+            'patch', body=expected_body)
+
+    def test_configure_cifs_options_api_error(self):
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=fake.FAKE_UUID))
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.client.configure_cifs_options(
+            fake.CIFS_SECURITY_SERVICE, fake.VSERVER_NAME)
+
+        self.assertEqual(1, client_cmode_rest.LOG.warning.call_count)
+
+    @ddt.data(
+        (fake.CIFS_SECURITY_SERVICE, 'none'),
+        (fake.CIFS_SECURITY_SERVICE_3, 'site'),
+        ({'server': None, 'default_ad_site': None}, 'all'),
+    )
+    @ddt.unpack
+    def test__get_cifs_server_discovery_mode(self, security_service,
+                                             expected_mode):
+        result = self.client._get_cifs_server_discovery_mode(
+            security_service)
+
+        self.assertEqual(expected_mode, result)
 
     def test_configure_cifs_signing(self):
         self.mock_object(self.client, 'send_request')
@@ -6526,6 +6724,88 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         ])
         self.client.get_network_interfaces.assert_called_once()
 
+    def test_is_kerberos_enabled(self):
+        self.mock_object(self.client, 'get_network_interfaces',
+                         mock.Mock(return_value=fake.NFS_LIFS_REST))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(
+                return_value=fake.KERBEROS_INTERFACES_LIST_ALL_ENABLED_REST))
+
+        result = self.client.is_kerberos_enabled()
+
+        self.assertTrue(result)
+        self.client.get_network_interfaces.assert_called_once_with(
+            protocols=['NFS', 'CIFS'])
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nfs/kerberos/interfaces', 'get',
+            query={
+                'interface.uuid': 'fake_uuid_1|fake_uuid_2|fake_uuid_3',
+                'fields': 'enabled,interface.uuid',
+            })
+
+    def test_is_kerberos_enabled_no_lifs(self):
+        self.mock_object(self.client, 'get_network_interfaces',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.is_kerberos_enabled()
+
+        self.assertFalse(result)
+        self.client.get_network_interfaces.assert_called_once_with(
+            protocols=['NFS', 'CIFS'])
+        self.client.send_request.assert_not_called()
+
+    def test_is_kerberos_enabled_disabled_lif(self):
+        self.mock_object(self.client, 'get_network_interfaces',
+                         mock.Mock(return_value=fake.NFS_LIFS_REST))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(
+                return_value=fake.KERBEROS_INTERFACES_LIST_ONE_DISABLED_REST))
+
+        result = self.client.is_kerberos_enabled()
+
+        self.assertFalse(result)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nfs/kerberos/interfaces', 'get',
+            query={
+                'interface.uuid': 'fake_uuid_1|fake_uuid_2|fake_uuid_3',
+                'fields': 'enabled,interface.uuid',
+            })
+
+    def test_is_kerberos_enabled_lif_not_configured(self):
+        """A LIF absent from the kerberos response is treated as disabled."""
+        self.mock_object(self.client, 'get_network_interfaces',
+                         mock.Mock(return_value=fake.NFS_LIFS_REST))
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=fake.KERBEROS_INTERFACES_LIST_PARTIAL_REST))
+
+        result = self.client.is_kerberos_enabled()
+
+        self.assertFalse(result)
+        self.client.send_request.assert_called_once_with(
+            '/protocols/nfs/kerberos/interfaces', 'get',
+            query={
+                'interface.uuid': 'fake_uuid_1|fake_uuid_2|fake_uuid_3',
+                'fields': 'enabled,interface.uuid',
+            })
+
+    def test_is_kerberos_enabled_unexpected_api_error(self):
+        api_error = netapp_api.api.NaApiError(
+            code='12345', message='unexpected error')
+        self.mock_object(self.client, 'get_network_interfaces',
+                         mock.Mock(return_value=fake.NFS_LIFS_REST))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=api_error))
+        mock_exc = self.mock_object(client_cmode_rest.LOG, 'exception')
+
+        self.assertRaises(netapp_api.api.NaApiError,
+                          self.client.is_kerberos_enabled)
+
+        self.assertEqual(1, mock_exc.call_count)
+
     def test_get_vserver_root_volume_name(self):
         response = fake.VOLUME_ITEM_SIMPLE_RESPONSE_REST
         self.mock_object(self.client, '_get_volume_by_args',
@@ -6942,27 +7222,58 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             '/network/ip/interfaces', 'get', query=query)
         self.assertTrue(result)
 
-    def test_modify_active_directory_security_service(self):
+    @ddt.data(
+        'server_to_server',
+        'server_to_default_ad_site',
+        'default_ad_site_to_default_ad_site',
+        'default_ad_site_to_server',
+    )
+    def test_modify_active_directory_security_service(self, scenario):
         svm_uuid = fake.FAKE_UUID
-        user_records = fake.FAKE_CIFS_LOCAL_USER.get('records')[0]
-        sid = user_records.get('sid')
+        sid = fake.FAKE_CIFS_LOCAL_USER['records'][0]['sid']
+
         self.mock_object(self.client, '_get_unique_svm_by_name',
                          mock.Mock(return_value=svm_uuid))
         self.mock_object(self.client, 'send_request',
-                         mock.Mock(side_effect=[user_records,
-                                                None, None]))
+                         mock.Mock(return_value={'sid': sid}))
         self.mock_object(self.client, 'remove_preferred_dcs')
         self.mock_object(self.client, 'set_preferred_dc')
-        new_security_service = {
-            'user': 'new_user',
-            'password': 'new_password',
-            'server': 'fake_server'
-        }
+        self.mock_object(self.client, 'configure_cifs_options')
 
-        current_security_service = {
-            'server': 'fake_current_server'
-        }
-        keys = {'user', 'password', 'server'}
+        if scenario == 'server_to_server':
+            new_security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+            current_security_service = copy.deepcopy(
+                fake.CIFS_SECURITY_SERVICE_2)
+            keys = {'server'}
+            expect_default_site_patch = False
+            expect_remove_preferred_dc = True
+            expect_set_preferred_dc = True
+        elif scenario == 'server_to_default_ad_site':
+            new_security_service = copy.deepcopy(
+                fake.CIFS_SECURITY_SERVICE_3)
+            current_security_service = copy.deepcopy(
+                fake.CIFS_SECURITY_SERVICE)
+            keys = {'server', 'default_ad_site'}
+            expect_default_site_patch = True
+            expect_remove_preferred_dc = True
+            expect_set_preferred_dc = False
+        elif scenario == 'default_ad_site_to_default_ad_site':
+            new_security_service = copy.deepcopy(
+                fake.CIFS_SECURITY_SERVICE_4)
+            current_security_service = copy.deepcopy(
+                fake.CIFS_SECURITY_SERVICE_3)
+            keys = {'default_ad_site'}
+            expect_default_site_patch = True
+            expect_remove_preferred_dc = False
+            expect_set_preferred_dc = False
+        else:
+            new_security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+            current_security_service = copy.deepcopy(
+                fake.CIFS_SECURITY_SERVICE_3)
+            keys = {'server', 'default_ad_site'}
+            expect_default_site_patch = False
+            expect_remove_preferred_dc = False
+            expect_set_preferred_dc = True
 
         self.client.modify_active_directory_security_service(
             fake.VSERVER_NAME, keys, new_security_service,
@@ -6970,11 +7281,74 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call(f'/protocols/cifs/local-users/{svm_uuid}', 'get'),
-            mock.call(f'/protocols/cifs/local-users/{svm_uuid}/{sid}', 'patch',
-                      query={'password': new_security_service['password']}),
-            mock.call(f'/protocols/cifs/local-users/{svm_uuid}/{sid}', 'patch',
-                      query={'name': new_security_service['user']})
         ])
+
+        default_site_patch_call = mock.call(
+            f'/protocols/cifs/services/{svm_uuid}',
+            'patch', body={
+                'ad_domain.default_site': (
+                    new_security_service['default_ad_site']),
+                'ad_domain.user': new_security_service['user'],
+                'ad_domain.password': new_security_service['password'],
+                'force': True,
+            })
+
+        if expect_default_site_patch:
+            self.assertIn(default_site_patch_call,
+                          self.client.send_request.mock_calls)
+        else:
+            self.assertNotIn(default_site_patch_call,
+                             self.client.send_request.mock_calls)
+
+        if expect_remove_preferred_dc:
+            self.client.remove_preferred_dcs.assert_called_once_with(
+                current_security_service, svm_uuid)
+        else:
+            self.client.remove_preferred_dcs.assert_not_called()
+
+        if expect_set_preferred_dc:
+            self.client.set_preferred_dc.assert_called_once_with(
+                new_security_service, svm_uuid)
+        else:
+            self.client.set_preferred_dc.assert_not_called()
+
+        self.client.configure_cifs_options.assert_called_once_with(
+            new_security_service, vserver_name=fake.VSERVER_NAME)
+
+    def test_modify_active_directory_security_service_password_user(self):
+        svm_uuid = fake.FAKE_UUID
+        sid = fake.FAKE_CIFS_LOCAL_USER['records'][0]['sid']
+
+        self.mock_object(self.client, '_get_unique_svm_by_name',
+                         mock.Mock(return_value=svm_uuid))
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value={'sid': sid}))
+        self.mock_object(self.client, 'remove_preferred_dcs')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, 'configure_cifs_options')
+
+        new_security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE_2)
+        current_security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        keys = {'password', 'user'}
+
+        self.client.modify_active_directory_security_service(
+            fake.VSERVER_NAME, keys, new_security_service,
+            current_security_service)
+
+        password_patch_call = mock.call(
+            f'/protocols/cifs/local-users/{svm_uuid}/{sid}',
+            'patch', query={'password': new_security_service['password']})
+        user_patch_call = mock.call(
+            f'/protocols/cifs/local-users/{svm_uuid}/{sid}',
+            'patch', query={'name': new_security_service['user']})
+
+        self.assertIn(password_patch_call,
+                      self.client.send_request.mock_calls)
+        self.assertIn(user_patch_call,
+                      self.client.send_request.mock_calls)
+        self.client.remove_preferred_dcs.assert_not_called()
+        self.client.set_preferred_dc.assert_not_called()
+        self.client.configure_cifs_options.assert_not_called()
 
     @ddt.data(True, False)
     def test__create_vserver(self, logical_space_reporting):

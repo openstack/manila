@@ -2891,12 +2891,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     def _check_data_lif_count_limit_reached_for_ha_pair(self, client):
         ha_pair = {node: client.get_storage_failover_partner(node)
                    for node in client.list_cluster_nodes()}
-        # TODO(agireesh): Get the data LIFs details for node using REST call
-        # The 'get_data_lif_details_for_nodes' method is missing for REST
-        # workflow because there is no REST available to retrieve the data
-        # LIF's capacity and details for the nodes. Filed the RFE on ONTAP
-        # to implement the corresponding REST, and once it is available, the
-        # REST workflow will be added as part of the fix (bug #2100673).
         lif_info_for_node = client.get_data_lif_details_for_nodes()
         lif_info_dict = {info['node']: info for info in lif_info_for_node}
 

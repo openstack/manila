@@ -268,6 +268,71 @@ VOLUME_AUTOSIZE_ATTRS = {
     'minimum-size': '1048576',
 }
 
+VOLUME_AUTOSIZE_RECORD_REST = {
+    'uuid': FAKE_UUID,
+    'name': VOLUME_NAMES[0],
+    'autosize': {
+        'mode': 'off',
+        'grow_threshold': 85,
+        'shrink_threshold': 50,
+        'maximum': 1258288,
+        'minimum': 1048576,
+    },
+}
+
+VOLUME_AUTOSIZE_ATTRS_REST = {
+    'mode': 'off',
+    'grow-threshold-percent': 85,
+    'shrink-threshold-percent': 50,
+    'maximum-size': 1258288,
+    'minimum-size': 1048576,
+}
+
+DATA_LIF_CAPACITY_DETAILS_RESPONSE_REST = {
+    'records': [
+        {
+            'node': NODE_NAME,
+            'limit-for-node': 1024,
+            'count-for-node': 8,
+        },
+        {
+            'node': NODE_NAME2,
+            'limit-for-node': 1024,
+            'count-for-node': 16,
+        },
+    ],
+    'num_records': 2,
+}
+
+DATA_LIF_CAPACITY_DETAILS_RESPONSE_REST_UNDERSCORE = {
+    'records': [
+        {
+            'node': NODE_NAME,
+            'limit_for_node': 1024,
+            'count_for_node': 8,
+        },
+        {
+            'node': NODE_NAME2,
+            'limit_for_node': 1024,
+            'count_for_node': 16,
+        },
+    ],
+    'num_records': 2,
+}
+
+DATA_LIF_DETAILS_FOR_NODES = [
+    {
+        'limit-for-node': 1024,
+        'count-for-node': 8,
+        'node': NODE_NAME,
+    },
+    {
+        'limit-for-node': 1024,
+        'count-for-node': 16,
+        'node': NODE_NAME2,
+    },
+]
+
 
 NO_RECORDS_RESPONSE = etree.XML("""
   <results status="passed">
@@ -1157,6 +1222,59 @@ NFS_LIFS_REST = [
         'vserver': VSERVER_NAME,
     },
 ]
+
+KERBEROS_INTERFACES_LIST_ALL_ENABLED_REST = {
+    'records': [
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_1'},
+            'enabled': True,
+        },
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_2'},
+            'enabled': True,
+        },
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_3'},
+            'enabled': True,
+        },
+    ],
+    'num_records': 3,
+}
+
+KERBEROS_INTERFACES_LIST_ONE_DISABLED_REST = {
+    'records': [
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_1'},
+            'enabled': True,
+        },
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_2'},
+            'enabled': False,
+        },
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_3'},
+            'enabled': True,
+        },
+    ],
+    'num_records': 3,
+}
+
+KERBEROS_INTERFACES_LIST_PARTIAL_REST = {
+    'records': [
+        {
+            'svm': {'name': VSERVER_NAME},
+            'interface': {'name': LIF_NAME, 'uuid': 'fake_uuid_1'},
+            'enabled': True,
+        },
+    ],
+    'num_records': 1,
+}
 
 NET_INTERFACE_GET_ONE_RESPONSE = etree.XML("""
   <results status="passed">
@@ -5093,6 +5211,25 @@ FAKE_CIFS_LOCAL_USER = {
             'sid': 'S-1-5-21-256008430-3394229847-3930036330-1001'
         }
     ]
+}
+
+CIFS_DOMAIN_DISCOVERY_NONE_REST = {
+    'server_discovery_mode': 'none'
+}
+
+CIFS_DOMAIN_DISCOVERY_SITE_REST = {
+    'server_discovery_mode': 'site'
+}
+
+CIFS_DOMAIN_DISCOVERY_ALL_REST = {
+    'server_discovery_mode': 'all'
+}
+
+CIFS_DEFAULT_AD_SITE_REST = {
+    'ad_domain.default_site': CIFS_SECURITY_SERVICE_3['default_ad_site'],
+    'ad_domain.user': CIFS_SECURITY_SERVICE_3['user'],
+    'ad_domain.password': CIFS_SECURITY_SERVICE_3['password'],
+    'force': True,
 }
 
 FAKE_SERVER_SWITCH_NAME = 'fake_ss_name'
