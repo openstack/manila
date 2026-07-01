@@ -64,6 +64,7 @@ neutron_bind_network_plugin_opts = [
         "neutron_host_id",
         help="Host ID to be used when creating neutron port. If not set "
              "host is set to manila-share host by default.",
+        sample_default='<HOSTNAME>',
         default=socket.gethostname()),
 ]
 
