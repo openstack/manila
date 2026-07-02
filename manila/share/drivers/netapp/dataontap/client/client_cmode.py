@@ -2693,10 +2693,45 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('sis-set-config', api_args)
 
     @na_utils.trace
+    def _wait_for_efficiency_job(self, job_id, volume_name, timeout=300):
+        """Wait for efficiency async job to complete."""
+        interval = 5
+        retries = int(timeout / interval) or 1
+
+        @manila_utils.retry(retry_param=exception.ShareBackendException,
+                            interval=interval,
+                            retries=retries, backoff_rate=1)
+        def _wait():
+            job_state = self.get_job_state(job_id)
+            LOG.debug("Waiting for efficiency job %(job_id)s on volume "
+                      "%(volume)s, state: %(state)s.",
+                      {'job_id': job_id, 'volume': volume_name,
+                       'state': job_state})
+            if job_state in ('failure', 'error'):
+                msg = _("Efficiency job %(job_id)s failed for volume "
+                        "%(volume)s.")
+                raise exception.NetAppException(
+                    msg % {'job_id': job_id, 'volume': volume_name})
+            if job_state != 'success':
+                raise exception.ShareBackendException(
+                    msg=_("Efficiency job not yet complete."))
+
+        try:
+            _wait()
+        except exception.ShareBackendException:
+            msg = _("Timeout waiting for efficiency job %(job_id)s on "
+                    "volume %(volume)s.")
+            raise exception.NetAppException(
+                msg % {'job_id': job_id, 'volume': volume_name})
+
+    @na_utils.trace
     def enable_dedupe_async(self, volume_name):
         """Enable deduplication on FlexVol/FlexGroup volume asynchronously."""
         api_args = {'volume-name': volume_name}
-        self.send_request('sis-enable-async', api_args)
+        result = self.send_request('sis-enable-async', api_args)
+        job_id = result.get_child_content('result-jobid')
+        if job_id:
+            self._wait_for_efficiency_job(job_id, volume_name)
 
     @na_utils.trace
     def disable_dedupe_async(self, volume_name):
