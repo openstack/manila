@@ -1061,14 +1061,15 @@ class NetAppRestClient(object):
             aggregate_encrypted=aggregate_encrypted,
             volume_tags=volume_tags,
             **options)
-        efficiency_policy = options.get('efficiency_policy', None)
-        self.update_volume_efficiency_attributes(
-            volume_name, dedup_enabled, compression_enabled,
-            efficiency_policy=efficiency_policy
-        )
+        if volume_type != 'dp':
+            efficiency_policy = options.get('efficiency_policy', None)
+            self.update_volume_efficiency_attributes(
+                volume_name, dedup_enabled, compression_enabled,
+                efficiency_policy=efficiency_policy
+            )
 
-        if max_files is not None:
-            self.set_volume_max_files(volume_name, max_files)
+            if max_files is not None:
+                self.set_volume_max_files(volume_name, max_files)
 
         if snaplock_type is not None:
             self.set_snaplock_attributes(volume_name, **options)

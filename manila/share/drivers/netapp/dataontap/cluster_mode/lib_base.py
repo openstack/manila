@@ -1377,11 +1377,12 @@ class NetAppCmodeFileStorageLibrary(object):
             vserver_client.modify_volume(aggr_list, share_name,
                                          volume_tags=volume_tags)
 
-        efficiency_policy = provisioning_options.get('efficiency_policy', None)
-
-        vserver_client.update_volume_efficiency_attributes(
-            share_name, dedup_enabled, compression_enabled, is_flexgroup=True,
-            efficiency_policy=efficiency_policy)
+        if provisioning_options.get('volume_type') != 'dp':
+            efficiency_policy = provisioning_options.get(
+                'efficiency_policy', None)
+            vserver_client.update_volume_efficiency_attributes(
+                share_name, dedup_enabled, compression_enabled,
+                is_flexgroup=True, efficiency_policy=efficiency_policy)
 
         if not replica:
             if provisioning_options.get('max_files_multiplier') is not None:

@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed a bug in the NetApp driver where efficiency settings (deduplication,
+    compression, efficiency policy) were incorrectly applied to
+    data-protection (DP) volumes during share replica creation. SnapMirror
+    replicates already-efficient blocks from the source, so configuring
+    efficiency on the destination is a no-op at best and causes async job
+    failures on FlexGroup volumes. Efficiency settings are now skipped for DP
+    volumes and applied correctly when a replica is promoted to active.
