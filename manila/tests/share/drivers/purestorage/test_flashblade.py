@@ -86,6 +86,8 @@ class FlashBladeDriverTestCaseBase(test.TestCase):
         self.configuration.flashblade_data_vip = ["mockfb2"]
         self.configuration.flashblade_api = "api"
         self.configuration.flashblade_eradicate = True
+        self.configuration.flashblade_ssl_cert_verify = True
+        self.configuration.flashblade_ca_cert_path = None
 
         self.configuration.driver_handles_share_servers = False
         self._mock_filesystem = mock.Mock()
@@ -174,6 +176,32 @@ class FlashBladeDriverTestCase(FlashBladeDriverTestCaseBase):
         self.assertRaises(
             exception.BadConfigurationException, self.driver.do_setup, None
         )
+
+    def test_ssl_cert_verify_enabled_by_default(self):
+        self._sys.enable_verify_ssl.reset_mock()
+        self._sys.disable_verify_ssl.reset_mock()
+        self.configuration.flashblade_ssl_cert_verify = True
+        self.configuration.flashblade_ca_cert_path = None
+        self.driver.do_setup(None)
+        self._sys.enable_verify_ssl.assert_called_once_with(None)
+        self._sys.disable_verify_ssl.assert_not_called()
+
+    def test_ssl_cert_verify_with_ca_cert_path(self):
+        self._sys.enable_verify_ssl.reset_mock()
+        self.configuration.flashblade_ssl_cert_verify = True
+        self.configuration.flashblade_ca_cert_path = "/etc/ssl/fb-ca.pem"
+        self.driver.do_setup(None)
+        self._sys.enable_verify_ssl.assert_called_once_with(
+            "/etc/ssl/fb-ca.pem"
+        )
+
+    def test_ssl_cert_verify_disabled(self):
+        self._sys.enable_verify_ssl.reset_mock()
+        self._sys.disable_verify_ssl.reset_mock()
+        self.configuration.flashblade_ssl_cert_verify = False
+        self.driver.do_setup(None)
+        self._sys.disable_verify_ssl.assert_called_once_with()
+        self._sys.enable_verify_ssl.assert_not_called()
 
     def test_create_share_incorrect_protocol(self):
         test_nfs_share.share_proto = "CIFS"
