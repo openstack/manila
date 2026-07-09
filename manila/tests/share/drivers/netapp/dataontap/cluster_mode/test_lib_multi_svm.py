@@ -28,6 +28,8 @@ from manila.common import constants
 from manila import context
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
+from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
+from manila.share.drivers.netapp.dataontap.client import rest_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_multi_svm
@@ -4485,7 +4487,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake_current_network_allocations, fake_new_network_allocations,
             export_locations=None)
 
-    def test__get_backup_vserver(self):
+    # NOTE: The two messages below are the verbatim error strings that ONTAP
+    # returns for the same "name already in use" condition. The legacy ZAPI
+    # client phrases it using "Vserver", while the REST client uses "SVM"
+    # (the modern term for the same object) and also mentions "IPspace or
+    # cluster" because in ONTAP an SVM name shares a namespace with IPspace
+    # and cluster names. _get_backup_vserver suppresses this condition by
+    # matching the error *code* (EVSERVERALREADYUSED /
+    # EREST_VSERVER_NAME_IN_USE), not the message text, so the exact wording
+    # here is illustrative only.
+    @ddt.data(
+        # Legacy ZAPI client returns error code 14922 for this condition.
+        {'code': netapp_api.EVSERVERALREADYUSED,
+         'message': 'The Vserver name is already used by another Vserver. '},
+        # REST client returns error code 13434908 for this condition.
+        {'code': rest_api.EREST_VSERVER_NAME_IN_USE,
+         'message': 'Invalid SVM name. The name is already in use by '
+                    'another SVM, IPspace or cluster.'},
+    )
+    def test__get_backup_vserver(self, api_error):
         mock_dest_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_backend',
@@ -4499,12 +4519,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(mock_dest_client,
                          'list_non_root_aggregates',
                          mock.Mock(return_value=['aggr1', 'aggr2']))
-        self.mock_object(mock_dest_client,
-                         'create_vserver',
-                         mock.Mock(side_effect=netapp_api.NaApiError(
-                             message='Vserver name is already used by another'
-                                     ' Vserver')))
+        mock_create_vserver = self.mock_object(
+            mock_dest_client,
+            'create_vserver',
+            mock.Mock(side_effect=netapp_api.NaApiError(
+                code=api_error['code'], message=api_error['message'])))
         self.library._get_backup_vserver(fake.SHARE_BACKUP, fake.SHARE_SERVER)
+        mock_create_vserver.assert_called_once_with(
+            'backup_fake_id',
+            None,
+            None,
+            ['aggr1', 'aggr2'],
+            'Default',
+            client_cmode_rest.DEFAULT_SECURITY_CERT_EXPIRE_DAYS,
+            12,
+            False,
+        )
 
     def test__delete_backup_vserver(self):
         mock_api_client = mock.Mock()

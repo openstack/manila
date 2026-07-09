@@ -37,6 +37,7 @@ from manila.message import message_field
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
+from manila.share.drivers.netapp.dataontap.client import rest_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
@@ -2857,10 +2858,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 aggr_list,
                 'Default',
                 client_cmode_rest.DEFAULT_SECURITY_CERT_EXPIRE_DAYS,
+                backend_config.netapp_delete_retention_hours,
+                backend_config.netapp_enable_logical_space_reporting,
             )
         except netapp_api.NaApiError as e:
             with excutils.save_and_reraise_exception() as exc_context:
-                if 'already used' in e.message:
+                # NOTE: Suppress the error when the backup vserver already
+                # exists. ZAPI returns EVSERVERALREADYUSED (14922) and the
+                # REST client returns EREST_VSERVER_NAME_IN_USE (13434908)
+                # for this condition.
+                if e.code in (netapp_api.EVSERVERALREADYUSED,
+                              rest_api.EREST_VSERVER_NAME_IN_USE):
                     exc_context.reraise = False
         return des_vserver
 
