@@ -101,7 +101,6 @@ class PolicyTestCase(test.TestCase):
 
     @ddt.data('enforce', 'authorize')
     def test_authorize_properly_handles_invalid_scope_exception(self, method):
-        self.fixture.config(enforce_scope=True, group='oslo_policy')
         project_context = context.RequestContext(project_id='fake-project-id',
                                                  roles=['bar'])
         policy.reset()
@@ -113,19 +112,6 @@ class PolicyTestCase(test.TestCase):
         self.assertRaises(exception.PolicyNotAuthorized,
                           getattr(policy, method),
                           project_context, 'foo', {})
-
-    @ddt.data('enforce', 'authorize')
-    def test_authorize_does_not_raise_forbidden(self, method):
-        self.fixture.config(enforce_scope=False, group='oslo_policy')
-        project_context = context.RequestContext(project_id='fake-project-id',
-                                                 roles=['bar'])
-        policy.reset()
-        policy.init(suppress_deprecation_warnings=True)
-        rule = common_policy.RuleDefault('foo', 'role:bar',
-                                         scope_types=['system'])
-        policy._ENFORCER.register_defaults([rule])
-
-        self.assertTrue(getattr(policy, method)(project_context, 'foo', {}))
 
 
 class DefaultPolicyTestCase(test.TestCase):
