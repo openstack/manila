@@ -16,3 +16,7 @@
      - (String) API token for an administrative level user account.
    * - ``flashblade_eradicate`` = ``True``
      - (Boolean) Enable or disable filesystem and snapshot eradication on delete.
+   * - ``flashblade_ssl_cert_verify`` = ``True``
+     - (Boolean) Verify the SSL certificate presented by the FlashBlade management interface. Enabled by default. Use ``flashblade_ca_cert_path`` to supply a CA bundle for self-signed or private CA certificates.
+   * - ``flashblade_ca_cert_path`` = ``None``
+     - (String) Path to a CA certificate bundle file (PEM) used to verify the FlashBlade management interface's SSL certificate when ``flashblade_ssl_cert_verify`` is True.

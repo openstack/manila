@@ -1,0 +1,20 @@
+---
+security:
+  - |
+    The Pure Storage FlashBlade share driver now verifies the SSL
+    certificate presented by the FlashBlade management interface by
+    default. Previously certificate verification was unconditionally
+    disabled, which left the management connection open to
+    man-in-the-middle attacks. A new ``flashblade_ssl_cert_verify``
+    option (default ``True``) controls this behaviour, and
+    ``flashblade_ca_cert_path`` may be used to supply a CA certificate
+    bundle for self-signed or private CA certificates.
+upgrade:
+  - |
+    Certificate verification is now enabled by default for the Pure
+    Storage FlashBlade share driver. Deployments whose FlashBlade uses a
+    self-signed or private CA certificate must either supply the CA
+    bundle via ``flashblade_ca_cert_path``, install the certificate in
+    the system trust store, or explicitly set
+    ``flashblade_ssl_cert_verify = False`` (not recommended) to retain
+    the previous behaviour.

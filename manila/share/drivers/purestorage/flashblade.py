@@ -48,6 +48,23 @@ flashblade_connection_opts = [
         "to be the preferred IP address, although is not "
         "enforced.",
     ),
+    cfg.BoolOpt(
+        "flashblade_ssl_cert_verify",
+        default=True,
+        help="If set to True, the driver verifies the SSL certificate "
+        "presented by the FlashBlade management interface. This is "
+        "enabled by default. If the FlashBlade uses a self-signed or "
+        "private CA certificate, supply the CA certificate bundle via "
+        "flashblade_ca_cert_path. Setting this to False disables "
+        "verification and is not recommended.",
+    ),
+    cfg.StrOpt(
+        "flashblade_ca_cert_path",
+        help="Path to a CA certificate bundle file (PEM format) used to "
+        "verify the FlashBlade management interface's SSL certificate. "
+        "Only used when flashblade_ssl_cert_verify is True. If unset, "
+        "the system default CA certificates are used.",
+    ),
 ]
 
 flashblade_auth_opts = [
@@ -103,10 +120,11 @@ class FlashBladeShareDriver(driver.ShareDriver):
        8.0.0 - 2025.1 (Epoxy) release
        9.0.0 - 2025.2 (Flamingo) release
        10.0.0 - 2026.1 (Gazpacho) release
+       11.0.0 - 2026.2 (Hibiscus) release
 
     """
 
-    VERSION = "10.0"  # driver version
+    VERSION = "11.0"  # driver version
     USER_AGENT_BASE = "OpenStack Manila"
 
     def __init__(self, *args, **kwargs):
@@ -138,7 +156,17 @@ class FlashBladeShareDriver(driver.ShareDriver):
             "flashblade_data_vip"
         )
         self._sys = purity_fb.PurityFb(self.management_address)
-        self._sys.disable_verify_ssl()
+        if self.configuration.flashblade_ssl_cert_verify:
+            self._sys.enable_verify_ssl(
+                self.configuration.flashblade_ca_cert_path
+            )
+        else:
+            LOG.warning(
+                "SSL certificate verification is disabled for the "
+                "FlashBlade management connection. Enable "
+                "flashblade_ssl_cert_verify to secure this connection."
+            )
+            self._sys.disable_verify_ssl()
         try:
             self._sys.login(self.api)
             self._sys._api_client.user_agent = self._user_agent
