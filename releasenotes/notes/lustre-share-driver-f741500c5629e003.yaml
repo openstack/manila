@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added a new share driver for the Lustre parallel filesystem.
+    The driver operates in DHSS=False mode on a pre-provisioned
+    Lustre filesystem, using sub-directories with project quotas
+    for capacity management and nodemaps for IP-based access
+    control. Requires Lustre 2.16 or later.
