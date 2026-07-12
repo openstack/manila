@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The deprecated ``cephfs_volume_path_prefix`` option of the cephfs driver
+    has been removed. This option has had no effect since 12.0.0 .
