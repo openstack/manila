@@ -95,14 +95,6 @@ cephfs_opts = [
                default="manila",
                help="The name of the ceph auth identity to use."
                ),
-    cfg.StrOpt('cephfs_volume_path_prefix',
-               deprecated_for_removal=True,
-               deprecated_since='Wallaby',
-               deprecated_reason='This option is not used starting with '
-                                 'the Nautilus release of Ceph.',
-               default="/volumes",
-               help="The prefix of the cephfs volume path."
-               ),
     cfg.StrOpt('cephfs_protocol_helper_type',
                default="CEPHFS",
                choices=['CEPHFS', 'NFS'],
