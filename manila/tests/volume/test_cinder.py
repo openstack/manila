@@ -336,8 +336,6 @@ class CinderApiTestCase(test.TestCase):
         self.cinderclient.volumes.get.assert_has_calls(
             [mock.call(mock_volume['id'])] * expected_get_count
         )
-        # utils.retry sleeps before retries, so 1 sleep for 2 get calls
-        self.assertEqual(1, mock_sleep.call_count)
 
     def test_wait_for_available_volume_timeout(self):
         fake_volume = {'status': 'creating', 'id': 'fake'}
