@@ -167,9 +167,7 @@ MANILA_ZFSONLINUX_REPLICATION_DOMAIN=${MANILA_ZFSONLINUX_REPLICATION_DOMAIN:-"ZF
 MANILA_CONTAINER_DRIVER=${MANILA_CONTAINER_DRIVER:-"manila.share.drivers.container.driver.ContainerShareDriver"}
 MANILA_DOCKER_IMAGE_ALIAS=${MANILA_DOCKER_IMAGE_ALIAS:-"manila_docker_image"}
 MANILA_CONTAINER_VOLUME_GROUP_NAME=${MANILA_CONTAINER_VOLUME_GROUP_NAME:-"manila_docker_volumes"}
-# (aovchinnikov): This location is temporary and will be changed to a
-# permanent one as soon as possible.
-MANILA_DOCKER_IMAGE_URL=${MANILA_DOCKER_IMAGE_URL:-"https://github.com/a-ovchinnikov/manila-image-elements-lxd-images/releases/download/0.1.0/manila-docker-container.tar.gz"}
+MANILA_DOCKER_IMAGE_URL=${MANILA_DOCKER_IMAGE_URL:-"quay.io/openstack-manila/manila-docker-container:latest"}
 
 # Network Plugin
 MANILA_NETWORK_API_CLASS=${MANILA_NETWORK_API_CLASS:-"manila.network.neutron.neutron_network_plugin.NeutronBindNetworkPlugin"}
