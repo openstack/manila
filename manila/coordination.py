@@ -128,7 +128,7 @@ class Lock(locking.Lock):
             raise ValueError(_('Not a valid string: %s') % lock_name)
         return self.coordinator.get_lock(lock_name.format(**lock_data))
 
-    def acquire(self, blocking=None):
+    def acquire(self, blocking=None, shared=False, timeout=None):
         """Attempts to acquire lock.
 
         :param blocking: If True, blocks until the lock is acquired. If False,
