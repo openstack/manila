@@ -16,6 +16,7 @@
 
 from unittest import mock
 
+from keystoneauth1 import exceptions as ks_exec
 from neutronclient.common import exceptions as neutron_client_exc
 from neutronclient.v2_0 import client as clientv20
 from oslo_config import cfg
@@ -420,6 +421,17 @@ class NeutronApiTest(test.TestCase):
             extensions[0], result[neutron_constants.PORTBINDING_EXT])
         self.assertEqual(
             extensions[1], result[neutron_constants.PROVIDER_NW_EXT])
+
+    def test_list_extensions_ConnectFailure(self):
+        self.mock_object(
+            self.neutron_api.client, 'list_extensions',
+            mock.Mock(side_effect=ks_exec.ConnectFailure()))
+
+        with mock.patch('tenacity.nap.sleep'):
+            self.assertRaises(ks_exec.ConnectFailure,
+                              self.neutron_api.list_extensions)
+
+        self.assertEqual(5, self.neutron_api.client.list_extensions.call_count)
 
     def test_create_network(self):
         # Set up test data
