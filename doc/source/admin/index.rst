@@ -94,6 +94,7 @@ each back end.
    ../configuration/shared-file-systems/drivers/dell-emc-unity-driver
    ../configuration/shared-file-systems/drivers/dell-emc-powerstore-driver
    ../configuration/shared-file-systems/drivers/dell-emc-powerflex-driver
+   everpure_flashblade_driver
    generic_driver
    glusterfs_driver
    glusterfs_native_driver
@@ -106,7 +107,6 @@ each back end.
    hpe_alletra_mp_b10000_driver
    infortrend_driver
    macrosan_driver
-   purestorage_flashblade_driver
    tegile_driver
    nexentastor5_driver
    ../configuration/shared-file-systems/drivers/windows-smb-driver

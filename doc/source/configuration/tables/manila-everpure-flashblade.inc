@@ -1,6 +1,6 @@
-.. _manila-purestorage-flashblade:
+.. _manila-everpure-flashblade:
 
-.. list-table:: Description of Pure Storage FlashBlade share driver configuration options
+.. list-table:: Description of Everpure FlashBlade share driver configuration options
    :header-rows: 1
    :class: config-ref-table
 
@@ -9,9 +9,9 @@
    * - **[DEFAULT]**
      -
    * - ``flashblade_mgmt_vip`` = ``None``
-     - (String) The name (or IP address) for the Pure Storage FlashBlade storage system management port.
+     - (String) The name (or IP address) for the Everpure FlashBlade storage system management port.
    * - ``flashblade_data_vip`` = ``None``
-     - (String) The names (or IP address) for the Pure Storage FlashBlade storage system data ports.
+     - (String) The names (or IP address) for the Everpure FlashBlade storage system data ports.
    * - ``flashblade_api`` = ``None``
      - (String) API token for an administrative level user account.
    * - ``flashblade_eradicate`` = ``True``
