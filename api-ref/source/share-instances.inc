@@ -63,7 +63,6 @@ Response parameters
    - share_network_id: share_network_id
    - share_server_id: share_server_id
    - host: host_resource_response
-   - access_rules_status: access_rules_status
    - share_type_id: share_type_id
    - id: id_13
 
@@ -124,6 +123,7 @@ Response parameters
    - share_network_id: share_network_id
    - share_server_id: share_server_id
    - host: host_resource_response
+   - share_type_id: share_type_id
    - id: id_13
 
 Response example
