@@ -48,6 +48,8 @@ Response parameters
    - name: qos_type_name
    - description: qos_type_description
    - specs: qos_type_specs
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------
@@ -93,6 +95,8 @@ Response Parameters
    - name: qos_type_name
    - description: qos_type_description
    - specs: qos_type_specs
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response Example
 ----------------
@@ -189,6 +193,8 @@ Response parameters
    - name: qos_type_name
    - description: qos_type_description
    - specs: qos_type_specs
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------
@@ -352,6 +358,8 @@ Response parameters
    - name: qos_type_name
    - description: qos_type_description
    - specs: qos_type_specs
+   - created_at: created_at
+   - updated_at: updated_at
 
 Response example
 ----------------
