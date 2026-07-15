@@ -69,8 +69,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id
-   - share_server_id: share_server_id
+   - project_id: project_id_path
+   - share_server_id: share_server_id_path
    - preserve_snapshots: preserve_snapshots_server_migration
    - nondisruptive: nondisruptive_server_migration
    - writable: writable_server_migration
@@ -129,8 +129,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id
-   - share_server_id: share_server_id
+   - project_id: project_id_path
+   - share_server_id: share_server_id_path
    - preserve_snapshots: preserve_snapshots_server_migration
    - nondisruptive: nondisruptive_server_migration
    - writable: writable_server_migration
@@ -173,8 +173,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - project_id: project_id
-   - share_server_id: share_server_id
+   - project_id: project_id_path
+   - share_server_id: share_server_id_path
 
 Response parameters
 -------------------
@@ -227,8 +227,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - share_server_id: share_server_id
-   - project_id: project_id
+   - share_server_id: share_server_id_path
+   - project_id: project_id_path
 
 Response parameters
 -------------------
@@ -278,8 +278,8 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - share_server_id: share_server_id
-   - project_id: project_id
+   - share_server_id: share_server_id_path
+   - project_id: project_id_path
 
 Request example
 ---------------
