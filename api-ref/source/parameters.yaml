@@ -4059,6 +4059,14 @@ snapshot_manage_status:
   in: body
   required: true
   type: string
+snapshot_metadata:
+  description: |
+    One or more metadata key and value pairs as a dictionary of strings to
+    associate with the snapshot.
+  in: body
+  required: false
+  type: object
+  min_version: 2.73
 snapshot_project_id:
   description: |
     ID of the project that the snapshot belongs to.
