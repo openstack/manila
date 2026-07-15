@@ -144,12 +144,13 @@ class SecurityServiceHelperTestCase(test.TestCase):
             mock.Mock(
                 side_effect=exception.ProcessExecutionError(exit_code=1)))
 
-        self.assertRaises(
-            exception.ShareBackendException,
-            self.security_service_helper.ldap_retry_operation,
-            mock_cmd,
-            run_as_root=False,
-            timeout=10)
+        with mock.patch('tenacity.nap.sleep', return_value=None):
+            self.assertRaises(
+                exception.ShareBackendException,
+                self.security_service_helper.ldap_retry_operation,
+                mock_cmd,
+                run_as_root=False,
+                timeout=10)
 
         mock_execute.assert_has_calls([
             mock.call(*mock_cmd, run_as_root=False),
