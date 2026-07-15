@@ -157,7 +157,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_group_type_id: share_group_type_id_required
+   - share_group_type_id: share_group_type_id_path
 
 Response parameters
 -------------------
@@ -264,7 +264,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_group_type_id: share_group_type_id_required
+   - share_group_type_id: share_group_type_id_path
 
 Response parameters
 -------------------
@@ -311,7 +311,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_group_type_id: share_group_type_id_required
+   - share_group_type_id: share_group_type_id_path
    - group_specs: group_specs_required
 
 Request example
@@ -363,7 +363,7 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - share_group_type_id: share_group_type_id_required
+   - share_group_type_id: share_group_type_id_path
    - group_spec_key: group_spec_key
 
 
