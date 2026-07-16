@@ -11546,6 +11546,31 @@ class ShareManagerTestCase(test.TestCase):
         else:
             self.assertNotIn("display_name", called_snap_dict)
 
+    @ddt.data(
+        {'scheduled_at': datetime.datetime(2026, 1, 1, 0, 0, 0),
+         'terminated_at': datetime.datetime(2026, 1, 1, 1, 30, 0),
+         'expected': 5400.0},
+        {'scheduled_at': None,
+         'terminated_at': datetime.datetime(2026, 1, 1, 1, 0, 0),
+         'expected': constants.ONE_WEEK_IN_SECONDS},
+        {'scheduled_at': datetime.datetime(2026, 1, 1, 0, 0, 0),
+         'terminated_at': None,
+         'expected': constants.ONE_WEEK_IN_SECONDS},
+        {'scheduled_at': None,
+         'terminated_at': None,
+         'expected': constants.ONE_WEEK_IN_SECONDS},
+    )
+    @ddt.unpack
+    def test_get_duration_seconds_for_instances(
+            self, scheduled_at, terminated_at, expected):
+        share_instance = {
+            'scheduled_at': scheduled_at,
+            'terminated_at': terminated_at,
+        }
+        result = self.share_manager._get_duration_seconds_for_instances(
+            share_instance)
+        self.assertEqual(expected, result)
+
 
 @ddt.ddt
 class HookWrapperTestCase(test.TestCase):

@@ -2280,13 +2280,22 @@ class NetAppCmodeFileStorageLibrary(object):
         # Share doesn't need to exist to be assigned to a fpolicy scope
         self._delete_fpolicy_for_share(share, vserver, vserver_client)
 
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        force_delete_minutes = int(
+            extra_specs.get('netapp:force_delete_time_minutes', 0))
+        duration_sec = share.get(
+            'duration_seconds', constants.ONE_WEEK_IN_SECONDS)
+        force_delete = (force_delete_minutes > 0
+                        and duration_sec < force_delete_minutes * 60)
+
         if self._share_exists(share_name, vserver_client):
             clone_status = vserver_client.volume_clone_split_status(share_name)
             if clone_status == na_utils.CLONE_SPLIT_STATUS_ONGOING:
                 vserver_client.volume_clone_split_stop(share_name)
             if remove_export:
                 self._remove_export(share, vserver_client)
-            self._deallocate_container(share_name, vserver_client)
+            self._deallocate_container(
+                share_name, vserver_client, force_delete)
             if remove_qos:
                 qos_policy_for_share = self._get_backend_qos_policy_group_name(
                     share['id'])
@@ -2318,11 +2327,11 @@ class NetAppCmodeFileStorageLibrary(object):
         self._delete_share(share, vserver, vserver_client)
 
     @na_utils.trace
-    def _deallocate_container(self, share_name, vserver_client):
+    def _deallocate_container(self, share_name, vserver_client, force_delete):
         """Free share space."""
         vserver_client.unmount_volume(share_name, force=True)
         vserver_client.offline_volume(share_name)
-        vserver_client.delete_volume(share_name)
+        vserver_client.delete_volume(share_name, force_delete)
 
     @na_utils.trace
     def _create_export(self, share, share_server, vserver, vserver_client,

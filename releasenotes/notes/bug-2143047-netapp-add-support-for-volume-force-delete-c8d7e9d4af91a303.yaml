@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    NetApp Driver bug #2143047
+    <https://bugs.launchpad.net/manila/+bug/2143047>_: Added volume force
+    delete support. To enable force delete for short-lived shares, set the
+    share type extra spec ``netapp:force_delete_time_minutes`` to a non-zero
+    integer value. Shares whose lifetime (from creation to deletion request)
+    is less than the configured number of minutes will bypass the recovery
+    queue and be force-deleted immediately. If the force delete fails, the
+    volume falls back to the regular soft-delete path.

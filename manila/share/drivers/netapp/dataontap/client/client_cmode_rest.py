@@ -1877,8 +1877,7 @@ class NetAppRestClient(object):
         LOG.debug(msg, msg_args)
 
     @na_utils.trace
-    def soft_delete_volume(self, volume_name,
-                           return_errors=False):
+    def soft_delete_volume(self, volume_name, return_errors=False):
         """Soft deletes a volume."""
         try:
             # Get volume UUID.
@@ -1899,11 +1898,38 @@ class NetAppRestClient(object):
                 raise exception.NetAppException(message=e.message)
 
     @na_utils.trace
-    def delete_volume(self, volume_name, return_errors=False):
+    def force_delete_volume(self, volume_name):
+        """Force deletes a volume."""
+        try:
+            # Get volume UUID.
+            volume = self._get_volume_by_args(vol_name=volume_name)
+            uuid = volume['uuid']
+            query = {"force": "true"}
+
+            # delete volume async operation.
+            self.send_request(
+                f'/storage/volumes/{uuid}', 'delete', query=query)
+        except netapp_api.api.NaApiError as e:
+            raise exception.NetAppException(message=e.message)
+
+    @na_utils.trace
+    def delete_volume(self, volume_name, force_delete=False,
+                      return_errors=False):
         """Deletes a volume."""
-        return self.soft_delete_volume(
-            volume_name,
-            return_errors=return_errors)
+        if force_delete:
+            try:
+                self.force_delete_volume(volume_name)
+            except exception.NetAppException as e:
+                LOG.error("Force delete failed for volume %(vol)s, falling "
+                          "back to soft delete. Reason: %(res)s", {
+                              'vol': volume_name, 'res': e.msg})
+                self.soft_delete_volume(
+                    volume_name,
+                    return_errors=return_errors)
+        else:
+            return self.soft_delete_volume(
+                volume_name,
+                return_errors=return_errors)
 
     @na_utils.trace
     def get_deleted_volumes_to_prune(self):

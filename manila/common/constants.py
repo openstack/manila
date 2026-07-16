@@ -343,6 +343,8 @@ DISALLOWED_STATUS_WHEN_LOCKING_ACCESS_RULES = (
 
 SHARE_LOCKED_BY_ACCESS_LOCK_REASON = 'Locked by access lock: %(lock_id)s'
 
+ONE_WEEK_IN_SECONDS = (7 * 24 * 60 * 60)
+
 
 class ExtraSpecs(object):
 
