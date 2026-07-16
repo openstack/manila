@@ -1724,6 +1724,23 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         else:
             self.assertFalse(vserver_client.set_volume_max_files.called)
 
+    def test_create_flexgroup_share_dp_skips_efficiency(self):
+        self.library.configuration.netapp_flexgroup_volume_online_timeout = 2
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library, 'wait_for_start_create_flexgroup',
+            mock.Mock(return_value={'jobid': fake.JOB_ID, 'error-code': None}))
+        self.mock_object(self.library, 'wait_for_flexgroup_deployment')
+        aggr_list = [fake.AGGREGATE]
+
+        self.library._create_flexgroup_share(
+            vserver_client, aggr_list, fake.SHARE_NAME, 100, 10,
+            volume_type='dp',
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
+
+        vserver_client.update_volume_efficiency_attributes.assert_not_called()
+        vserver_client.set_volume_max_files.assert_not_called()
+
     @ddt.data(
         {'jobid': fake.JOB_ID, 'error-code': 'fake', 'error-message': 'fake'},
         {'jobid': None, 'error-code': None, 'error-message': 'fake'})

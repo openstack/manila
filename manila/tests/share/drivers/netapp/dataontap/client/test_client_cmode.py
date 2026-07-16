@@ -3548,6 +3548,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('volume-create',
                                                          volume_create_args)
 
+    def test_create_volume_dp_skips_efficiency(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+        self.mock_object(self.client, 'set_volume_max_files')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
+            volume_type='dp',
+            max_files=fake.MAX_FILES,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
+
+        self.client.update_volume_efficiency_attributes.assert_not_called()
+        self.client.set_volume_max_files.assert_not_called()
+
     def test_create_volume_adaptive_not_supported(self):
 
         self.client.features.add_feature('ADAPTIVE_QOS', supported=False)

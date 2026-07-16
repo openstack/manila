@@ -1188,6 +1188,20 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
         mock_max_files.assert_called_once_with(fake.VOLUME_NAMES[0], 1)
 
+    def test_create_volume_dp_skips_efficiency_and_max_files(self):
+        self.mock_object(self.client, 'create_volume_async')
+        mock_update = self.mock_object(
+            self.client, 'update_volume_efficiency_attributes')
+        mock_max_files = self.mock_object(self.client, 'set_volume_max_files')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.VOLUME_NAMES[0], fake.SHARE_SIZE,
+            volume_type='dp', max_files=1,
+            efficiency_policy=fake.VOLUME_EFFICIENCY_POLICY_NAME)
+
+        mock_update.assert_not_called()
+        mock_max_files.assert_not_called()
+
     def test_create_volume_async(self):
         body = {
             'size': 1073741824,
