@@ -20,7 +20,8 @@
                     "cidr": null,
                     "network_type": null,
                     "mtu": null,
-                    "gateway": null
+                    "gateway": null,
+                    "metadata": {"key1": "value1"}
                 }
             ]
         },

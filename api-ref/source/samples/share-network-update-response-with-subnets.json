@@ -21,7 +21,8 @@
                 "cidr": "172.24.5.0/24",
                 "network_type": "flat",
                 "mtu": 1500,
-                "gateway": "172.24.5.1"
+                "gateway": "172.24.5.1",
+                "metadata": {"key1": "value1"}
             }
         ]
     }
