@@ -935,14 +935,27 @@ function download_image {
 }
 
 function import_docker_service_image_ubuntu {
-    GZIPPED_IMG_NAME=`basename "$MANILA_DOCKER_IMAGE_URL"`
-    IMG_NAME_LOAD=${GZIPPED_IMG_NAME%.*}
-    LOCAL_IMG_NAME=${IMG_NAME_LOAD%.*}
-    if [[ "$(sudo docker images -q $LOCAL_IMG_NAME)" == "" ]]; then
-        download_image $MANILA_DOCKER_IMAGE_URL
-        # Import image in Docker
-        gzip -d $FILES/$GZIPPED_IMG_NAME
-        sudo docker load --input $FILES/$IMG_NAME_LOAD
+    if [[ $MANILA_DOCKER_IMAGE_URL == *"/"*":"* ]] || [[ $MANILA_DOCKER_IMAGE_URL == *"/"*"/"* ]]; then
+        # Registry reference (e.g., quay.io/org/image:tag)
+        if [[ "$(sudo docker images -q $MANILA_DOCKER_IMAGE_URL)" == "" ]]; then
+            sudo docker pull "$MANILA_DOCKER_IMAGE_URL"
+        fi
+        sudo docker tag "$MANILA_DOCKER_IMAGE_URL" manila-docker-container
+    else
+        # Tarball URL (http/https/file)
+        GZIPPED_IMG_NAME=$(basename "$MANILA_DOCKER_IMAGE_URL")
+        IMG_NAME_LOAD=${GZIPPED_IMG_NAME%.*}
+        LOCAL_IMG_NAME=${IMG_NAME_LOAD%.*}
+        if [[ "$(sudo docker images -q $LOCAL_IMG_NAME)" == "" ]]; then
+            download_image $MANILA_DOCKER_IMAGE_URL
+            if [[ $MANILA_DOCKER_IMAGE_URL == file* ]]; then
+                local src_path
+                src_path=$(echo "$MANILA_DOCKER_IMAGE_URL" | sed "s|^file://||")
+                cp "$src_path" "$FILES/$GZIPPED_IMG_NAME"
+            fi
+            gzip -d "$FILES/$GZIPPED_IMG_NAME"
+            sudo docker load --input "$FILES/$IMG_NAME_LOAD"
+        fi
     fi
 }
 
