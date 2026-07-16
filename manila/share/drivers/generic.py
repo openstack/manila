@@ -387,8 +387,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         # effect only after it was mounted. Closes #1645751
                         # NOTE(gouthamr): Executing tune2fs -U only works on
                         # a recently checked filesystem. See debian bug 857336
-                        '&&', 'sudo', 'e2fsck', '-y', '-f', device_path,
-                        '&&', 'sudo', 'tune2fs', '-U', 'random', device_path,
+                        '&&', '(', 'sudo', 'e2fsck', '-y', '-f', device_path,
+                        '||', '[', '$?', '-le', '2', ']', ')',
+                        '&&', 'sudo', 'tune2fs', '-U', 'random', device_path,                        
                         '&&', 'sudo', 'mount', device_path, mount_path,
                     )
                     self._ssh_exec(server_details, mount_cmd)
