@@ -166,6 +166,26 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
                           data_motion.get_backend_configuration,
                           self.backend)
 
+    def test_get_backup_configuration(self):
+        backup_type = 'backup1'
+        CONF.register_opts(na_opts.netapp_backup_opts, group=backup_type)
+        CONF.set_override("netapp_backup_backend_section_name", self.backend,
+                          group=backup_type)
+
+        config = data_motion.get_backup_configuration(backup_type)
+
+        self.assertEqual(self.backend,
+                         config.netapp_backup_backend_section_name)
+
+    def test_get_backup_configuration_not_configured(self):
+        # NOTE: the backup stanza is missing the required
+        # 'netapp_backup_backend_section_name' key. The lookup must not rely
+        # on CONF.list_all_sections(), which is unavailable with config
+        # backends that cannot enumerate sections (e.g. Vault).
+        self.assertRaises(exception.BadConfigurationException,
+                          data_motion.get_backup_configuration,
+                          'nonexistent_backup_type')
+
 
 @ddt.ddt
 class NetAppCDOTDataMotionSessionTestCase(test.TestCase):

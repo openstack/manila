@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Remove the remaining stanza check from the NetApp driver backup
+    configuration lookup (``get_backup_configuration``) so that oslo-config
+    backend drivers can be used for backup workflows. The previous code relied
+    on ``CONF.list_all_sections()``, which is not supported by every
+    oslo-config backend (for example secret stores that do not allow listing
+    all sections). This completes the fix started in
+    `Launchpad bug #2012742 <https://bugs.launchpad.net/manila/+bug/2012742>`_.
+    For more details, please check
+    `Launchpad bug #2160084 <https://bugs.launchpad.net/manila/+bug/2160084>`_
