@@ -4894,6 +4894,52 @@ class PurgeDeletedTest(test.TestCase):
             # Only the live row must remain.
             self.assertEqual(1, rows)
 
+    def test_purge_share_access_map_cleans_up_instance_access_map(self):
+        """Purging share_access_map must not raise an IntegrityError. """
+        fake_now = timeutils.utcnow()
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fake_now)):
+            deleted_at = fake_now - datetime.timedelta(days=1)
+
+            # Create share, instance and access rule.
+            share = db_utils.create_share_without_instance(metadata={})
+            instance = db_utils.create_share_instance(
+                share_id=share['id'])
+            access = db_utils.create_share_access(
+                share_id=share['id'])
+
+            # Insert a share_instance_access_map row referencing the access
+            # rule (live row — not soft-deleted — worst case for FK violation).
+            instance_access_id = uuidutils.generate_uuid()
+            with db_api.context_manager.writer.using(self.context):
+                self.context.session.execute(
+                    models.ShareInstanceAccessMapping.__table__.insert(),
+                    {'id': instance_access_id,
+                     'share_instance_id': instance['id'],
+                     'access_id': access['id'],
+                     'state': 'active',
+                     'deleted': 'False',
+                     'created_at': fake_now,
+                     'updated_at': None,
+                     'deleted_at': None})
+
+            # Soft-delete the access rule so it is eligible for purge.
+            self._soft_delete(
+                models.ShareAccessMapping, access['id'], deleted_at)
+
+            # Must not raise an IntegrityError.
+            db_api.purge_deleted_records(self.context, age_in_days=0)
+
+            with db_api.context_manager.reader.using(self.context):
+                access_rows = db_api.model_query(
+                    self.context, models.ShareAccessMapping,
+                    read_deleted='yes').count()
+                instance_access_rows = self.context.session.query(
+                    models.ShareInstanceAccessMapping).count()
+            # Parent purged, child cleaned up.
+            self.assertEqual(0, access_rows)
+            self.assertEqual(0, instance_access_rows)
+
 
 @ddt.ddt
 class ShareTypeAPITestCase(test.TestCase):
