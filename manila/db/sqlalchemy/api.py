@@ -8096,6 +8096,8 @@ def resource_lock_get_all(context, filters=None, limit=None, offset=None,
     all_projects = filters.get('all_projects') or filters.get('all_tenants')
     if project_id is None and not all_projects:
         filters['project_id'] = context.project_id
+    if project_id is not None:
+        authorize_project_context(context, project_id)
 
     legal_filter_keys = ('id', 'user_id', 'resource_id', 'resource_type',
                          'lock_context', 'resource_action', 'created_since',
