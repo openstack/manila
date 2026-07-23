@@ -340,7 +340,7 @@ class FilterScheduler(base.Scheduler):
                   "%(last_host)s : %(exc)s", {
                       "share_id": share_id,
                       "last_host": last_host,
-                      "exc": "exc"
+                      "exc": exc
                       })
 
     def _populate_scheduler_hint(self, request_spec, hints, key, hint):
