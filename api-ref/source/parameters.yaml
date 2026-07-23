@@ -635,6 +635,15 @@ service_binary_query:
   in: query
   required: false
   type: string
+service_ensuring_query:
+  description: |
+    Filter services by whether they are currently running
+    ensure shares or not. A valid value is ``true`` or
+    ``false``.
+  in: query
+  required: false
+  type: boolean
+  min_version: 2.93
 service_host_query:
   description: |
     The service host name.
@@ -3285,7 +3294,7 @@ service_ensuring_response:
     Whether the service is currently running ensure shares or not.
   in: body
   required: true
-  type: string
+  type: boolean
   min_version: 2.86
 service_host:
   description: |

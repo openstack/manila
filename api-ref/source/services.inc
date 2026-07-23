@@ -20,7 +20,7 @@ These APIs help in interacting with the Shared File Systems services,
 List services
 ~~~~~~~~~~~~~
 
-.. rest_method::  GET /v2/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}
+.. rest_method::  GET /v2/services?host={host}&binary={binary}&zone={zone}&state={state}&status={status}&ensuring={ensuring}
 
 Lists all services optionally filtered with the specified search options.
 
@@ -48,6 +48,7 @@ Request
    - zone: service_zone_query
    - state: service_state_query
    - status: service_status_query
+   - ensuring: service_ensuring_query
 
 Response parameters
 -------------------
