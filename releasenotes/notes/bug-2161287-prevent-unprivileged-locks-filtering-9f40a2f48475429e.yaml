@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Manila now prevents resource locks to be filtered by a project UUID in
+    case the requester is not an admininistrator or a member of the project
+    they are attempting to look up. For more details, please refer to
+    `Launchpad bug <https://bugs.launchpad.net/manila/+bug/2161287>`.
