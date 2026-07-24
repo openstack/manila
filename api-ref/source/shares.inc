@@ -140,6 +140,7 @@ Request
    - description~: description_inexact_query
    - with_count: with_count_query
    - is_soft_deleted: is_soft_deleted_query
+   - availability_zone: availability_zone_query
    - limit: limit
    - offset: offset
    - sort_key: sort_key
@@ -211,6 +212,7 @@ Request
    - description~: description_inexact_query
    - with_count: with_count_query
    - is_soft_deleted: is_soft_deleted_query
+   - availability_zone: availability_zone_query
    - limit: limit
    - offset: offset
    - sort_key: sort_key

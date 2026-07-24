@@ -2418,7 +2418,7 @@ def _process_share_filters(query, filters, project_id=None, is_public=False):
                          'is_soft_deleted', 'source_backup_id']
     instance_filter_keys = ['share_server_id', 'status', 'share_type_id',
                             'host', 'share_network_id', 'mount_point_name',
-                            'encryption_key_ref']
+                            'encryption_key_ref', 'availability_zone_id']
     share_filters = {}
     instance_filters = {}
 

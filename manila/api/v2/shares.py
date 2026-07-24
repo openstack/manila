@@ -1565,7 +1565,7 @@ class ShareController(
             'share_group_id', 'share_group_snapshot_id', 'export_location_id',
             'export_location_path', 'display_name~', 'display_description~',
             'display_description', 'limit', 'offset', 'is_soft_deleted',
-            'mount_point_name')
+            'mount_point_name', 'availability_zone')
 
     @wsgi.Controller.api_version("2.0")
     @wsgi.Controller.authorize("get_all")
@@ -1589,6 +1589,9 @@ class ShareController(
         if req.api_version_request < api_version.APIVersionRequest("2.90"):
             req.GET.pop('encryption_key_ref', None)
 
+        if req.api_version_request < api_version.APIVersionRequest("2.97"):
+            req.GET.pop('availability_zone', None)
+
         return self._get_shares(req, is_detail=False)
 
     @wsgi.Controller.api_version("2.0")
@@ -1609,6 +1612,9 @@ class ShareController(
 
         if req.api_version_request < api_version.APIVersionRequest("2.90"):
             req.GET.pop('encryption_key_ref', None)
+
+        if req.api_version_request < api_version.APIVersionRequest("2.97"):
+            req.GET.pop('availability_zone', None)
 
         return self._get_shares(req, is_detail=True)
 

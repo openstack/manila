@@ -655,6 +655,40 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_filter_by_invalid_extra_specs(self):
         self._get_all_filter_metadata_or_extra_specs_invalid(key='extra_specs')
 
+    def test_get_all_filter_by_availability_zone(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
+        fake_az_id = 'fake-az-uuid'
+        self.mock_object(
+            db_api, 'availability_zone_get',
+            mock.Mock(return_value={'id': fake_az_id, 'name': 'nova'}))
+        self.mock_object(
+            db_api, 'share_get_all_by_project',
+            mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0::2]))
+
+        shares = self.api.get_all(ctx, {'availability_zone': 'nova'})
+
+        db_api.availability_zone_get.assert_called_once_with(ctx, 'nova')
+        db_api.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_1',
+            filters={'availability_zone_id': fake_az_id,
+                     'list_deferred_delete': True},
+            is_public=False)
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0::2], shares)
+
+    def test_get_all_filter_by_nonexistent_availability_zone(self):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
+        self.mock_object(
+            db_api, 'availability_zone_get',
+            mock.Mock(side_effect=exception.AvailabilityZoneNotFound(
+                id='nonexistent')))
+        self.mock_object(db_api, 'share_get_all_by_project')
+
+        shares = self.api.get_all(ctx, {'availability_zone': 'nonexistent'})
+
+        db_api.share_get_all_by_project.assert_not_called()
+        self.assertEqual([], shares)
+
     @ddt.data(True, False)
     def test_update_metadata_from_share_type_extra_specs(self, with_metadata):
         share_type = fakes.fake_share_type(

@@ -214,6 +214,13 @@ all_tenants_query:
   in: query
   required: false
   type: boolean
+availability_zone_query:
+  description: |
+    The name of the availability zone that can be used to filter shares.
+  in: query
+  required: false
+  type: string
+  min_version: 2.97
 backend_capabilities_query:
   description: |
     The capabilities for the storage back end.
