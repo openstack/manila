@@ -255,6 +255,11 @@ netapp_provisioning_opts = [
                default=60,  # Default to one minutes
                help='Sets maximum amount of time in seconds to wait for a '
                     'synchronous ONTAP REST API operation to be completed.'),
+    cfg.BoolOpt('netapp_zapi_fallback_enabled',
+                default=True,
+                help='This option allows ONTAP REST client methods to '
+                     'fallback to ZAPI when a REST method is not '
+                     'implemented.'),
     cfg.IntOpt('netapp_security_cert_expire_days',
                min=1,
                max=3652,

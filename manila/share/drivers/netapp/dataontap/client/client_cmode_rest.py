@@ -93,9 +93,12 @@ class NetAppRestClient(object):
             raise exception.NetAppException(msg)
         self.connection.set_ontap_version(ontap_version)
 
-        # NOTE(nahimsouza): ZAPI Client is needed to implement the fallback
-        # when a REST method is not supported.
-        self.zapi_client = client_cmode.NetAppCmodeClient(**kwargs)
+        self.zapi_fallback_enabled = kwargs.get('zapi_fallback_enabled',
+                                                True)
+        if self.zapi_fallback_enabled:
+            # NOTE(nahimsouza): ZAPI Client is needed to implement the
+            # fallback when a REST method is not supported.
+            self.zapi_client = client_cmode.NetAppCmodeClient(**kwargs)
 
         self._have_cluster_creds = self._check_for_cluster_credentials()
 
@@ -159,6 +162,28 @@ class NetAppRestClient(object):
 
     def __getattr__(self, name):
         """If method is not implemented for REST, try to call the ZAPI."""
+        # Dunder method lookups are used by Python internals (copy, pickle,
+        # hasattr, etc.) and must raise AttributeError so they behave
+        # correctly (e.g. hasattr only suppresses AttributeError, not
+        # NetAppException).
+        if name.startswith('__') and name.endswith('__'):
+            raise AttributeError(name)
+
+        # Use object.__getattribute__ to avoid recursive __getattr__ calls.
+        try:
+            zapi_fallback_enabled = object.__getattribute__(
+                self, 'zapi_fallback_enabled')
+        except AttributeError:
+            zapi_fallback_enabled = True
+
+        if not zapi_fallback_enabled:
+            msg = _(
+                'The %(name)s call is not supported for REST and the ZAPI '
+                'fallback is disabled. Set "netapp_zapi_fallback_enabled" '
+                'to "true" (the default) to allow fallback.')
+            LOG.warning(msg, {'name': name})
+            raise exception.NetAppException(msg % {'name': name})
+
         LOG.debug("The %s call is not supported for REST, falling back to "
                   "ZAPI.", name)
         # Don't use self.zapi_client to avoid reentrant call to __getattr__()
@@ -1992,7 +2017,7 @@ class NetAppRestClient(object):
             vserver = record.get('svm', {}).get('name')
 
             client = copy.deepcopy(self)
-            client.set_vserver(vserver)
+            client.connection.set_vserver(vserver)
 
             clones = self.get_clones_of_parent_volume(
                 vserver, vol_name)
@@ -2747,7 +2772,7 @@ class NetAppRestClient(object):
 
         for vserver in deleted_snapshots_map:
             client = copy.deepcopy(self)
-            client.set_vserver(vserver)
+            client.connection.set_vserver(vserver)
 
             for snapshot in deleted_snapshots_map[vserver]:
                 try:
