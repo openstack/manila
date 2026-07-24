@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed a bug where resource locks were not properly cleaned up
+    when multiple VMs shared the same access rule (e.g. via virtiofs).
+    The first detach prematurely deleted all access locks, leaving an
+    orphaned share delete lock that blocked share deletion.
+    See `bug 2161758 <https://bugs.launchpad.net/bugs/2161758>`_
+    for details.
