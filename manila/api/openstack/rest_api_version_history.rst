@@ -510,3 +510,7 @@ user documentation.
 2.96
 ----
   Share migration APIs are no longer considered experimental.
+
+2.97
+----
+  Added ``availability_zone`` filter to share list API.
