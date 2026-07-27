@@ -3487,7 +3487,7 @@ def share_instance_access_delete(context, mapping_id):
     ).filter_by(id=mapping_id).first()
 
     if not mapping:
-        exception.NotFound()
+        raise exception.NotFound()
 
     filters = {
         'resource_id': mapping['access_id'],
@@ -4379,7 +4379,7 @@ def _share_snapshot_instance_access_delete(
         share_snapshot_instance_id=snapshot_instance_id).first()
 
     if not rule:
-        exception.NotFound()
+        raise exception.NotFound()
 
     rule.soft_delete(
         session=context.session, update_status=True,
@@ -4470,7 +4470,7 @@ def _share_snapshot_instance_export_location_delete(context, el_id):
         context, {'id': el_id}).first()
 
     if not el:
-        exception.NotFound()
+        raise exception.NotFound()
 
     el.soft_delete(session=context.session)
 

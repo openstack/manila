@@ -216,6 +216,11 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound, db_api.share_instance_access_get,
                           self.ctxt, access['id'], share['instance']['id'])
 
+    def test_share_instance_access_delete_not_found(self):
+        self.assertRaises(exception.NotFound,
+                          db_api.share_instance_access_delete,
+                          self.ctxt, uuidutils.generate_uuid())
+
     def test_share_instance_access_delete_with_locks(self):
         share = db_utils.create_share()
         access = db_utils.create_access(share_id=share['id'],
@@ -2335,6 +2340,12 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         db_api.share_snapshot_instance_access_delete(
             self.ctxt, access['id'], self.snapshot_1.instance['id'])
 
+    def test_share_snapshot_instance_access_delete_not_found(self):
+        self.assertRaises(exception.NotFound,
+                          db_api.share_snapshot_instance_access_delete,
+                          self.ctxt, uuidutils.generate_uuid(),
+                          self.snapshot_1.instance['id'])
+
     def test_share_snapshot_instance_export_location_create(self):
         values = {
             'share_snapshot_instance_id': self.snapshot_instances[0].id,
@@ -2344,6 +2355,25 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             self.ctxt, values)
 
         self.assertSubDictMatch(values, actual_result.to_dict())
+
+    def test_share_snapshot_instance_export_location_delete(self):
+        el = db_api.share_snapshot_instance_export_location_create(
+            self.ctxt,
+            {'share_snapshot_instance_id': self.snapshot_instances[0].id})
+
+        db_api.share_snapshot_instance_export_location_delete(
+            self.ctxt, el['id'])
+
+        self.assertRaises(
+            exception.NotFound,
+            db_api.share_snapshot_instance_export_location_get,
+            self.ctxt, el['id'])
+
+    def test_share_snapshot_instance_export_location_delete_not_found(self):
+        self.assertRaises(
+            exception.NotFound,
+            db_api.share_snapshot_instance_export_location_delete,
+            self.ctxt, uuidutils.generate_uuid())
 
     def test_share_snapshot_export_locations_get(self):
         out = db_api.share_snapshot_export_locations_get(
