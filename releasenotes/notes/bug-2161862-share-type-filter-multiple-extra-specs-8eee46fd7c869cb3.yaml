@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed the share type list API so that filtering by ``extra_specs`` honors
+    every requested extra spec. Previously only the first extra spec was
+    checked, so share types that did not satisfy the remaining ones were
+    still listed, and the result could change depending on the order the
+    extra specs were written in the query string. See
+    `Launchpad bug #2161862 <https://bugs.launchpad.net/manila/+bug/2161862>`_
+    for more details.

@@ -198,6 +198,46 @@ class ShareTypesTestCase(test.TestCase):
                                                   search_opts=search_filter)
         self.assertEqual(sorted(share_type), sorted(returned_type))
 
+    @ddt.data(
+        # every extra spec in the filter matches the share type
+        ({'gold': 'True', 'driver_handles_share_servers': 'True'}, True),
+        ({'gold': 'True', 'driver_handles_share_servers': 'True',
+          'snapshot_support': 'True'}, True),
+        # the value of the last extra spec doesn't match
+        ({'driver_handles_share_servers': 'True', 'gold': 'False'}, False),
+        ({'gold': 'True', 'driver_handles_share_servers': 'True',
+          'snapshot_support': 'False'}, False),
+        # the last extra spec isn't present in the share type
+        ({'gold': 'True', 'driver_handles_share_servers': 'True',
+          'silver': 'True'}, False),
+    )
+    @ddt.unpack
+    def test_get_all_types_search_multiple_extra_specs(self, extra_specs,
+                                                       expect_match):
+        share_type = {
+            'test_with_extra': {
+                'extra_specs': {
+                    'gold': 'True',
+                    'driver_handles_share_servers': 'True',
+                    'snapshot_support': 'True',
+                },
+                'id': self.fake_share_type_id,
+                'name': u'test_with_extra',
+                'is_public': True,
+            }
+        }
+        self.mock_object(db,
+                         'share_type_get_all',
+                         mock.Mock(return_value=copy.deepcopy(share_type)))
+
+        returned_types = share_types.get_all_types(
+            self.context, search_opts={'extra_specs': dict(extra_specs)})
+
+        if expect_match:
+            self.assertEqual(sorted(share_type), sorted(returned_types))
+        else:
+            self.assertEqual({}, returned_types)
+
     @ddt.data("nova", "supernova,nova", "supernova",
               "nova,hypernova,supernova")
     def test_get_all_types_search_by_availability_zone(self, search_azs):

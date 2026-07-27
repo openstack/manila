@@ -150,7 +150,7 @@ def get_all_types(context, inactive=0, search_opts=None):
             if (k not in share_type['extra_specs'].keys()
                     or share_type['extra_specs'][k] != v):
                 return False
-            return True
+        return True
 
     def _check_availability_zones_match(share_type, availability_zones):
         type_azs = share_type['extra_specs'].get('availability_zones')
