@@ -5902,7 +5902,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.assertEqual('fake_export_location',
                              replica['export_locations'])
             mock_dm_session.wait_for_mount_replica.assert_called_once_with(
-                mock_client, fake.SHARE_NAME, timeout=30)
+                mock_client, fake.SHARE_NAME, timeout=30,
+                mount_point_name=fake.MOUNT_POINT_NAME)
             protocol_helper.update_access.assert_called_once_with(
                 self.fake_replica, fake.SHARE_NAME, [fake.SHARE_ACCESS],
                 replica=True)
@@ -5955,7 +5956,48 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.assertEqual('fake_export_location',
                              replica['export_locations'])
             mock_dm_session.wait_for_mount_replica.assert_called_once_with(
-                mock_client, fake.SHARE_NAME, timeout=30)
+                mock_client, fake.SHARE_NAME, timeout=30,
+                mount_point_name=fake.MOUNT_POINT_NAME)
+
+    def test_safe_change_replica_source_custom_mount_point_name(self):
+        fake_replica_3 = copy.deepcopy(self.fake_replica_2)
+        fake_replica_3['id'] = fake.SHARE_ID3
+        fake_replica_3['replica_state'] = constants.REPLICA_STATE_OUT_OF_SYNC
+        self.fake_replica['mount_point_name'] = 'my-custom-mount'
+
+        protocol_helper = mock.Mock()
+        self.mock_object(self.library, '_get_helper',
+                         mock.Mock(return_value=protocol_helper))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
+
+        mock_dm_session = mock.Mock()
+        mock_dm_session.change_snapmirror_source.return_value = False
+        mock_dm_session.wait_for_mount_replica.return_value = None
+        self.mock_object(mock_dm_session, 'get_backend_info_for_share',
+                         mock.Mock(return_value=(fake.SHARE_NAME,
+                                                 fake.VSERVER1,
+                                                 fake.BACKEND_NAME)))
+        mock_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_client))
+        mock_backend_config = fake.get_config_cmode()
+        mock_backend_config.netapp_mount_replica_timeout = 30
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_client))
+
+        self.library._safe_change_replica_source(
+            mock_dm_session, self.fake_replica, self.fake_replica_2,
+            fake_replica_3, [self.fake_replica, self.fake_replica_2,
+                             fake_replica_3], False, [fake.SHARE_ACCESS])
+
+        mock_dm_session.wait_for_mount_replica.assert_called_once_with(
+            mock_client, fake.SHARE_NAME, timeout=30,
+            mount_point_name='my-custom-mount')
 
     @ddt.data({'fail_create_export': False, 'fail_mount': True},
               {'fail_create_export': True, 'fail_mount': False})

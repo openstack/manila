@@ -4057,7 +4057,8 @@ class NetAppCmodeFileStorageLibrary(object):
                 replica_backend)
             dm_session.wait_for_mount_replica(
                 replica_client, replica_volume_name,
-                timeout=replica_config.netapp_mount_replica_timeout)
+                timeout=replica_config.netapp_mount_replica_timeout,
+                mount_point_name=replica.get('mount_point_name'))
         except netapp_api.NaApiError:
             replica['status'] = constants.STATUS_ERROR
             replica['replica_state'] = constants.STATUS_ERROR

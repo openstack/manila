@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed NetApp driver promoting a readable replica of a share with a custom
+    ``mount_point_name`` causing the old active replica to enter ``error``
+    state. For more details, please check
+    `Launchpad bug <https://bugs.launchpad.net/manila/+bug/2156862>`.

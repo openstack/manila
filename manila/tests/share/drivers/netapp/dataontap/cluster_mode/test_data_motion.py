@@ -1235,8 +1235,20 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         self.dm_session.wait_for_mount_replica(
             mock_client, fake.SHARE_NAME)
 
-        mock_client.mount_volume.ssert_called_once_with(fake.SHARE_NAME)
+        mock_client.mount_volume.assert_called_once_with(fake.SHARE_NAME, None)
         self.assertEqual(0, mock_warning_log.call_count)
+
+    def test_wait_for_mount_replica_custom_mount_point_name(self):
+
+        mock_client = mock.Mock()
+        self.mock_object(time, 'sleep')
+
+        self.dm_session.wait_for_mount_replica(
+            mock_client, fake.SHARE_NAME,
+            mount_point_name='my-custom-mount')
+
+        mock_client.mount_volume.assert_called_once_with(
+            fake.SHARE_NAME, '/my-custom-mount')
 
     def test_wait_for_mount_replica_timeout(self):
 
@@ -1268,7 +1280,7 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
                           self.dm_session.wait_for_mount_replica,
                           mock_client, fake.SHARE_NAME, timeout=30)
 
-        mock_client.mount_volume.assert_called_once_with(fake.SHARE_NAME)
+        mock_client.mount_volume.assert_called_once_with(fake.SHARE_NAME, None)
         mock_warning_log.assert_not_called()
 
     @ddt.data(mock.Mock(),
