@@ -87,7 +87,7 @@ Systems service configuration file for the PowerScale driver:
 
 .. code-block:: ini
 
-   share_driver = manila.share.drivers.emc.driver.EMCShareDriver
+   share_driver = manila.share.drivers.dell_emc.driver.EMCShareDriver
    emc_share_backend = powerscale
    emc_nas_server = <IP address of PowerScale cluster>
    emc_nas_login = <username>
