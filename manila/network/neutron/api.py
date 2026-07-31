@@ -132,15 +132,15 @@ class API(object):
         return self.client.httpclient.get_project_id()
 
     def get_all_admin_project_networks(self):
-        search_opts = {'tenant_id': self.admin_project_id, 'shared': False}
+        search_opts = {'project_id': self.admin_project_id, 'shared': False}
         nets = self.client.list_networks(**search_opts).get('networks', [])
         return nets
 
-    def create_port(self, tenant_id, network_id, host_id=None, subnet_id=None,
+    def create_port(self, project_id, network_id, host_id=None, subnet_id=None,
                     fixed_ip=None, device_owner=None, device_id=None,
                     mac_address=None, port_security_enabled=True,
                     security_group_ids=None, dhcp_opts=None, **kwargs):
-        return self._create_port(tenant_id, network_id, host_id=host_id,
+        return self._create_port(project_id, network_id, host_id=host_id,
                                  subnet_id=subnet_id, fixed_ip=fixed_ip,
                                  device_owner=device_owner,
                                  device_id=device_id, mac_address=mac_address,
@@ -149,16 +149,17 @@ class API(object):
                                  dhcp_opts=dhcp_opts, **kwargs)
 
     @utils.retry(retry_param=ks_exec.ConnectFailure, retries=5)
-    def _create_port(self, tenant_id, network_id, host_id=None, subnet_id=None,
-                     fixed_ip=None, device_owner=None, device_id=None,
-                     mac_address=None, port_security_enabled=True,
-                     security_group_ids=None, dhcp_opts=None, name=None,
+    def _create_port(self, project_id, network_id, host_id=None,
+                     subnet_id=None, fixed_ip=None, device_owner=None,
+                     device_id=None, mac_address=None,
+                     port_security_enabled=True, security_group_ids=None,
+                     dhcp_opts=None, name=None,
                      **kwargs):
         try:
             port_req_body = {'port': {}}
             port_req_body['port']['network_id'] = network_id
             port_req_body['port']['admin_state_up'] = True
-            port_req_body['port']['tenant_id'] = tenant_id
+            port_req_body['port']['project_id'] = project_id
             if not port_security_enabled:
                 port_req_body['port']['port_security_enabled'] = (
                     port_security_enabled)
@@ -286,9 +287,9 @@ class API(object):
             self.extensions = self.list_extensions()
         return neutron_constants.PORTBINDING_EXT in self.extensions
 
-    def router_create(self, tenant_id, name):
+    def router_create(self, project_id, name):
         router_req_body = {'router': {}}
-        router_req_body['router']['tenant_id'] = tenant_id
+        router_req_body['router']['project_id'] = project_id
         router_req_body['router']['name'] = name
         try:
             return self.client.create_router(router_req_body).get('router', {})
@@ -296,9 +297,9 @@ class API(object):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
-    def network_create(self, tenant_id, name):
+    def network_create(self, project_id, name):
         network_req_body = {'network': {}}
-        network_req_body['network']['tenant_id'] = tenant_id
+        network_req_body['network']['project_id'] = project_id
         network_req_body['network']['name'] = name
         try:
             return self.client.create_network(
@@ -307,9 +308,9 @@ class API(object):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
-    def subnet_create(self, tenant_id, net_id, name, cidr, no_gateway=False):
+    def subnet_create(self, project_id, net_id, name, cidr, no_gateway=False):
         subnet_req_body = {'subnet': {}}
-        subnet_req_body['subnet']['tenant_id'] = tenant_id
+        subnet_req_body['subnet']['project_id'] = project_id
         subnet_req_body['subnet']['name'] = name
         subnet_req_body['subnet']['network_id'] = net_id
         subnet_req_body['subnet']['cidr'] = cidr

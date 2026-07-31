@@ -172,7 +172,7 @@ class NeutronApiTest(test.TestCase):
         self.mock_object(self.neutron_api, '_has_port_binding_extension',
                          mock.Mock(return_value=True))
         port_args = {
-            'tenant_id': 'test tenant', 'network_id': 'test net',
+            'project_id': 'test project', 'network_id': 'test net',
             'host_id': 'test host', 'subnet_id': 'test subnet',
             'fixed_ip': 'test ip', 'device_owner': 'test owner',
             'device_id': 'test device', 'mac_address': 'test mac',
@@ -184,7 +184,7 @@ class NeutronApiTest(test.TestCase):
         port = self.neutron_api.create_port(**port_args)
 
         # Verify results
-        self.assertEqual(port_args['tenant_id'], port['tenant_id'])
+        self.assertEqual(port_args['project_id'], port['project_id'])
         self.assertEqual(port_args['network_id'], port['network_id'])
         self.assertEqual(port_args['host_id'], port['binding:host_id'])
         self.assertEqual(port_args['subnet_id'],
@@ -202,27 +202,27 @@ class NeutronApiTest(test.TestCase):
 
     def test_create_port_with_required_args(self):
         # Set up test data
-        port_args = {'tenant_id': 'test tenant', 'network_id': 'test net'}
+        port_args = {'project_id': 'test project', 'network_id': 'test net'}
 
         # Execute method 'create_port'
         port = self.neutron_api.create_port(**port_args)
 
         # Verify results
-        self.assertEqual(port_args['tenant_id'], port['tenant_id'])
+        self.assertEqual(port_args['project_id'], port['project_id'])
         self.assertEqual(port_args['network_id'],
                          port['network_id'])
         self.assertTrue(clientv20.Client.called)
 
     def test_create_port_with_additional_kwargs(self):
         # Set up test data
-        port_args = {'tenant_id': 'test tenant', 'network_id': 'test net',
+        port_args = {'project_id': 'test project', 'network_id': 'test net',
                      'binding_arg': 'foo'}
 
         # Execute method 'create_port'
         port = self.neutron_api.create_port(**port_args)
 
         # Verify results
-        self.assertEqual(port_args['tenant_id'], port['tenant_id'])
+        self.assertEqual(port_args['project_id'], port['project_id'])
         self.assertEqual(port_args['network_id'],
                          port['network_id'])
         self.assertEqual(port_args['binding_arg'],
@@ -233,7 +233,7 @@ class NeutronApiTest(test.TestCase):
         self.mock_object(self.neutron_api, '_has_port_binding_extension',
                          mock.Mock(return_value=False))
         port_args = {
-            'tenant_id': 'test tenant',
+            'project_id': 'test project',
             'network_id': 'test net',
             'host_id': 'foohost'
         }
@@ -246,7 +246,7 @@ class NeutronApiTest(test.TestCase):
         self.mock_object(
             self.neutron_api.client, 'create_port',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException))
-        port_args = {'tenant_id': 'test tenant', 'network_id': 'test net'}
+        port_args = {'project_id': 'test project', 'network_id': 'test net'}
 
         # Execute method 'create_port'
         self.assertRaises(exception.NetworkException,
@@ -265,7 +265,7 @@ class NeutronApiTest(test.TestCase):
             self.neutron_api.client, 'create_port',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException(
                 status_code=409)))
-        port_args = {'tenant_id': 'test tenant', 'network_id': 'test net'}
+        port_args = {'project_id': 'test project', 'network_id': 'test net'}
 
         # Execute method 'create_port'
         self.assertRaises(exception.PortLimitExceeded,
@@ -435,20 +435,20 @@ class NeutronApiTest(test.TestCase):
 
     def test_create_network(self):
         # Set up test data
-        net_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+        net_args = {'project_id': 'test project', 'name': 'test name'}
 
         # Execute method 'network_create'
         network = self.neutron_api.network_create(**net_args)
 
         # Verify results
-        self.assertEqual(net_args['tenant_id'], network['tenant_id'])
+        self.assertEqual(net_args['project_id'], network['project_id'])
         self.assertEqual(net_args['name'], network['name'])
         self.assertTrue(clientv20.Client.called)
 
     def test_create_subnet(self):
         # Set up test data
         subnet_args = {
-            'tenant_id': 'test tenant',
+            'project_id': 'test project',
             'name': 'test name',
             'net_id': 'test net id',
             'cidr': '10.0.0.0/24',
@@ -458,19 +458,19 @@ class NeutronApiTest(test.TestCase):
         subnet = self.neutron_api.subnet_create(**subnet_args)
 
         # Verify results
-        self.assertEqual(subnet_args['tenant_id'], subnet['tenant_id'])
+        self.assertEqual(subnet_args['project_id'], subnet['project_id'])
         self.assertEqual(subnet_args['name'], subnet['name'])
         self.assertTrue(clientv20.Client.called)
 
     def test_create_router(self):
         # Set up test data
-        router_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+        router_args = {'project_id': 'test project', 'name': 'test name'}
 
         # Execute method 'router_create'
         router = self.neutron_api.router_create(**router_args)
 
         # Verify results
-        self.assertEqual(router_args['tenant_id'], router['tenant_id'])
+        self.assertEqual(router_args['project_id'], router['project_id'])
         self.assertEqual(router_args['name'], router['name'])
         self.assertTrue(clientv20.Client.called)
 
@@ -491,7 +491,7 @@ class NeutronApiTest(test.TestCase):
 
     def test_create_network_exception(self):
         # Set up test data
-        net_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+        net_args = {'project_id': 'test project', 'name': 'test name'}
         self.mock_object(
             self.neutron_api.client, 'create_network',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException))
@@ -510,7 +510,7 @@ class NeutronApiTest(test.TestCase):
     def test_create_subnet_exception(self):
         # Set up test data
         subnet_args = {
-            'tenant_id': 'test tenant',
+            'project_id': 'test project',
             'name': 'test name',
             'net_id': 'test net id',
             'cidr': '10.0.0.0/24',
@@ -528,7 +528,7 @@ class NeutronApiTest(test.TestCase):
         # Verify results
         expected_data = {
             'network_id': subnet_args['net_id'],
-            'tenant_id': subnet_args['tenant_id'],
+            'project_id': subnet_args['project_id'],
             'cidr': subnet_args['cidr'],
             'name': subnet_args['name'],
             'ip_version': 4,
@@ -539,7 +539,7 @@ class NeutronApiTest(test.TestCase):
 
     def test_create_router_exception(self):
         # Set up test data
-        router_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+        router_args = {'project_id': 'test project', 'name': 'test name'}
         self.mock_object(
             self.neutron_api.client, 'create_router',
             mock.Mock(side_effect=neutron_client_exc.NeutronClientException))
@@ -760,4 +760,4 @@ class NeutronApiTest(test.TestCase):
         self.neutron_api.client.httpclient.auth_token.called
         self.neutron_api.client.httpclient.auth_tenant_id.called
         self.neutron_api.client.list_networks.assert_called_once_with(
-            tenant_id=self.neutron_api.admin_project_id, shared=False)
+            project_id=self.neutron_api.admin_project_id, shared=False)
