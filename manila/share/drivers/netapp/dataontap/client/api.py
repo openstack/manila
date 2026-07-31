@@ -85,12 +85,12 @@ STYLE_CERTIFICATE = 'certificate_auth'
 class BaseClient(object):
     """Encapsulates server connection logic."""
 
-    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTPS,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None,
                  username=None, password=None, port=None,
                  trace=False, api_trace_pattern=None, private_key_file=None,
                  certificate_file=None, ca_certificate_file=None,
-                 certificate_host_validation=False):
+                 certificate_host_validation=False, ssl_cert_verify=True):
         super(BaseClient, self).__init__()
         self._host = host
         if private_key_file and certificate_file:
@@ -105,7 +105,9 @@ class BaseClient(object):
         self._trace = trace
         self._api_trace_pattern = api_trace_pattern
         self._refresh_conn = True
-        if ssl_cert_path is not None:
+        if not ssl_cert_verify:
+            self._ssl_verify = False
+        elif ssl_cert_path is not None:
             self._ssl_verify = ssl_cert_path
         else:
             # Note(felipe_rodrigues): it will verify with the mozila CA roots,
@@ -291,13 +293,13 @@ class ZapiClient(BaseClient):
     NETAPP_NS = 'http://www.netapp.com/filer/admin'
 
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
-                 transport_type=TRANSPORT_TYPE_HTTP,
+                 transport_type=TRANSPORT_TYPE_HTTPS,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
                  api_trace_pattern=utils.API_TRACE_PATTERN,
                  private_key_file=None,
                  certificate_file=None, ca_certificate_file=None,
-                 certificate_host_validation=None):
+                 certificate_host_validation=None, ssl_cert_verify=True):
         super(ZapiClient, self).__init__(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
@@ -305,7 +307,8 @@ class ZapiClient(BaseClient):
             private_key_file=private_key_file,
             certificate_file=certificate_file,
             ca_certificate_file=ca_certificate_file,
-            certificate_host_validation=certificate_host_validation)
+            certificate_host_validation=certificate_host_validation,
+            ssl_cert_verify=ssl_cert_verify)
         self.set_server_type(server_type)
         if port is None:
             # Not yet set in parent, use defaults
@@ -476,12 +479,13 @@ class ZapiClient(BaseClient):
 
 class RestClient(BaseClient):
 
-    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTPS,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
                  api_trace_pattern=utils.API_TRACE_PATTERN,
                  private_key_file=None, certificate_file=None,
-                 ca_certificate_file=None, certificate_host_validation=False):
+                 ca_certificate_file=None, certificate_host_validation=False,
+                 ssl_cert_verify=True):
         super(RestClient, self).__init__(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
@@ -489,7 +493,8 @@ class RestClient(BaseClient):
             private_key_file=private_key_file,
             certificate_file=certificate_file,
             ca_certificate_file=ca_certificate_file,
-            certificate_host_validation=certificate_host_validation)
+            certificate_host_validation=certificate_host_validation,
+            ssl_cert_verify=ssl_cert_verify)
         if port is None:
             # Not yet set in parent, use defaults
             self._set_port()
@@ -617,12 +622,13 @@ class RestClient(BaseClient):
 class NaServer(object):
     """Encapsulates server connection logic."""
 
-    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTPS,
                  style=STYLE_LOGIN_PASSWORD, ssl_cert_path=None, username=None,
                  password=None, port=None, trace=False,
                  api_trace_pattern=utils.API_TRACE_PATTERN,
                  private_key_file=None, certificate_file=None,
-                 ca_certificate_file=None, certificate_host_validation=False):
+                 ca_certificate_file=None, certificate_host_validation=False,
+                 ssl_cert_verify=True):
         self.zapi_client = ZapiClient(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
@@ -630,7 +636,8 @@ class NaServer(object):
             private_key_file=private_key_file,
             certificate_file=certificate_file,
             ca_certificate_file=ca_certificate_file,
-            certificate_host_validation=certificate_host_validation)
+            certificate_host_validation=certificate_host_validation,
+            ssl_cert_verify=ssl_cert_verify)
         self.rest_client = RestClient(
             host, transport_type=transport_type, style=style,
             ssl_cert_path=ssl_cert_path, username=username, password=password,
@@ -638,7 +645,8 @@ class NaServer(object):
             private_key_file=private_key_file,
             certificate_file=certificate_file,
             ca_certificate_file=ca_certificate_file,
-            certificate_host_validation=certificate_host_validation)
+            certificate_host_validation=certificate_host_validation,
+            ssl_cert_verify=ssl_cert_verify)
         self._host = host
 
         LOG.debug('Using NetApp controller: %s', self._host)

@@ -37,15 +37,21 @@ class NetAppRestApiServerTests(test.TestCase):
         self.rest_client = netapp_api.RestNaServer('127.0.0.1')
         super(NetAppRestApiServerTests, self).setUp()
 
-    @ddt.data(None, 'my_cert')
-    def test__init__ssl_verify(self, ssl_cert_path):
-        client = netapp_api.RestNaServer('127.0.0.1',
-                                         ssl_cert_path=ssl_cert_path)
+    @ddt.data(
+        {'ssl_cert_verify': False, 'ssl_cert_path': None, 'expected': False},
+        {'ssl_cert_verify': False, 'ssl_cert_path': 'my_cert',
+         'expected': False},
+        {'ssl_cert_verify': True, 'ssl_cert_path': 'my_cert',
+         'expected': 'my_cert'},
+        {'ssl_cert_verify': True, 'ssl_cert_path': None, 'expected': True},
+    )
+    @ddt.unpack
+    def test__init__ssl_verify(self, ssl_cert_verify, ssl_cert_path, expected):
+        client = netapp_api.RestNaServer(
+            '127.0.0.1', ssl_cert_path=ssl_cert_path,
+            ssl_cert_verify=ssl_cert_verify)
 
-        if ssl_cert_path:
-            self.assertEqual(ssl_cert_path, client._ssl_verify)
-        else:
-            self.assertTrue(client._ssl_verify)
+        self.assertEqual(expected, client._ssl_verify)
 
     @ddt.data(None, 'ftp')
     def test_set_transport_type_value_error(self, transport_type):

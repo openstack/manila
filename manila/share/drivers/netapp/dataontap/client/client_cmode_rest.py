@@ -62,6 +62,7 @@ class NetAppRestClient(object):
             host=kwargs['hostname'],
             transport_type=kwargs['transport_type'],
             ssl_cert_path=kwargs['ssl_cert_path'],
+            ssl_cert_verify=kwargs.get('ssl_cert_verify', True),
             port=kwargs['port'],
             username=kwargs['username'],
             password=kwargs['password'],

@@ -289,6 +289,7 @@ class NetAppCmodeFileStorageLibrary(object):
             client = client_cmode.NetAppCmodeClient(
                 transport_type=config.netapp_transport_type,
                 ssl_cert_path=config.netapp_ssl_cert_path,
+                ssl_cert_verify=config.netapp_ssl_cert_verify,
                 username=config.netapp_login,
                 password=config.netapp_password,
                 hostname=config.netapp_server_hostname,
@@ -305,6 +306,7 @@ class NetAppCmodeFileStorageLibrary(object):
             client = client_cmode_rest.NetAppRestClient(
                 transport_type=config.netapp_transport_type,
                 ssl_cert_path=config.netapp_ssl_cert_path,
+                ssl_cert_verify=config.netapp_ssl_cert_verify,
                 username=config.netapp_login,
                 password=config.netapp_password,
                 hostname=config.netapp_server_hostname,

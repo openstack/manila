@@ -138,6 +138,7 @@ CLIENT_KWARGS = {
     'vserver': None,
     'transport_type': 'https',
     'ssl_cert_path': '/etc/ssl/certs/',
+    'ssl_cert_verify': True,
     'password': 'pass',
     'private_key_file': '/fake_private_key.pem',
     'certificate_file': '/fake_certificate.pem',

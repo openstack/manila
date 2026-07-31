@@ -76,11 +76,12 @@ class RestNaServer(object):
     HTTPS_PORT = '443'
     TUNNELING_HEADER_KEY = "X-Dot-SVM-Name"
 
-    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTP,
+    def __init__(self, host, transport_type=TRANSPORT_TYPE_HTTPS,
                  ssl_cert_path=None, username=None, password=None, port=None,
                  trace=False, api_trace_pattern=utils.API_TRACE_PATTERN,
                  private_key_file=None, certificate_file=None,
-                 ca_certificate_file=None, certificate_host_validation=None):
+                 ca_certificate_file=None, certificate_host_validation=None,
+                 ssl_cert_verify=True):
         self._host = host
         if private_key_file and certificate_file:
             transport_type = RestNaServer.TRANSPORT_TYPE_HTTPS
@@ -92,7 +93,9 @@ class RestNaServer(object):
         self._api_trace_pattern = api_trace_pattern
         self._timeout = None
 
-        if ssl_cert_path is not None:
+        if not ssl_cert_verify:
+            self._ssl_verify = False
+        elif ssl_cert_path is not None:
             self._ssl_verify = ssl_cert_path
         else:
             # Note(felipe_rodrigues): it will verify with the mozila CA roots,

@@ -66,7 +66,25 @@ class NetAppDriver(object):
 
         config.append_config_values(driver.share_opts)
         config.append_config_values(options.netapp_proxy_opts)
+        config.append_config_values(options.netapp_transport_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
+
+        if config.netapp_transport_type == 'http':
+            LOG.warning('The %(option)s option is set to %(protocol)s for '
+                        'backend %(backend)s. This is an insecure '
+                        'transport and is not recommended for production.',
+                        {'option': 'netapp_transport_type',
+                         'protocol': 'http',
+                         'backend': (config.config_group or 'DEFAULT')})
+
+        elif not config.netapp_ssl_cert_verify:
+            LOG.warning('The %(option)s option is set to %(value)s for '
+                        'backend %(backend)s. SSL certificate verification '
+                        'is disabled. This is insecure and should only be '
+                        'used in trusted environments.',
+                        {'option': 'netapp_ssl_cert_verify',
+                         'value': False,
+                         'backend': (config.config_group or 'DEFAULT')})
 
         app_version = na_utils.OpenStackInfo().info()
         LOG.info('OpenStack OS Version Info: %s', app_version)

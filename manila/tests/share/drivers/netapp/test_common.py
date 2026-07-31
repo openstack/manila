@@ -68,6 +68,67 @@ class NetAppDriverFactoryTestCase(test.TestCase):
                           na_common.NetAppDriver,
                           **kwargs)
 
+    def test_new_logs_warning_for_http_transport(self):
+
+        self.mock_object(na_utils.OpenStackInfo, 'info',
+                         mock.Mock(return_value='fake_info'))
+        self.mock_object(na_common.NetAppDriver, '_get_driver_mode',
+                         mock.Mock(return_value='fake_mode'))
+        self.mock_object(na_common.NetAppDriver, '_create_driver')
+        mock_log = self.mock_object(na_common, 'LOG')
+
+        config = na_fakes.create_configuration()
+        config.netapp_storage_family = 'fake_family'
+        config.driver_handles_share_servers = True
+        config.netapp_transport_type = 'http'
+
+        na_common.NetAppDriver(configuration=config)
+
+        mock_log.warning.assert_called_once()
+        _, warning_data = mock_log.warning.call_args[0]
+        self.assertEqual('netapp_transport_type', warning_data['option'])
+        self.assertEqual('http', warning_data['protocol'])
+
+    def test_new_does_not_log_warning_for_https_transport(self):
+
+        self.mock_object(na_utils.OpenStackInfo, 'info',
+                         mock.Mock(return_value='fake_info'))
+        self.mock_object(na_common.NetAppDriver, '_get_driver_mode',
+                         mock.Mock(return_value='fake_mode'))
+        self.mock_object(na_common.NetAppDriver, '_create_driver')
+        mock_log = self.mock_object(na_common, 'LOG')
+
+        config = na_fakes.create_configuration()
+        config.netapp_storage_family = 'fake_family'
+        config.driver_handles_share_servers = True
+        config.netapp_transport_type = 'https'
+
+        na_common.NetAppDriver(configuration=config)
+
+        mock_log.warning.assert_not_called()
+
+    def test_new_logs_warning_for_disabled_ssl_cert_verification(self):
+
+        self.mock_object(na_utils.OpenStackInfo, 'info',
+                         mock.Mock(return_value='fake_info'))
+        self.mock_object(na_common.NetAppDriver, '_get_driver_mode',
+                         mock.Mock(return_value='fake_mode'))
+        self.mock_object(na_common.NetAppDriver, '_create_driver')
+        mock_log = self.mock_object(na_common, 'LOG')
+
+        config = na_fakes.create_configuration()
+        config.netapp_storage_family = 'fake_family'
+        config.driver_handles_share_servers = True
+        config.netapp_transport_type = 'https'
+        config.netapp_ssl_cert_verify = False
+
+        na_common.NetAppDriver(configuration=config)
+
+        mock_log.warning.assert_called_once()
+        _, warning_data = mock_log.warning.call_args[0]
+        self.assertEqual('netapp_ssl_cert_verify', warning_data['option'])
+        self.assertFalse(warning_data['value'])
+
     def test_new_missing_mode(self):
 
         self.mock_object(na_utils.OpenStackInfo, 'info')

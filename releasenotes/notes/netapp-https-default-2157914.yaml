@@ -1,0 +1,21 @@
+---
+security:
+  - |
+    `Bug #2157914 <https://bugs.launchpad.net/manila/+bug/2157914>`_: The
+    NetApp ONTAP driver now defaults ``netapp_transport_type`` to ``https``
+    instead of ``http``, and logs a warning if ``http`` is explicitly
+    configured. A new option, ``netapp_ssl_cert_verify`` (default ``True``),
+    controls whether the storage system's SSL certificate is verified for
+    the REST and legacy ZAPI clients.
+upgrade:
+  - |
+    NetApp ONTAP driver backends that do not explicitly set
+    ``netapp_transport_type`` will now use ``https`` instead of ``http``.
+    Operators relying on the previous ``http`` default must either set
+    ``netapp_transport_type = http`` to keep the old behavior (a warning
+    will be logged), or ensure the ONTAP cluster is reachable over HTTPS
+    with a certificate trusted by the Manila host, for example by
+    configuring ``netapp_ssl_cert_path`` or, for test and non-production
+    environments with self-signed certificates, setting
+    ``netapp_ssl_cert_verify = False``. Otherwise, driver initialization
+    will fail with an SSL certificate verification error.
