@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed bug `#2143983
+    <https://bugs.launchpad.net/manila/+bug/2143983>`_: Share replicas that
+    no longer exist on the backend could not be deleted via the normal delete
+    path when the driver raised an exception while attempting to update the
+    access rules. The manager now catches "not found" exceptions during share
+    replica access updates and treats it as a successful removal, allowing
+    normal deletion to proceed without requiring forceful deletions.
