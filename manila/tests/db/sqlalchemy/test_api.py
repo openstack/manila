@@ -257,6 +257,60 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound, db_api.resource_lock_get,
                           self.ctxt, share_lock['id'])
 
+    def test_share_instance_access_delete_with_locks_multi_mapping(self):
+        share = db_utils.create_share()
+        instance2 = db_utils.create_share_instance(share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'],
+                                        metadata={'key1': 'v1'})
+
+        access_lock1 = db_utils.create_lock(resource_id=access['id'])
+        share_lock_reason1 = (
+            constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON %
+            {'lock_id': access_lock1['id']}
+        )
+        share_lock1 = db_utils.create_lock(
+            resource_id=share['id'], lock_reason=share_lock_reason1
+        )
+
+        access_lock2 = db_utils.create_lock(resource_id=access['id'])
+        share_lock_reason2 = (
+            constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON %
+            {'lock_id': access_lock2['id']}
+        )
+        share_lock2 = db_utils.create_lock(
+            resource_id=share['id'], lock_reason=share_lock_reason2
+        )
+
+        mapping1 = db_api.share_instance_access_get(
+            self.ctxt, access['id'], share.instance['id'])
+        mapping2 = db_api.share_instance_access_get(
+            self.ctxt, access['id'], instance2['id'])
+
+        # Deleting the first mapping must NOT remove locks
+        db_api.share_instance_access_delete(self.ctxt, mapping1['id'])
+
+        # All locks still present
+        db_api.resource_lock_get(self.ctxt, access_lock1['id'])
+        db_api.resource_lock_get(self.ctxt, access_lock2['id'])
+        db_api.resource_lock_get(self.ctxt, share_lock1['id'])
+        db_api.resource_lock_get(self.ctxt, share_lock2['id'])
+        # Access rule still present
+        db_api.share_access_get(self.ctxt, access['id'])
+
+        # Deleting the last mapping removes locks and the access rule
+        db_api.share_instance_access_delete(self.ctxt, mapping2['id'])
+
+        self.assertRaises(exception.NotFound, db_api.resource_lock_get,
+                          self.ctxt, access_lock1['id'])
+        self.assertRaises(exception.NotFound, db_api.resource_lock_get,
+                          self.ctxt, access_lock2['id'])
+        self.assertRaises(exception.NotFound, db_api.resource_lock_get,
+                          self.ctxt, share_lock1['id'])
+        self.assertRaises(exception.NotFound, db_api.resource_lock_get,
+                          self.ctxt, share_lock2['id'])
+        self.assertRaises(exception.NotFound, db_api.share_access_get,
+                          self.ctxt, access['id'])
+
     def test_one_share_with_two_share_instance_access_delete(self):
         metadata = {'key2': 'v2', 'key3': 'v3'}
         share = db_utils.create_share()

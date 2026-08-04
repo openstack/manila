@@ -3489,36 +3489,6 @@ def share_instance_access_delete(context, mapping_id):
     if not mapping:
         exception.NotFound()
 
-    filters = {
-        'resource_id': mapping['access_id'],
-        'all_projects': True
-    }
-    locks, _ = resource_lock_get_all(
-        context.elevated(), filters=filters
-    )
-    if locks:
-        for lock in locks:
-            if lock['resource_action'] == constants.RESOURCE_ACTION_DELETE:
-                lock_reason = (
-                    constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON % {
-                        'lock_id': lock['id']
-                    }
-                )
-                share_filters = {
-                    'all_projects': True,
-                    'lock_reason': lock_reason
-                }
-                share_locks, _ = resource_lock_get_all(
-                    context.elevated(), filters=share_filters
-                ) or []
-                for share_lock in share_locks:
-                    resource_lock_delete(
-                        context.elevated(), share_lock['id']
-                    )
-            resource_lock_delete(
-                context.elevated(), lock['id']
-            )
-
     mapping.soft_delete(
         session=context.session, update_status=True,
         status_field_name='state'
@@ -3530,6 +3500,37 @@ def share_instance_access_delete(context, mapping_id):
 
     # NOTE(u_glide): Remove access rule if all mappings were removed.
     if len(other_mappings) == 0:
+        filters = {
+            'resource_id': mapping['access_id'],
+            'all_projects': True
+        }
+        locks, _ = resource_lock_get_all(
+            context.elevated(), filters=filters
+        )
+        if locks:
+            for lock in locks:
+                if (lock['resource_action'] ==
+                        constants.RESOURCE_ACTION_DELETE):
+                    lock_reason = (
+                        constants.SHARE_LOCKED_BY_ACCESS_LOCK_REASON % {
+                            'lock_id': lock['id']
+                        }
+                    )
+                    share_filters = {
+                        'all_projects': True,
+                        'lock_reason': lock_reason
+                    }
+                    share_locks, _ = resource_lock_get_all(
+                        context.elevated(), filters=share_filters
+                    ) or []
+                    for share_lock in share_locks:
+                        resource_lock_delete(
+                            context.elevated(), share_lock['id']
+                        )
+                resource_lock_delete(
+                    context.elevated(), lock['id']
+                )
+
         context.session.query(models.ShareAccessRulesMetadata).filter_by(
             access_id=mapping['access_id']
         ).soft_delete()
