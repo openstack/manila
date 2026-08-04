@@ -452,7 +452,7 @@ def process_launcher():
 _launcher = None
 
 
-def serve(server, workers=None):
+def serve(server, workers=1):
     global _launcher
     if _launcher:
         raise RuntimeError('serve() can only be called once')
