@@ -4940,7 +4940,8 @@ class ShareAPITestCase(test.TestCase):
              az_request_multiple_subnet_support_map={},
              cast_rules_to_readonly=cast_rules_to_readonly,
              qos_type_id=None,
-             share_instance_metadata=None))
+             share_instance_metadata=None,
+             mount_point_name=None))
         db_api.share_replica_update.assert_called_once()
         mock_snapshot_get_all_call.assert_called_once()
         mock_sched_rpcapi_call.assert_called_once()
@@ -5082,7 +5083,52 @@ class ShareAPITestCase(test.TestCase):
              az_request_multiple_subnet_support_map=az_id,
              cast_rules_to_readonly=cast_rules_to_readonly,
              qos_type_id=None,
-             share_instance_metadata=None))
+             share_instance_metadata=None,
+             mount_point_name=None))
+
+    def test_create_share_replica_mount_point_name_inheritance(self):
+        extra_specs = {'replication_type': constants.REPLICATION_TYPE_DR}
+        request_spec = fakes.fake_replica_request_spec()
+        replica = request_spec['share_instance_properties']
+        share_type = db_utils.create_share_type(extra_specs=extra_specs)
+        share_type = db_api.share_type_get(self.context, share_type['id'])
+        share = db_utils.create_share(
+            id=replica['share_id'],
+            replication_type=constants.REPLICATION_TYPE_DR,
+            share_type_id=share_type['id'])
+
+        fake_replica = fakes.fake_replica(id=replica['id'])
+        fake_request_spec = fakes.fake_replica_request_spec()
+        active_replica_with_mpn = {
+            'host': 'fake_ar_host',
+            'mount_point_name': 'fake_mpn',
+        }
+        self.mock_object(db_api, 'share_replicas_get_available_active_replica',
+                         mock.Mock(return_value=active_replica_with_mpn))
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value=share_type))
+        self.mock_object(
+            share_api.API, 'create_share_instance_and_get_request_spec',
+            mock.Mock(return_value=(fake_request_spec, fake_replica)))
+        self.mock_object(db_api, 'share_replica_update')
+        self.mock_object(self.api.scheduler_rpcapi, 'create_share_replica')
+        self.mock_object(db_api, 'share_snapshot_get_all_for_share',
+                         mock.Mock(return_value=[]))
+        self.mock_object(db_api, 'share_replicas_get_all_by_share',
+                         mock.Mock(return_value=[fake_replica]))
+
+        self.api.create_share_replica(self.context, share)
+
+        share_api.API.create_share_instance_and_get_request_spec.\
+            assert_called_once_with(
+                self.context, share, availability_zone=None,
+                share_network_id=None, share_type_id=share_type['id'],
+                availability_zones=[],
+                az_request_multiple_subnet_support_map={},
+                cast_rules_to_readonly=False,
+                qos_type_id=None,
+                share_instance_metadata=None,
+                mount_point_name='fake_mpn')
 
     def test_delete_last_active_replica(self):
         fake_replica = fakes.fake_replica(
@@ -5322,7 +5368,8 @@ class ShareAPITestCase(test.TestCase):
                                  az_request_multiple_subnet_support_map={},
                                  cast_rules_to_readonly=False,
                                  qos_type_id=None,
-                                 share_instance_metadata=None))
+                                 share_instance_metadata=None,
+                                 mount_point_name=None))
 
     def test_migration_complete(self):
 

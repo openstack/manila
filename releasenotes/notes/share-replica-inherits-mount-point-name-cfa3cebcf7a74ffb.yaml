@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    A share replica will now inherit the ``mount_point_name`` from the
+    parent share's active instance so that all replicas share the same
+    export path. This enables DNS-based access balancing across replicas,
+    where clients keep the same mount path and only the resolved IP
+    changes between active and passive replicas.

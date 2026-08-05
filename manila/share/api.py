@@ -1013,7 +1013,8 @@ class API(base.Base):
                     az_request_multiple_subnet_support_map=(
                         az_request_multiple_subnet_support_map),
                     qos_type_id=qos_type_id,
-                    share_instance_metadata=metadata)
+                    share_instance_metadata=metadata,
+                    mount_point_name=active_replica.get('mount_point_name'))
             )
             QUOTAS.commit(
                 context, reservations, project_id=share['project_id'],

@@ -259,6 +259,7 @@ def fake_replica(id=None, as_primitive=True, for_manager=False, **kwargs):
         'share_server_id': '53099868-65f1-11e5-9d70-feff819cdc9f',
         'access_rules_status': constants.SHARE_INSTANCE_RULES_SYNCING,
         'qos_type_id': None,
+        'mount_point_name': None,
     }
     if for_manager:
         replica.update({

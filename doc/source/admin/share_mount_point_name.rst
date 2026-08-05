@@ -71,3 +71,16 @@ Administrator Guide
    allowing only underscores as special characters. If this validation fails,
    the system will log an error and return a message indicating that the
    `mount_point_name` is not appropriate.
+
+Share Replica Behavior
+======================
+
+When a share replica is created via ``POST /v2/share-replicas``, the
+``mount_point_name`` is automatically inherited from the parent share's
+active instance. No user input is required — the value is copied
+transparently.
+
+This enables DNS-based access balancing across replicas: all replicas share
+the same export path, and clients can switch between the active and passive
+replica simply by changing the IP address resolved by a DNS record, without
+remounting.

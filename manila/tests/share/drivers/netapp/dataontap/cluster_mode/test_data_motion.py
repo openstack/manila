@@ -293,7 +293,8 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         )
         if mount:
             self.dm_session.wait_for_mount_replica.assert_called_once_with(
-                mock_dest_client, self.fake_dest_vol_name, timeout=30)
+                mock_dest_client, self.fake_dest_vol_name, timeout=30,
+                mount_point_name='fake_mp')
         else:
             self.dm_session.wait_for_mount_replica.assert_not_called()
 
@@ -325,7 +326,8 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
         )
         if mount:
             self.dm_session.wait_for_mount_replica.assert_called_once_with(
-                mock_dest_client, self.fake_dest_vol_name, timeout=30)
+                mock_dest_client, self.fake_dest_vol_name, timeout=30,
+                mount_point_name='fake_mp')
         else:
             self.dm_session.wait_for_mount_replica.assert_not_called()
 

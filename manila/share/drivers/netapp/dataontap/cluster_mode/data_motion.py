@@ -285,7 +285,8 @@ class DataMotionSession(object):
             replica_config = get_backend_configuration(dest_backend)
             self.wait_for_mount_replica(
                 dest_client, dest_volume_name,
-                timeout=replica_config.netapp_mount_replica_timeout)
+                timeout=replica_config.netapp_mount_replica_timeout,
+                mount_point_name=dest_share_obj.get('mount_point_name'))
 
     def delete_snapmirror(self, source_share_obj, dest_share_obj,
                           release=True, relationship_info_only=False):
