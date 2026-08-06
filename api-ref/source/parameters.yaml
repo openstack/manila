@@ -773,8 +773,9 @@ snapshot_status_query:
   description: |
     The snapshot status, which can be ``available``,
     ``error``, ``creating``, ``deleting``, ``manage_starting``,
-    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
-    ``error_deleting``.
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error``,
+    ``error_deleting``, ``migrating``, ``migrating_to`` or
+    ``restoring``.
   in: query
   required: false
   type: string
@@ -4149,8 +4150,9 @@ snapshot_status:
   description: |
     The snapshot status, which can be ``available``,
     ``error``, ``creating``, ``deleting``, ``manage_starting``,
-    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
-    ``error_deleting``.
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error``,
+    ``error_deleting``, ``migrating``, ``migrating_to`` or
+    ``restoring``.
   in: body
   required: true
   type: string
@@ -4158,8 +4160,9 @@ snapshot_status_request:
   description: |
     The snapshot status, which can be ``available``,
     ``error``, ``creating``, ``deleting``, ``manage_starting``,
-    ``manage_error``, ``unmanage_starting``, ``unmanage_error`` or
-    ``error_deleting``.
+    ``manage_error``, ``unmanage_starting``, ``unmanage_error``,
+    ``error_deleting``, ``migrating``, ``migrating_to`` or
+    ``restoring``.
   in: body
   required: false
   type: string

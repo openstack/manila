@@ -54,6 +54,10 @@ class ShareSnapshotsController(
         super().__init__()
         self.share_api = share.API()
 
+    valid_statuses = {
+        'status': set(constants.SHARE_SNAPSHOT_STATUSES)
+    }
+
     def _update(self, *args, **kwargs):
         db.share_snapshot_update(*args, **kwargs)
 

@@ -832,6 +832,32 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
                            db.share_snapshot_get, 400,
                            constants.STATUS_AVAILABLE, body, version=version)
 
+    @ddt.data(
+        constants.STATUS_AVAILABLE,
+        constants.STATUS_ERROR,
+        constants.STATUS_ERROR_DELETING,
+        constants.STATUS_DELETING,
+        constants.STATUS_CREATING,
+        constants.STATUS_MANAGING,
+        constants.STATUS_UNMANAGING,
+        constants.STATUS_UNMANAGE_ERROR,
+        constants.STATUS_MANAGE_ERROR,
+        constants.STATUS_MIGRATING,
+        constants.STATUS_MIGRATING_TO,
+        constants.STATUS_RESTORING,
+    )
+    def test_snapshot_reset_status_valid_snapshot_statuses(self, status):
+        snapshot, req = self._setup_snapshot_data()
+        body = {'reset_status': {'status': status}}
+
+        self._reset_status(self.admin_context, snapshot, req,
+                           db.share_snapshot_get, 202, status, body)
+
+    def test_snapshot_reset_status_matches_snapshot_status_constants(self):
+        self.assertEqual(
+            set(constants.SHARE_SNAPSHOT_STATUSES),
+            self.controller.valid_statuses['status'])
+
     def _force_delete(self, ctxt, model, req, db_access_method, valid_code,
                       version='2.7'):
         if float(version) > 2.6:

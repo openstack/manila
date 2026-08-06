@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed the ``reset_status`` admin action for share snapshots to validate
+    the requested status against the statuses that are valid for a snapshot.
+    For more details, please refer to
+    `Launchpad Bug #2160085 <https://bugs.launchpad.net/manila/+bug/2160085>`_.
