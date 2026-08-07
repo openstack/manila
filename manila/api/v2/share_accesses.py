@@ -168,7 +168,8 @@ class ShareAccessesController(wsgi.Controller, wsgi.AdminActionsMixin):
         if access_level == share_access.access_level:
             return self._view_builder.view(req, share_access)
 
-        share = self.share_api.get(context, share_access.share_id)
+        share = self.share_api.get(
+            context, share_access.share_id, for_modification=True)
         values = {
             'access_level': access_level,
         }

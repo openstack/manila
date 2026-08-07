@@ -307,7 +307,8 @@ class ShareExportLocationsAPITest(test.TestCase):
         self.assertEqual(body, res)
         mock_validate.assert_called_once_with(req, el_id, body['metadata'],
                                               delete=False)
-        mock_create.assert_called_once_with(req, el_id, body)
+        mock_create.assert_called_once_with(
+            req, el_id, body, parent_id=self.share['id'])
 
     def test_update_all_metadata(self):
         index_result = self.controller.index(self.req, self.share['id'])
@@ -329,7 +330,34 @@ class ShareExportLocationsAPITest(test.TestCase):
                                                   body)
         self.assertEqual(body, res)
         mock_validate.assert_called_once_with(req, el_id, body['metadata'])
-        mock_update.assert_called_once_with(req, el_id, body)
+        mock_update.assert_called_once_with(
+            req, el_id, body, parent_id=self.share['id'])
+
+    def test__verify_share_public_share_skips_policy_for_read(self):
+        public_share = db_utils.create_share(is_public=True)
+
+        self.controller._verify_share(
+            self.ctxt['user'], public_share['id'])
+
+        self.mock_policy_check.assert_not_called()
+
+    def test__verify_share_public_share_enforces_policy_for_modification(self):
+        public_share = db_utils.create_share(is_public=True)
+
+        self.controller._verify_share(
+            self.ctxt['user'], public_share['id'], for_modification=True)
+
+        self.mock_policy_check.assert_called_once_with(
+            self.ctxt['user'], 'share', 'get', mock.ANY, do_raise=True)
+
+    def test__verify_share_private_share_always_enforces_policy(self):
+        private_share = db_utils.create_share(is_public=False)
+
+        self.controller._verify_share(
+            self.ctxt['user'], private_share['id'])
+
+        self.mock_policy_check.assert_called_once_with(
+            self.ctxt['user'], 'share', 'get', mock.ANY, do_raise=False)
 
     def test_delete_metadata(self):
         index_result = self.controller.index(self.req, self.share['id'])
@@ -343,4 +371,5 @@ class ShareExportLocationsAPITest(test.TestCase):
             version="2.87", use_admin_context=True)
         self.controller.delete_metadata(req, self.share['id'], el_id,
                                         'fake_key')
-        mock_delete.assert_called_once_with(req, el_id, 'fake_key')
+        mock_delete.assert_called_once_with(
+            req, el_id, 'fake_key', parent_id=self.share['id'])

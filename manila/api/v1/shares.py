@@ -552,7 +552,7 @@ class ShareMixin(object):
         access_data = body.get('allow_access', body.get('os-allow_access'))
         if not enable_metadata:
             access_data.pop('metadata', None)
-        share = self.share_api.get(context, id)
+        share = self.share_api.get(context, id, for_modification=True)
 
         if share.get('is_soft_deleted'):
             msg = _("Cannot allow access for share '%s' "
@@ -666,7 +666,7 @@ class ShareMixin(object):
 
         self._check_for_access_rule_locks(context, access_data, access_id, id)
 
-        share = self.share_api.get(context, id)
+        share = self.share_api.get(context, id, for_modification=True)
 
         if share.get('is_soft_deleted'):
             msg = _("Cannot deny access for share '%s' "

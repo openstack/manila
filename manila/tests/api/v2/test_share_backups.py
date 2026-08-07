@@ -362,19 +362,38 @@ class ShareBackupsApiTest(test.TestCase):
 
     def test_create(self):
         fake_backup, expected_backup = self._get_fake_backup()
+        share_id = 'FAKE_SHAREID'
         body = {
             'share_backup': {
-                'share_id': 'FAKE_SHAREID',
+                'share_id': share_id,
             }
         }
-        self.mock_object(share.API, 'get',
-                         mock.Mock(return_value={'id': 'FAKE_SHAREID'}))
+        mock_get = self.mock_object(
+            share.API, 'get', mock.Mock(return_value={'id': share_id}))
         self.mock_object(share.API, 'create_share_backup',
                          mock.Mock(return_value=fake_backup))
 
         req = self.backups_req
         res_dict = self.controller.create(req, body)
         self.assertEqual(expected_backup, res_dict['share_backup'])
+        mock_get.assert_called_once_with(
+            self.backups_req.environ['manila.context'], share_id,
+            for_modification=True)
+
+    def test_create_policy_not_authorized(self):
+        body = {
+            'share_backup': {
+                'share_id': 'FAKE_SHAREID',
+            }
+        }
+        self.mock_object(
+            share.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.create,
+                          self.backups_req, body)
 
     def test_delete_invalid_backup(self):
         fake_exception = exception.ShareBackupNotFound(
