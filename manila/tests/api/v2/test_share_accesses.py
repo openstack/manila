@@ -15,7 +15,6 @@
 
 from unittest import mock
 
-import copy
 import ddt
 from webob import exc
 
@@ -247,17 +246,55 @@ class ShareAccessesAPITest(test.TestCase):
         return req
 
     def test_update_access_level(self):
-        update_share_access = copy.deepcopy(self.access)
-        update_share_access.update({'access_level': 'ro'})
-        self.mock_object(
+        fake_access = mock.Mock(
+            access_level='rw', share_id=self.share['id'])
+        updated_access = mock.Mock(
+            access_level='ro', share_id=self.share['id'])
+        mock_get_access = self.mock_object(
+            self.controller, '_get_share_access',
+            mock.Mock(return_value=fake_access))
+        mock_get = self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(return_value=self.share))
+        mock_update = self.mock_object(
             self.controller.share_api, 'update_access',
-            mock.Mock(return_value=update_share_access))
+            mock.Mock(return_value=updated_access))
+        mock_view = self.mock_object(
+            self.controller._view_builder, 'view',
+            mock.Mock(return_value={'access': {'access_level': 'ro'}}))
 
         body = {'update_access': {'access_level': 'ro'}}
-        url = self._get_update_request()
-        ret = self.controller.update(url, self.access['id'], body=body)
-        self.assertEqual(update_share_access['access_level'],
-                         ret['access']['access_level'])
+        req = self._get_update_request()
+        context = req.environ['manila.context']
+        ret = self.controller.update(req, self.access['id'], body=body)
+
+        self.assertEqual('ro', ret['access']['access_level'])
+        mock_get_access.assert_called_once_with(
+            context, self.access['id'])
+        mock_get.assert_called_once_with(
+            context, self.share['id'], for_modification=True)
+        mock_update.assert_called_once_with(
+            context, self.share, fake_access, {'access_level': 'ro'})
+        mock_view.assert_called_once_with(req, updated_access)
+
+    def test_update_policy_not_authorized(self):
+        fake_access = mock.Mock(
+            access_level='rw', share_id=self.share['id'])
+        self.mock_object(
+            self.controller, '_get_share_access',
+            mock.Mock(return_value=fake_access))
+        self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+
+        body = {'update_access': {'access_level': 'ro'}}
+        req = self._get_update_request()
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.update,
+            req, self.access['id'], body=body)
 
     def test_update_access_level_invalid_access_level(self):
         body = {'access': {'access_level': 'fake_access'}}
