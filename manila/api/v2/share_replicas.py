@@ -166,7 +166,8 @@ class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
             raise exc.HTTPBadRequest(explanation=msg)
 
         try:
-            share_ref = db.share_get(context, share_id)
+            share_ref = self.share_api.get(
+                context, share_id, for_modification=True)
         except exception.NotFound:
             msg = _("No share exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % share_id)

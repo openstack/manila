@@ -158,7 +158,8 @@ class ShareBackupController(wsgi.Controller, wsgi.AdminActionsMixin):
             raise exc.HTTPBadRequest(explanation=msg)
 
         try:
-            share = self.share_api.get(context, share_id)
+            share = self.share_api.get(
+                context, share_id, for_modification=True)
         except exception.NotFound:
             msg = _("No share exists with ID %s.")
             raise exc.HTTPBadRequest(explanation=msg % share_id)

@@ -298,7 +298,7 @@ class ShareController(wsgi.Controller,
         LOG.debug("Soft delete share with id: %s", id, context=context)
 
         try:
-            share = self.share_api.get(context, id)
+            share = self.share_api.get(context, id, for_modification=True)
             self.share_api.soft_delete(context, share)
         except exception.NotFound:
             raise exc.HTTPNotFound()
@@ -321,7 +321,7 @@ class ShareController(wsgi.Controller,
         LOG.debug("Restore share with id: %s", id, context=context)
 
         try:
-            share = self.share_api.get(context, id)
+            share = self.share_api.get(context, id, for_modification=True)
         except exception.NotFound:
             msg = _("No share exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % id)
