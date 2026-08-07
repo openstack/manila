@@ -4038,6 +4038,16 @@ snapshot_id_shares_response:
   in: body
   required: true
   type: string
+snapshot_inherit_share_access_support_share_capability:
+  description: |
+    Whether or not the mountable snapshots of this share inherit the access
+    rules of the share. If enabled, access rules cannot be managed on the
+    snapshots directly. Inconsequential if the share doesn't support mounting
+    its snapshots (see capability "mount_snapshot_support").
+  in: body
+  required: true
+  type: boolean
+  min_version: 2.99
 snapshot_instance_id:
   description: |
     The UUID of the share snapshot instance.

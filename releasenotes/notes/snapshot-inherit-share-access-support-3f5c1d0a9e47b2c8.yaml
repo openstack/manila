@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Mountable snapshots can now inherit the access rules of their parent
+    share through the new optional ``snapshot_inherit_share_access_support``
+    extra spec. When enabled, creating or deleting snapshot access rules
+    directly on such snapshots is blocked. This feature is exposed in the API
+    starting with microversion 2.99, and the new capability is also reported
+    in share details and share type API.

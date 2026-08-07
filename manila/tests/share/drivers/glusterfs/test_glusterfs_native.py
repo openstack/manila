@@ -277,6 +277,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'share_replicas_migration_support': False,
             'encryption_support': None,
             'qos_type_support': False,
+            'snapshot_inherit_share_access_support': False,
         }
         self.assertEqual(test_data, self._driver._stats)
 

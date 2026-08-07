@@ -1371,6 +1371,7 @@ class ShareDriver(object):
                 self.share_replicas_migration_support),
             encryption_support=self.encryption_support,
             qos_type_support=self.qos_type_support,
+            snapshot_inherit_share_access_support=False,
         )
         if isinstance(data, dict):
             common.update(data)

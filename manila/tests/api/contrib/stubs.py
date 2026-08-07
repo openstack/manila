@@ -44,6 +44,7 @@ def stub_share(id, **kwargs):
         'create_share_from_snapshot_support': True,
         'revert_to_snapshot_support': False,
         'mount_snapshot_support': False,
+        'snapshot_inherit_share_access_support': False,
         'replication_type': None,
         'has_replicas': False,
         'is_soft_deleted': False,

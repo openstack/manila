@@ -407,7 +407,8 @@ class ShareTypesTestCase(test.TestCase):
               constants.ExtraSpecs.CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT,
               constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT,
-              constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT),
+              constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT,
+              constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT),
              strutils.TRUE_STRINGS + strutils.FALSE_STRINGS)) +
         list(itertools.product(
              (constants.ExtraSpecs.REPLICATION_TYPE_SPEC,),

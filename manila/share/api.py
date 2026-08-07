@@ -648,6 +648,9 @@ class API(base.Base):
         mount_point_name_support_key = (
             constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT
         )
+        snapshot_inherit_share_access_support_key = (
+            constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT
+        )
 
         snapshot_support_default = inferred_map.get(snapshot_support_key)
         create_share_from_snapshot_support_default = inferred_map.get(
@@ -657,6 +660,8 @@ class API(base.Base):
         mount_snapshot_support_default = inferred_map.get(
             constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT)
         mount_point_name_support_default = False
+        snapshot_inherit_share_access_support_default = inferred_map.get(
+            snapshot_inherit_share_access_support_key)
 
         if share_type:
             snapshot_support = share_types.parse_boolean_extra_spec(
@@ -685,6 +690,12 @@ class API(base.Base):
                     'extra_specs', {}).get(
                     mount_point_name_support_key,
                     mount_point_name_support_default))
+            snapshot_inherit_share_access_support = (
+                share_types.parse_boolean_extra_spec(
+                    snapshot_inherit_share_access_support_key,
+                    share_type.get('extra_specs', {}).get(
+                        snapshot_inherit_share_access_support_key,
+                        snapshot_inherit_share_access_support_default)))
             replication_type = share_type.get('extra_specs', {}).get(
                 'replication_type')
         else:
@@ -694,6 +705,8 @@ class API(base.Base):
             revert_to_snapshot_support = revert_to_snapshot_support_default
             mount_snapshot_support = mount_snapshot_support_default
             mount_point_name_support = mount_point_name_support_default
+            snapshot_inherit_share_access_support = (
+                snapshot_inherit_share_access_support_default)
             replication_type = None
 
         return {
@@ -704,6 +717,8 @@ class API(base.Base):
             'replication_type': replication_type,
             'mount_snapshot_support': mount_snapshot_support,
             'mount_point_name_support': mount_point_name_support,
+            'snapshot_inherit_share_access_support':
+                snapshot_inherit_share_access_support,
         }
 
     def create_instance(self, context, share, share_network_id=None,
@@ -1287,6 +1302,11 @@ class API(base.Base):
                 'mount_point_name_support',
                 share_type.get('extra_specs', {}).get(
                     'mount_point_name_support')
+            ),
+            'snapshot_inherit_share_access_support': kwargs.get(
+                'snapshot_inherit_share_access_support',
+                share_type.get('extra_specs', {}).get(
+                    'snapshot_inherit_share_access_support')
             ),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],

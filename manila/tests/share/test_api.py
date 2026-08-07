@@ -1431,6 +1431,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'replication_type': 'dr',
             }
         }
@@ -1450,6 +1451,7 @@ class ShareAPITestCase(test.TestCase):
             'revert_to_snapshot_support': False,
             'mount_snapshot_support': False,
             'mount_point_name_support': False,
+            'snapshot_inherit_share_access_support': False,
             'replication_type': None,
         }
         self.assertEqual(expected, result)
@@ -1521,6 +1523,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': mount_point_name_support,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -1565,6 +1568,9 @@ class ShareAPITestCase(test.TestCase):
                 fake_type['extra_specs']['mount_snapshot_support'],
             'mount_point_name_support':
                 fake_type['extra_specs']['mount_point_name_support'],
+            'snapshot_inherit_share_access_support':
+                fake_type['extra_specs'][
+                    'snapshot_inherit_share_access_support'],
             'replication_type': replication_type,
             'mount_point_name': mount_point_name
         })
@@ -1622,6 +1628,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -1670,6 +1677,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': True,
             },
         }
@@ -1722,6 +1730,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': True,
             },
         }
@@ -1782,6 +1791,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': True,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': False,
                 'provisioning:mount_point_prefix': prefix,
             },
@@ -1817,6 +1827,9 @@ class ShareAPITestCase(test.TestCase):
                 fake_type['extra_specs']['mount_snapshot_support'],
             'mount_point_name_support':
                 fake_type['extra_specs']['mount_point_name_support'],
+            'snapshot_inherit_share_access_support':
+                fake_type['extra_specs'][
+                    'snapshot_inherit_share_access_support'],
             'replication_type': 'dr',
             'mount_point_name': f"{prefix}mount_point",
             'qos_type_id': None,
@@ -1860,6 +1873,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': False,
             },
         }
@@ -1905,6 +1919,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': True,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': False,
             },
         }
@@ -1983,6 +1998,10 @@ class ShareAPITestCase(test.TestCase):
             'mount_point_name_support': kwargs.get(
                 'mount_point_name_support',
                 share_type['extra_specs'].get('mount_point_name_support')),
+            'snapshot_inherit_share_access_support': kwargs.get(
+                'snapshot_inherit_share_access_support',
+                share_type['extra_specs'].get(
+                    'snapshot_inherit_share_access_support')),
             'share_proto': kwargs.get('share_proto', share.get('share_proto')),
             'share_type_id': share_type['id'],
             'is_public': kwargs.get('is_public', share.get('is_public')),
@@ -4276,6 +4295,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': dhss,
             },
         }
@@ -4289,6 +4309,7 @@ class ShareAPITestCase(test.TestCase):
                     'revert_to_snapshot_support': False,
                     'mount_snapshot_support': False,
                     'mount_point_name_support': False,
+                    'snapshot_inherit_share_access_support': False,
                     'driver_handles_share_servers': dhss,
                     'availability_zones': 'fake_az1,fake_az2',
                 },
@@ -4373,6 +4394,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': 'true',
                 'availability_zones': 'fake_az3'
             },
@@ -4386,6 +4408,7 @@ class ShareAPITestCase(test.TestCase):
                 'revert_to_snapshot_support': False,
                 'mount_snapshot_support': False,
                 'mount_point_name_support': False,
+                'snapshot_inherit_share_access_support': False,
                 'driver_handles_share_servers': 'true',
                 'availability_zones': 'fake_az1,fake_az2',
             },

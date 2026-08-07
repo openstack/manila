@@ -371,6 +371,8 @@ class ExtraSpecs(object):
     REVERT_TO_SNAPSHOT_SUPPORT = "revert_to_snapshot_support"
     MOUNT_SNAPSHOT_SUPPORT = "mount_snapshot_support"
     MOUNT_POINT_NAME_SUPPORT = "mount_point_name_support"
+    SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT = (
+        "snapshot_inherit_share_access_support")
     AVAILABILITY_ZONES = "availability_zones"
     ENCRYPTION_SUPPORT = "encryption_support"
     PROVISIONING_MAX_SHARE_SIZE = "provisioning:max_share_size"
@@ -391,6 +393,7 @@ class ExtraSpecs(object):
         REPLICATION_TYPE_SPEC,
         MOUNT_SNAPSHOT_SUPPORT,
         MOUNT_POINT_NAME_SUPPORT,
+        SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT,
         AVAILABILITY_ZONES,
         ENCRYPTION_SUPPORT,
         PROVISIONING_MAX_SHARE_SIZE,
@@ -411,6 +414,7 @@ class ExtraSpecs(object):
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT,
         REVERT_TO_SNAPSHOT_SUPPORT,
         MOUNT_SNAPSHOT_SUPPORT,
+        SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT,
     )
 
     # NOTE(cknight): Some extra specs are optional, but a nominal (typically
@@ -421,6 +425,7 @@ class ExtraSpecs(object):
         CREATE_SHARE_FROM_SNAPSHOT_SUPPORT: False,
         REVERT_TO_SNAPSHOT_SUPPORT: False,
         MOUNT_SNAPSHOT_SUPPORT: False,
+        SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT: False,
     }
 
     REPLICATION_TYPES = ('writable', 'readable', 'dr')

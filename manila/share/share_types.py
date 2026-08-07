@@ -362,6 +362,8 @@ def is_valid_optional_extra_spec(key, value):
         return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT:
         return parse_boolean_extra_spec(key, value) is not None
+    elif key == constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT:
+        return parse_boolean_extra_spec(key, value) is not None
     elif key == constants.ExtraSpecs.AVAILABILITY_ZONES:
         return is_valid_csv(value)
     elif key == constants.ExtraSpecs.PROVISIONING_MOUNT_POINT_PREFIX:
