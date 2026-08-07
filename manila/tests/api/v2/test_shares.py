@@ -1995,8 +1995,14 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       version='2.69')
         body = {"soft_delete": None}
+        mock_get = self.mock_object(
+            share_api.API, 'get', mock.Mock(return_value=self.share))
+
         resp = self.controller.share_soft_delete(req, 1, body=body)
+
         self.assertEqual(202, resp.status_int)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], 1, for_modification=True)
 
     def test_share_soft_delete_has_been_soft_deleted_already(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
@@ -2029,10 +2035,15 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       version='2.69')
         body = {"restore": None}
-        self.mock_object(share_api.API, 'get',
-                         mock.Mock(return_value=self.share_in_recycle_bin))
+        mock_get = self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(return_value=self.share_in_recycle_bin))
+
         resp = self.controller.share_restore(req, 1, body=body)
+
         self.assertEqual(202, resp.status_int)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], 1, for_modification=True)
 
     def test_share_restore_with_deleting_status(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
@@ -2043,6 +2054,34 @@ class ShareAPITest(test.TestCase):
             mock.Mock(return_value=self.share_in_recycle_bin_is_deleting))
         self.assertRaises(
             webob.exc.HTTPForbidden, self.controller.share_restore,
+            req, 1, body=body)
+
+    def test_share_soft_delete_policy_not_authorized(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"soft_delete": None}
+        self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.share_soft_delete,
+            req, 1, body=body)
+
+    def test_share_restore_policy_not_authorized(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"restore": None}
+        self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.share_restore,
             req, 1, body=body)
 
     def test_share_delete(self):
@@ -2975,7 +3014,8 @@ class ShareActionsTest(test.TestCase):
                          mock.Mock(return_value={'fake': 'fake'}))
         self.mock_object(self.controller._access_view_builder, 'view',
                          mock.Mock(return_value={'access': {'fake': 'fake'}}))
-        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        mock_get = self.mock_object(
+            share_api.API, 'get', mock.Mock(return_value=share))
 
         id = 'fake_share_id'
         body = {'os-allow_access': access}
@@ -2985,6 +3025,8 @@ class ShareActionsTest(test.TestCase):
         res = self.controller._allow_access(req, id, body)
 
         self.assertEqual(expected, res)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], id, for_modification=True)
         self.mock_policy_check.assert_called_once_with(
             req.environ['manila.context'], 'share', 'allow_access')
 
@@ -3249,7 +3291,8 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(share_api.API, "access_get", _fake_access_get)
         share_network = db_utils.create_share_network()
         share = db_utils.create_share(share_network_id=share_network['id'])
-        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        mock_get = self.mock_object(
+            share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(self.controller, '_check_for_access_rule_locks')
 
         id = 'fake_share_id'
@@ -3260,12 +3303,15 @@ class ShareActionsTest(test.TestCase):
         res = self.controller._deny_access(req, id, body)
 
         self.assertEqual(202, res.status_int)
+        context = req.environ['manila.context']
+        mock_get.assert_has_calls([
+            mock.call(context, id, for_modification=True),
+            mock.call(context, id),
+        ])
         self.controller._check_for_access_rule_locks.assert_called_once_with(
-            req.environ['manila.context'], access_data,
-            access_data['access_id'], id
-        )
+            context, access_data, access_data['access_id'], id)
         self.mock_policy_check.assert_called_once_with(
-            req.environ['manila.context'], 'share', 'deny_access')
+            context, 'share', 'deny_access')
 
     def test_deny_access_not_found(self):
         def _stub_deny_access(*args, **kwargs):
@@ -3306,6 +3352,40 @@ class ShareActionsTest(test.TestCase):
         self.controller._check_for_access_rule_locks.assert_called_once_with(
             context, body['deny_access'], body_data['access_id'], id
         )
+
+    def test__allow_access_policy_not_authorized_for_modification(self):
+        mock_get = self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+        id = 'fake_share_id'
+        body = {'os-allow_access': {
+            'access_type': 'ip', 'access_to': '127.0.0.1'}}
+        req = fakes.HTTPRequest.blank(
+            '/v2/tenant1/shares/%s/action' % id)
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller._allow_access, req, id, body)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], id, for_modification=True)
+
+    def test__deny_access_policy_not_authorized_for_modification(self):
+        mock_get = self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
+        id = 'fake_share_id'
+        body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
+        req = fakes.HTTPRequest.blank(
+            '/v2/tenant1/shares/%s/action' % id)
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller._deny_access, req, id, body)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], id, for_modification=True)
 
     def test__check_for_access_rule_locks_no_locks(self):
         self.mock_object(

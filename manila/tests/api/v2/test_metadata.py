@@ -17,6 +17,7 @@ import webob
 
 from manila.api.v2 import metadata
 from manila import context
+from manila import db
 from manila import exception
 from manila import policy
 from manila import test
@@ -80,6 +81,46 @@ class MetadataAPITest(test.TestCase):
             fake_context, 'share', 'get', mock.ANY, do_raise=False)
         policy_resource_obj = mock_policy_check.call_args[0][3]
         self.assertEqual(share_obj['id'], policy_resource_obj['id'])
+
+    def test__get_resource_export_location_scoped_to_share(self):
+        # Export location lookups must be scoped to the share in the
+        # request URL, so that the metadata of an export location
+        # belonging to a different share cannot be retrieved.
+        self.controller.resource_name = 'share_export_location'
+        fake_context = context.RequestContext('fake', 'fake')
+        export_location = {'id': 'fake-el-uuid'}
+        mock_get_by_uuid = self.mock_object(
+            db, 'export_location_get_by_uuid',
+            mock.Mock(return_value=export_location))
+
+        res = self.controller._get_resource(
+            fake_context, 'fake-el-uuid', for_modification=True,
+            parent_id='fake-share-id')
+
+        self.assertEqual(export_location, res)
+        mock_get_by_uuid.assert_called_once_with(
+            fake_context, 'fake-el-uuid', share_id='fake-share-id')
+        self.mock_policy_check.assert_not_called()
+
+    def test__get_resource_export_location_not_in_share_not_found(self):
+        # An export location that does not belong to the share in the
+        # request URL must not be accessible, regardless of the type
+        # of the share it belongs to.
+        self.controller.resource_name = 'share_export_location'
+        fake_context = context.RequestContext('fake', 'fake')
+        self.mock_object(
+            db, 'export_location_get_by_uuid',
+            mock.Mock(side_effect=exception.ExportLocationNotFound(
+                uuid='fake-el-uuid')))
+
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller._get_resource,
+            fake_context,
+            'fake-el-uuid',
+            for_modification=True,
+            parent_id='fake-share-id',
+        )
 
     def test_create_index_metadata(self):
         url = self._get_request()
