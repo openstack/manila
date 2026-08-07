@@ -1,0 +1,11 @@
+---
+security:
+  - |
+    Any user was able to manipulate the access rules, create backups or
+    replicas, soft delete or restore public shares they did not own,
+    and read or manipulate the export location metadata of shares they
+    did not own. These operations now enforce ownership, and export
+    location metadata is scoped to the share in the request URL. For
+    details, see `Launchpad bug #2161412
+    <https://bugs.launchpad.net/manila/+bug/2161412>`_ and `Launchpad
+    bug #2168962 <https://bugs.launchpad.net/manila/+bug/2168962>`_.

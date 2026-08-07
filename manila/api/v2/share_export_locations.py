@@ -26,6 +26,7 @@ from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 from manila import policy
+from manila.share import api as share_api
 
 LOG = log.getLogger(__name__)
 CONF = cfg.CONF
@@ -43,12 +44,13 @@ class ShareExportLocationController(wsgi.Controller,
         self._conf_admin_only_metadata_keys = getattr(
             CONF, 'admin_only_el_metadata', []
         )
+        self.share_api = share_api.API()
 
-    def _verify_share(self, context, share_id):
+    def _verify_share(self, context, share_id, for_modification=False):
         try:
-            share = db_api.share_get(context, share_id)
-            if not share['is_public']:
-                policy.check_policy(context, 'share', 'get', share)
+            self.share_api.get(
+                context, share_id, for_modification=for_modification
+            )
         except exception.NotFound:
             msg = _("Share '%s' not found.") % share_id
             raise exc.HTTPNotFound(explanation=msg)
@@ -165,7 +167,7 @@ class ShareExportLocationController(wsgi.Controller,
         """Returns the list of metadata for a given share export location."""
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
-        return self._index_metadata(req, resource_id)
+        return self._index_metadata(req, resource_id, parent_id=share_id)
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("update_metadata")
@@ -178,8 +180,9 @@ class ShareExportLocationController(wsgi.Controller,
                                                        delete=False)
         body['metadata'] = _metadata
         context = req.environ['manila.context']
-        self._verify_share(context, share_id)
-        return self._create_metadata(req, resource_id, body)
+        self._verify_share(context, share_id, for_modification=True)
+        return self._create_metadata(
+            req, resource_id, body, parent_id=share_id)
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("update_metadata")
@@ -191,8 +194,9 @@ class ShareExportLocationController(wsgi.Controller,
                                                        body['metadata'])
         body['metadata'] = _metadata
         context = req.environ['manila.context']
-        self._verify_share(context, share_id)
-        return self._update_all_metadata(req, resource_id, body)
+        self._verify_share(context, share_id, for_modification=True)
+        return self._update_all_metadata(
+            req, resource_id, body, parent_id=share_id)
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("update_metadata")
@@ -205,8 +209,9 @@ class ShareExportLocationController(wsgi.Controller,
                                                        delete=False)
         body['metadata'] = _metadata
         context = req.environ['manila.context']
-        self._verify_share(context, share_id)
-        return self._update_metadata_item(req, resource_id, body, key)
+        self._verify_share(context, share_id, for_modification=True)
+        return self._update_metadata_item(
+            req, resource_id, body, key, parent_id=share_id)
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("get_metadata")
@@ -216,7 +221,8 @@ class ShareExportLocationController(wsgi.Controller,
         """Show metadata for a given share export location."""
         context = req.environ['manila.context']
         self._verify_share(context, share_id)
-        return self._show_metadata(req, resource_id, key)
+        return self._show_metadata(
+            req, resource_id, key, parent_id=share_id)
 
     @wsgi.Controller.api_version("2.87")
     @wsgi.Controller.authorize("delete_metadata")
@@ -224,8 +230,9 @@ class ShareExportLocationController(wsgi.Controller,
     def delete_metadata(self, req, share_id, resource_id, key):
         """Delete metadata for a given share export location."""
         context = req.environ['manila.context']
-        self._verify_share(context, share_id)
-        return self._delete_metadata(req, resource_id, key)
+        self._verify_share(context, share_id, for_modification=True)
+        return self._delete_metadata(
+            req, resource_id, key, parent_id=share_id)
 
 
 def create_resource():
