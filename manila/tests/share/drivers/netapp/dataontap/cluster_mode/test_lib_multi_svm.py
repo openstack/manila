@@ -622,6 +622,56 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             }},
             fake_exception.detail_data)
 
+    def test_setup_server_with_barbican_error(self):
+        self.library.is_nfs_config_supported = False
+        mock_get_vserver_name = self.mock_object(
+            self.library,
+            '_get_vserver_name',
+            mock.Mock(return_value=fake.VSERVER1))
+
+        mock_create_vserver = self.mock_object(
+            self.library, '_create_vserver')
+
+        fake_exception = exception.NetAppException("fake")
+        self.mock_object(
+            self.library,
+            '_create_barbican_kms_config_for_specified_vserver',
+            mock.Mock(side_effect=fake_exception))
+
+        mock_validate_network_type = self.mock_object(
+            self.library,
+            '_validate_network_type')
+
+        mock_validate_share_network_subnets = self.mock_object(
+            self.library,
+            '_validate_share_network_subnets')
+        self.mock_object(self.library, '_set_network_with_metadata')
+        self.library.configuration.netapp_restrict_lif_creation_per_ha_pair = (
+            False
+        )
+
+        self.assertRaises(
+            exception.ManilaException,
+            self.library.setup_server,
+            fake.NETWORK_INFO_LIST,
+            fake.SERVER_METADATA_WITH_ENCRYPTION)
+
+        ports = {}
+        for network_allocation in fake.NETWORK_INFO['network_allocations']:
+            ports[network_allocation['id']] = network_allocation['ip_address']
+
+        self.assertTrue(mock_validate_network_type.called)
+        self.assertTrue(mock_validate_share_network_subnets.called)
+        self.assertTrue(mock_get_vserver_name.called)
+        self.assertTrue(mock_create_vserver.called)
+
+        self.assertDictEqual(
+            {'server_details': {
+                'vserver_name': fake.VSERVER1,
+                'ports': jsonutils.dumps(ports),
+            }},
+            fake_exception.detail_data)
+
     def test_setup_server_invalid_subnet(self):
         invalid_subnet_exception = exception.NetworkBadConfigurationException(
             reason='This is a fake message')
