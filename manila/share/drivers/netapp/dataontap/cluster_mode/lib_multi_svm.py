@@ -237,8 +237,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 raise
 
             if metadata.get('encryption_key_ref'):
-                self._create_barbican_kms_config_for_specified_vserver(
-                    vserver_name, metadata)
+                try:
+                    self._create_barbican_kms_config_for_specified_vserver(
+                        vserver_name, metadata)
+                except Exception as e:
+                    e.detail_data = {'server_details': server_details}
+                    raise
 
             return server_details
         return setup_server_with_lock()
