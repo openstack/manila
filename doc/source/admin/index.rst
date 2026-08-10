@@ -106,6 +106,7 @@ each back end.
    hpe_3par_driver
    hpe_alletra_mp_b10000_driver
    infortrend_driver
+   lustre_driver
    macrosan_driver
    tegile_driver
    nexentastor5_driver

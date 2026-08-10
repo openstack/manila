@@ -20,6 +20,7 @@ Share drivers
    drivers/glusterfs-driver.rst
    drivers/glusterfs-native-driver.rst
    drivers/hdfs-native-driver.rst
+   drivers/lustre-driver.rst
    drivers/lvm-driver.rst
    drivers/zfs-on-linux-driver.rst
    drivers/zfssa-manila-driver.rst
