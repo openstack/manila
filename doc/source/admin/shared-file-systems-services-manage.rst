@@ -43,7 +43,7 @@ To start ensure shares on a given manila-share binary, run the
 
    When this command is issued, the ``manila-share`` manager will by default
    change the status of the shares to ``ensuring``, unless the
-   :ref:`common configuration option <manila-common>` named
+   :doc:`configuration option </configuration/shared-file-systems/config-reference>` named
    ``update_shares_status_on_ensure`` is changed to ``False``.
 
 .. note::

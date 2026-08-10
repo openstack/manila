@@ -71,7 +71,8 @@ Driver options
 The following table contains the configuration options specific to the share
 driver.
 
-.. include:: ../../tables/manila-hds_hsp.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 Network approach
 ~~~~~~~~~~~~~~~~

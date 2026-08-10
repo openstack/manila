@@ -62,9 +62,8 @@ The following operations are supported:
 Driver options
 ~~~~~~~~~~~~~~
 
-This table contains the configuration options specific to the share driver.
-
-.. include:: ../../tables/manila-hds_hnas.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 Pre-configuration on OpenStack deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

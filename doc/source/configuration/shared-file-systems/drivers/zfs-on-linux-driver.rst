@@ -194,4 +194,5 @@ for back-ends that use the ZFSonLinux driver:
 Driver options
 ~~~~~~~~~~~~~~
 
-.. include:: ../../tables/manila-zfs.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.

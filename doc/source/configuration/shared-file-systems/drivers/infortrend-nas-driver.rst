@@ -63,7 +63,8 @@ On ``manila-share`` nodes, set the following in your
 Driver options
 --------------
 
-.. include:: ../../tables/manila-infortrend.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 Back-end configuration example
 ------------------------------

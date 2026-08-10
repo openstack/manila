@@ -118,6 +118,5 @@ Appliance configuration
 Driver options
 ~~~~~~~~~~~~~~
 
-The Oracle ZFSSA driver supports these options:
-
-.. include:: ../../tables/manila-zfssa.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.

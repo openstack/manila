@@ -52,6 +52,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.graphviz',
               'openstackdocstheme',
               'oslo_config.sphinxconfiggen',
+              'oslo_config.sphinxext',
               'oslo_policy.sphinxext',
               'oslo_policy.sphinxpolicygen',
               ]
@@ -71,6 +72,13 @@ openstackdocs_bug_project = 'manila'
 openstackdocs_bug_tag = 'docs'
 
 todo_include_todos = True
+
+# oslo_config.sphinxext renders options from all namespaces in the config
+# generator file; when multiple namespaces register the same option in the
+# same group (e.g. castellan.config and manila both register keystoneauth
+# session options in [barbican]), docutils emits "Duplicate ID" warnings.
+# The config generator deduplicates, but the Sphinx extension does not.
+suppress_warnings = ['docutils']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = []

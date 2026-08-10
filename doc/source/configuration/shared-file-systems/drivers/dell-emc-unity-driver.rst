@@ -541,6 +541,5 @@ Following driver features are implemented in the plugin.
 Driver options
 --------------
 
-Configuration options specific to this driver:
-
-.. include:: ../../tables/manila-unity.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
