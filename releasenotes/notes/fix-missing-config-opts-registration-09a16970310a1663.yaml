@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Added missing configuration option registrations in ``manila/opts.py``
+    for CephFS NFS (``cephfs_nfs_cluster_id``), NetApp
+    (``netapp_trace_flags``), Dell EMC Unity, and Dell EMC VNX driver
+    options. These options were functional but absent from the generated
+    sample configuration file and configuration reference documentation.
+    (`bug 2163209 <https://bugs.launchpad.net/bugs/2163209>`_)
