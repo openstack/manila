@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed an issue in the NetApp ONTAP driver where communication failures
+    with Barbican prevented share servers from saving internal details
+    upon creation failure, blocking operators from deleting them. Manila
+    now properly saves these details, allowing share server deletion.
+    For more details, see
+    `Launchpad bug <https://bugs.launchpad.net/manila/+bug/2163166>`_.
