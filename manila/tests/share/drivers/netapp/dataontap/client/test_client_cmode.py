@@ -4875,6 +4875,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'style-extended': (fake.FLEXGROUP_STYLE_EXTENDED
                                if is_flexgroup
                                else fake.FLEXVOL_STYLE_EXTENDED),
+            'instance-uuid': None,
             'snaplock-type': 'compliance',
             'instance-uuid': None,
         }
@@ -4942,6 +4943,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'qos-policy-group-name': None,
             'adaptive-qos-policy-group-name': None,
             'style-extended': fake.FLEXVOL_STYLE_EXTENDED,
+            'instance-uuid': None,
             'snaplock-type': "compliance",
             'instance-uuid': None,
         }
@@ -5514,6 +5516,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
         volume_destroy_args = {'name': fake.SHARE_NAME}
         self.client.send_request.assert_has_calls([
             mock.call('volume-destroy', volume_destroy_args)])
+
+    @ddt.data(True, False)
+    def test_delete_volume_force_delete(self, force_delete_return_error):
+
+        if force_delete_return_error:
+            mock_force_delete = self.mock_object(
+                self.client, 'force_delete_volume',
+                mock.Mock(side_effect=exception.NetAppException))
+        else:
+            mock_force_delete = self.mock_object(
+                self.client, 'force_delete_volume')
+
+        mock_soft_delete = self.mock_object(
+            self.client, 'soft_delete_volume')
+
+        self.client.delete_volume(fake.SHARE_NAME, force_delete=True)
+        mock_force_delete.assert_called_once_with(fake.SHARE_NAME)
+
+        if force_delete_return_error:
+            mock_soft_delete.assert_called_once_with(fake.SHARE_NAME)
 
     def test_rename_volume(self):
 

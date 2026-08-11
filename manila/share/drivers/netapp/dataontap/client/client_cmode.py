@@ -3983,9 +3983,43 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 self.rename_volume(volume_name, DELETED_PREFIX + volume_name)
 
     @na_utils.trace
-    def delete_volume(self, volume_name):
+    def force_delete_volume(self, volume_name):
+        """Force deletes a volume."""
+        # Get volume UUID.
+        volume = self.get_volume(volume_name)
+        volume_uuid = volume['instance-uuid']
+        request = {}
+        query = {
+            "return_timeout": 120,
+            "force": "true",
+        }
+        url_params = {
+            "volume_uuid": volume_uuid
+        }
+        api_args = self._format_request(request, query=query,
+                                        url_params=url_params)
+        msg = _('Force-deleting volume REST %(volume)s. with %(args)s')
+        msg_args = {'volume': volume_name, 'args': api_args}
+        LOG.info(msg, msg_args)
+        try:
+            return self.send_request(
+                'volume-destroy', api_args=api_args, use_zapi=False)
+        except netapp_api.NaApiError as e:
+            raise exception.NetAppException(message=e.message)
+
+    @na_utils.trace
+    def delete_volume(self, volume_name, force_delete=False):
         """Deletes a volume."""
-        return self.soft_delete_volume(volume_name)
+        if force_delete:
+            try:
+                self.force_delete_volume(volume_name)
+            except exception.NetAppException as e:
+                LOG.error("Force delete failed for volume %(vol)s, falling "
+                          "back to soft delete. Reason: %(res)s", {
+                              'vol': volume_name, 'res': e.msg})
+                self.soft_delete_volume(volume_name)
+        else:
+            self.soft_delete_volume(volume_name)
 
     @na_utils.trace
     def prune_deleted_volumes(self):

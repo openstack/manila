@@ -56,4 +56,8 @@ endpoints = {
         'method': 'patch',
         'url': ENDPOINT_VOLUME
     },
+    'volume-destroy': {
+        'method': 'delete',
+        'url': ENDPOINT_VOLUME
+    },
 }

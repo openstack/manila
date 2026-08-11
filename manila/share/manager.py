@@ -3740,6 +3740,15 @@ class ShareManager(manager.SchedulerDependentManager):
         share_server = self._get_share_server(context, share_instance)
         return (share, share_instance, share_server)
 
+    def _get_duration_seconds_for_instances(self, share_instance):
+        scheduled_at = share_instance.get('scheduled_at')
+        terminated_at = share_instance.get('terminated_at')
+        if scheduled_at and terminated_at:
+            duration = terminated_at - scheduled_at
+            return duration.total_seconds()
+        # Else, assume share was alive for a week.
+        return constants.ONE_WEEK_IN_SECONDS
+
     @add_hooks
     @utils.require_driver_initialized
     def delete_share_instance(self, context, share_instance_id, force=False,
@@ -3822,6 +3831,9 @@ class ShareManager(manager.SchedulerDependentManager):
             return
 
         try:
+            duration_seconds = self._get_duration_seconds_for_instances(
+                share_instance)
+            share_instance.update({'duration_seconds': duration_seconds})
             self.driver.delete_share(context, share_instance,
                                      share_server=share_server)
         except exception.ShareResourceNotFound:
@@ -3940,6 +3952,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 continue
 
             try:
+                duration_seconds = self._get_duration_seconds_for_instances(
+                    share_instance)
+                share_instance.update({'duration_seconds': duration_seconds})
                 self.driver.delete_share(ctxt, share_instance,
                                          share_server=share_server)
             except exception.ShareResourceNotFound:
