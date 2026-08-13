@@ -2739,18 +2739,38 @@ class API(base.Base):
                     "host or is in an invalid state.")
             raise exception.InvalidShare(message=msg)
 
+        any_instance_had_mapping = False
         for share_instance in share.instances:
-            self.deny_access_to_instance(ctx, share_instance, access)
+            had_mapping = self.deny_access_to_instance(
+                ctx, share_instance, access)
+            any_instance_had_mapping = any_instance_had_mapping or had_mapping
+
+        if not any_instance_had_mapping:
+            # The rule has no instance mappings (orphaned ShareAccessMapping).
+            # The normal cleanup path via update_access_rules /
+            # share_instance_access_delete will never run, so delete directly.
+            LOG.warning("Access rule %s has no instance mappings; "
+                        "deleting orphaned record directly.", access['id'])
+            self.db.share_access_delete(ctx, access['id'])
 
     def deny_access_to_instance(self, context, share_instance, access):
         self._conditionally_transition_share_instance_access_rules_status(
             context, share_instance)
         updates = {'state': constants.ACCESS_STATE_QUEUED_TO_DENY}
-        self.access_helper.get_and_update_share_instance_access_rule(
-            context, access['id'], updates=updates,
-            share_instance_id=share_instance['id'])
+        try:
+            self.access_helper.get_and_update_share_instance_access_rule(
+                context, access['id'], updates=updates,
+                share_instance_id=share_instance['id'])
+        except exception.NotFound:
+            # No ShareInstanceAccessMapping exists for this instance — the
+            # rule was never applied here, nothing to deny.
+            LOG.debug("No instance mapping found for access rule %s on "
+                      "share instance %s; skipping.",
+                      access['id'], share_instance['id'])
+            return False
 
         self.share_rpcapi.update_access(context, share_instance)
+        return True
 
     def access_get_all(self, context, share, filters=None):
         """Returns all access rules for share."""

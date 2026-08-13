@@ -651,6 +651,11 @@ def share_instance_access_delete(context, mapping_id):
     return IMPL.share_instance_access_delete(context, mapping_id)
 
 
+def share_access_delete(context, access_id):
+    """Delete an orphaned share access rule and its metadata."""
+    return IMPL.share_access_delete(context, access_id)
+
+
 def share_access_metadata_update(context, access_id, metadata):
     """Update metadata of share access rule."""
     return IMPL.share_access_metadata_update(context, access_id, metadata)

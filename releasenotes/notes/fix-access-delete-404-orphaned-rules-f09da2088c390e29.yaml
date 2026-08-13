@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue where share access deletion request returned error for
+    orphaned share access rules i.e. rules visible via access show request
+    but absent from access list request. Such orphans can arise from a race
+    during replica add/remove or a share manager crash mid-sync.

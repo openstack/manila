@@ -3452,15 +3452,21 @@ def _check_for_existing_access(context, resource, resource_id, access_type,
     if resource == 'share':
         query_method = _share_access_get_query
         access_to_field = models.ShareAccessMapping.access_to
+        instance_mappings_filter = (
+            models.ShareAccessMapping.instance_mappings.any())
     else:
         query_method = _share_snapshot_access_get_query
         access_to_field = models.ShareSnapshotAccessMapping.access_to
+        instance_mappings_filter = None
 
     if access_type == 'ip':
-        rules = query_method(
+        query = query_method(
             context,
             {'%s_id' % resource: resource_id, 'access_type': access_type}
-        ).filter(access_to_field.startswith(access_to.split('/')[0])).all()
+        ).filter(access_to_field.startswith(access_to.split('/')[0]))
+        if instance_mappings_filter is not None:
+            query = query.filter(instance_mappings_filter)
+        rules = query.all()
 
         matching_rules = [
             rule for rule in rules if
@@ -3469,14 +3475,17 @@ def _check_for_existing_access(context, resource, resource_id, access_type,
         ]
         return len(matching_rules) > 0
 
-    return query_method(
+    query = query_method(
         context,
         {
             '%s_id' % resource: resource_id,
             'access_type': access_type,
             'access_to': access_to
         }
-    ).count() > 0
+    )
+    if instance_mappings_filter is not None:
+        query = query.filter(instance_mappings_filter)
+    return query.count() > 0
 
 
 @require_context
@@ -3537,6 +3546,22 @@ def share_instance_access_delete(context, mapping_id):
         context.session.query(models.ShareAccessMapping).filter_by(
             id=mapping['access_id']
         ).soft_delete()
+
+
+@require_context
+@context_manager.writer
+def share_access_delete(context, access_id):
+    """Delete an orphaned share access rule (no instance mappings) directly.
+
+    Mirrors the cascade-cleanup at the bottom of share_instance_access_delete()
+    for the case where zero instance mappings exist from the start.
+    """
+    context.session.query(models.ShareAccessRulesMetadata).filter_by(
+        access_id=access_id
+    ).soft_delete()
+    context.session.query(models.ShareAccessMapping).filter_by(
+        id=access_id
+    ).soft_delete()
 
 
 @require_context
