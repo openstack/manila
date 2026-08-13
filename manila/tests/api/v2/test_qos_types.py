@@ -50,6 +50,8 @@ def stub_qos_type(id):
         'name': name,
         'description': description,
         'specs': specs,
+        'created_at': '2026-02-18T05:09:54.000000',
+        'updated_at': None,
     }
     return qos_type
 
