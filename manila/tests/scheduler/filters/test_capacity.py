@@ -157,6 +157,35 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(self.filter.host_passes(host, filter_properties))
 
+    @ddt.data(
+        {'free_capacity': 120, 'total_capacity': 200,
+         'reserved': 20, 'reserved_snapshot': 90,
+         'reserved_share_extend_percentage': 5})
+    @ddt.unpack
+    def test_capacity_filter_extend_snapshot_share_uses_extend_reserved(
+            self, free_capacity, total_capacity, reserved, reserved_snapshot,
+            reserved_share_extend_percentage):
+        # Regression test for bug #2050101: extending a share that was
+        # created from a snapshot must honour reserved_share_extend_percentage,
+        # not reserved_snapshot_percentage.
+        self._stub_service_is_up(True)
+        filter_properties = {'size': 100, 'is_share_extend': True,
+                             'snapshot_id': 1234}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': total_capacity,
+                                    'free_capacity_gb': free_capacity,
+                                    'reserved_percentage': reserved,
+                                    'reserved_snapshot_percentage':
+                                        reserved_snapshot,
+                                    'reserved_share_extend_percentage':
+                                        reserved_share_extend_percentage,
+                                    'updated_at': None,
+                                    'service': service})
+        # reserved_share_extend_percentage=5 allows the request;
+        # reserved_snapshot_percentage=90 would have rejected it.
+        self.assertTrue(self.filter.host_passes(host, filter_properties))
+
     def test_capacity_filter_passes_unknown(self):
         free = 'unknown'
         self._stub_service_is_up(True)

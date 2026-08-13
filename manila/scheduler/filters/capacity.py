@@ -44,10 +44,10 @@ class CapacityFilter(base_host.BaseHostFilter):
 
         free_space = host_state.free_capacity_gb
         total_space = host_state.total_capacity_gb
-        if filter_properties.get('snapshot_id'):
-            reserved = float(host_state.reserved_snapshot_percentage) / 100
-        elif filter_properties.get('is_share_extend'):
+        if filter_properties.get('is_share_extend'):
             reserved = float(host_state.reserved_share_extend_percentage) / 100
+        elif filter_properties.get('snapshot_id'):
+            reserved = float(host_state.reserved_snapshot_percentage) / 100
         else:
             reserved = float(host_state.reserved_percentage) / 100
 
