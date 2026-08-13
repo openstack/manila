@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue in the NetApp ONTAP driver where creating an encrypted
+    share on a share network with an existing unencrypted share server
+    would fail with a TypeError instead of properly falling back to
+    creating a new share server. For more details, please check
+    `Launchpad bug #2162923 <https://bugs.launchpad.net/manila/+bug/2162923>`_
