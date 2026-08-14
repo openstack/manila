@@ -170,6 +170,33 @@ class CapacityWeigherTestCase(test.TestCase):
         result = weigher._weigh_object(host_state, weight_properties)
         self.assertEqual(float('-inf'), result)
 
+    def test_extend_snapshot_share_uses_extend_reserved(self):
+        # Regression test for bug #2050101: extending a share created from a
+        # snapshot must use reserved_share_extend_percentage, not
+        # reserved_snapshot_percentage.
+        host_state = mock.Mock()
+        host_state.free_capacity_gb = 120
+        host_state.total_capacity_gb = 200
+        host_state.provisioned_capacity_gb = 80
+        host_state.max_over_subscription_ratio = 1.0
+        host_state.thin_provisioning = False
+        host_state.reserved_percentage = 0
+        host_state.reserved_snapshot_percentage = 90  # would starve if used
+        host_state.reserved_share_extend_percentage = 5
+
+        weigher = capacity.CapacityWeigher()
+        weight_properties = {'snapshot_id': 1234, 'is_share_extend': True,
+                             'share_type': {}}
+        result_extend = weigher._weigh_object(host_state, weight_properties)
+
+        # Weight with only extend reserved (correct)
+        weight_properties_extend_only = {'is_share_extend': True,
+                                         'share_type': {}}
+        result_extend_only = weigher._weigh_object(
+            host_state, weight_properties_extend_only)
+
+        self.assertEqual(result_extend_only, result_extend)
+
     @ddt.data(
         {'cap_thin': '<is> True',
          'cap_thin_key': 'capabilities:thin_provisioning',

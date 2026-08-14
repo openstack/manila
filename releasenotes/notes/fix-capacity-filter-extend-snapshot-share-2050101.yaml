@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed an issue where extending a share originally created from a snapshot
+    incorrectly applied ``reserved_snapshot_percentage`` instead of
+    ``reserved_share_extend_percentage`` in the capacity filter and weigher.
+    `launchpad bug: #2050101 <https://bugs.launchpad.net/manila/+bug/2050101>`_
