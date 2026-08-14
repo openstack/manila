@@ -1007,7 +1007,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.temp_src_share = {
             'id': self.fake_share['id'],
             'host': self.parent_share['host'],
-            'share_server': self.parent_share_server or None
+            'share_server': self.parent_share_server or None,
+            'share_type_id': self.fake_share.get('share_type_id'),
         }
 
     @ddt.data({'dest_cluster': fake.CLUSTER_NAME, 'is_flexgroup': False,
