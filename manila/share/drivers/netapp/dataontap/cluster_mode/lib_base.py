@@ -2481,6 +2481,21 @@ class NetAppCmodeFileStorageLibrary(object):
         snapshot_name = (snapshot.get('provider_location') or
                          self._get_backend_snapshot_name(snapshot['id']))
         LOG.debug('Restoring snapshot %s', snapshot_name)
+
+        # Delete any residual SnapMirror snapshots left behind after a DR
+        # replica promotion. ONTAP does not remove them automatically after a
+        # SnapMirror break, and they block snapshot restores.
+        snapmirror_snapshot_names = vserver_client.list_snapmirror_snapshots(
+            share_name)
+        for snapmirror_snapshot_name in snapmirror_snapshot_names:
+            try:
+                vserver_client.delete_snapshot(
+                    share_name, snapmirror_snapshot_name, ignore_owners=True)
+            except Exception:
+                LOG.warning("Could not delete SnapMirror snapshot %s on "
+                            "share %s before snapshot restore.",
+                            snapmirror_snapshot_name, share_name)
+
         vserver_client.restore_snapshot(share_name, snapshot_name)
         volume = vserver_client.get_volume(share_name)
 
