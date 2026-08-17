@@ -82,7 +82,9 @@ class PowerScaleTest(test.TestCase):
         super(PowerScaleTest, self).setUp()
 
         self._mock_powerscale_api = mock_isi_api.return_value
-        self.storage_connection = powerscale.PowerScaleStorageConnection(LOG)
+        self.mock_private_storage = mock.Mock()
+        self.storage_connection = powerscale.PowerScaleStorageConnection(
+            LOG, private_storage=self.mock_private_storage)
 
         self.mock_context = mock.Mock('Context')
         self.mock_emc_driver = mock.Mock('EmcDriver')
@@ -129,10 +131,12 @@ class PowerScaleTest(test.TestCase):
         }
         return fake_share_type
 
-    def test_create_share_nfs(self):
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_nfs(self, mock_extra_specs):
         share_path = self.SHARE_DIR
         self.assertFalse(self._mock_powerscale_api.create_directory.called)
         self.assertFalse(self._mock_powerscale_api.create_nfs_export.called)
+        mock_extra_specs.side_effect = [{'dedupe': True}, False]
 
         # create the share
         share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
@@ -162,9 +166,11 @@ class PowerScaleTest(test.TestCase):
         self._mock_powerscale_api.quota_create.assert_called_with(
             share_path, 'directory', 8 * units.Gi)
 
-    def test_create_share_cifs(self):
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_cifs(self, mock_extra_specs):
         self.assertFalse(self._mock_powerscale_api.create_directory.called)
         self.assertFalse(self._mock_powerscale_api.create_smb_share.called)
+        mock_extra_specs.side_effect = [{'dedupe': True}, False]
 
         # create the share
         share = {"name": self.SHARE_NAME, "share_proto": 'CIFS',
@@ -268,11 +274,12 @@ class PowerScaleTest(test.TestCase):
             snapshot['share'], check_path=True
         )
 
-    def test_create_share_from_snapshot_nfs(self):
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_from_snapshot_nfs(self, mock_extra_specs):
         # assertions
         self.assertFalse(self._mock_powerscale_api.create_nfs_export.called)
         self.assertFalse(self._mock_powerscale_api.clone_snapshot.called)
-
+        mock_extra_specs.side_effect = [{'dedupe': True}, False]
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
 
@@ -307,10 +314,13 @@ class PowerScaleTest(test.TestCase):
         self._mock_powerscale_api.quota_create.assert_called_with(
             self.SHARE_DIR, 'directory', 5 * units.Gi)
 
-    def test_create_share_from_snapshot_cifs(self):
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_from_snapshot_cifs(self, mock_extra_specs):
         # assertions
         self.assertFalse(self._mock_powerscale_api.create_smb_share.called)
         self.assertFalse(self._mock_powerscale_api.clone_snapshot.called)
+        mock_extra_specs.side_effect = [{'dedupe': True}, False]
+
         # setup
         snapshot_name = "snapshot01"
         snapshot_path = '/ifs/home/admin'
@@ -657,7 +667,8 @@ class PowerScaleTest(test.TestCase):
             'qos': False,
             'mount_snapshot_support': True,
             'mount_point_name_support': True,
-            'dedupe': True
+            'dedupe': True,
+            'revert_to_snapshot_support': True,
         }
         expected_stats = {
             'share_backend_name': 'PowerScale_backend',
@@ -1882,10 +1893,12 @@ class PowerScaleTest(test.TestCase):
             snapshot['share'], check_path=True
         )
 
-    def test_create_share_nfs_with_mount_point_name(self):
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_nfs_with_mount_point_name(self, mock_extra_specs):
         share_path = self.SHARE_DIR
         mount_point_name = "/my_custom_share"
         alias_path = mount_point_name
+        mock_extra_specs.side_effect = [{'dedupe': True}, False]
         self._mock_powerscale_api.create_nfs_export.return_value = True
         self._mock_powerscale_api.create_nfs_export_aliases.return_value = True
 
@@ -1949,8 +1962,10 @@ class PowerScaleTest(test.TestCase):
                           self.mock_context, share,
                           share_server=None)
 
-    def test_create_share_cifs_with_mount_point_name(self):
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_cifs_with_mount_point_name(self, mock_extra_specs):
         self._mock_powerscale_api.create_smb_share.return_value = True
+        mock_extra_specs.side_effect = [{'dedupe': True}, False]
         share = {
             "name": self.SHARE_NAME,
             "share_proto": 'CIFS',
@@ -2491,3 +2506,188 @@ class PowerScaleTest(test.TestCase):
         conn = powerscale.PowerScaleStorageConnection(configuration=cfg)
         conn.setup_server({}, metadata=None)
         conn.teardown_server({})
+
+    def test_revert_to_snapshot_with_provider_location(self):
+        snapshot = {
+            'id': 'fake_snapshot_id',
+            'provider_location': '123',
+            'snapshot_id': 'fake_uuid',
+            'share': {'id': 'fake_share_id'}
+        }
+        share_access_rules = []
+        snapshot_access_rules = []
+        self._mock_powerscale_api.create_job.return_value = 123
+        result = self.storage_connection.revert_to_snapshot(
+            self.mock_context,
+            snapshot,
+            share_access_rules,
+            snapshot_access_rules,
+            share_server=None
+        )
+        expected_params = {
+            'type': 'SnapRevert',
+            'priority': 10,
+            'allow_dup': True,
+            'policy': 'HIGH',
+            'snaprevert_params': {
+                'snapid': 123
+            }
+        }
+        self._mock_powerscale_api.create_job.assert_called_once_with(
+            'Revert to SnapShot',
+            expected_params,
+            False
+        )
+        self.mock_private_storage.update.assert_called_once_with(
+            'fake_share_id',
+            {
+                'job_id': 123,
+            }
+        )
+        self.assertEqual(
+            {'status': const.STATUS_REVERTING_TO_SNAPSHOT},
+            result
+        )
+
+    def test_revert_to_snapshot_missing_provider_location(self):
+        snapshot = {
+            'id': 'fake_snapshot_id',
+            'name': 'fake_snapshot_name',
+            'provider_location': None
+        }
+        share_access_rules = []
+        snapshot_access_rules = []
+        with mock.patch.object(powerscale.LOG, 'error') as mock_error:
+            self.assertRaises(
+                exception.ShareBackendException,
+                self.storage_connection.revert_to_snapshot,
+                self.mock_context,
+                snapshot,
+                share_access_rules,
+                snapshot_access_rules,
+                None
+            )
+        self._mock_powerscale_api.create_job.assert_not_called()
+        expected_message = (
+            "Failed to revert snapshot fake_snapshot_name, "
+            "missing provider location."
+        )
+        mock_error.assert_called_once_with(expected_message)
+
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_create_share_nfs_with_domain_mark(self, mock_extra_specs):
+        share_path = self.SHARE_DIR
+        self.assertFalse(self._mock_powerscale_api.create_directory.called)
+        self.assertFalse(self._mock_powerscale_api.create_nfs_export.called)
+        mock_extra_specs.side_effect = [{'dedupe': False}, True]
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS', "size": 8,
+                 'share_type_id': 'fake_id', }
+        location = self.storage_connection.create_share(self.mock_context,
+                                                        share, None)
+        path = '%s:%s' % (self.POWERSCALE_ADDR, self.SHARE_DIR)
+        expected_location = [{'is_admin_only': False,
+                              'metadata': {"preferred": True},
+                              'path': path}]
+        self.assertEqual(expected_location, location)
+        self._mock_powerscale_api.create_directory.assert_called_with(
+            share_path, False)
+        (self._mock_powerscale_api.
+         create_nfs_export.assert_called_with(share_path))
+        path = self.ROOT_DIR + "/" + self.SHARE_NAME
+        params = {
+            'type': 'DomainMark',
+            'priority': 10,
+            'allow_dup': True,
+            'policy': 'HIGH',
+            'domainmark_params': {
+                'delete': False,
+                'root': path,
+                'type': 'SnapRevert'
+            }
+        }
+        self._mock_powerscale_api.quota_create.assert_called_with(
+            share_path, 'directory', 8 * units.Gi)
+        self._mock_powerscale_api.create_job.assert_called_once_with(
+            'Domain Mark', params, True
+        )
+
+    def test_get_share_status_failed(self):
+        share = {'id': 'fake_share_id', 'size': 2}
+        self.mock_private_storage.get.return_value = 'job-id'
+        self._mock_powerscale_api.get_job_status.return_value = (True,
+                                                                 'failed')
+        result = self.storage_connection.get_share_status(share, None)
+        self.assertEqual(
+            {'status': const.STATUS_REVERTING_ERROR}, result
+        )
+        self.mock_private_storage.get.assert_called_once_with(
+            'fake_share_id', 'job_id'
+        )
+        self.mock_private_storage.delete.assert_called_once_with(
+            'fake_share_id')
+        self._mock_powerscale_api.quota_set.assert_not_called()
+
+    def test_get_share_status_succeeded(self):
+        share = {'id': 'fake_share_id', 'size': 2}
+        self.mock_private_storage.get.return_value = 'job-id'
+        self._mock_powerscale_api.get_job_status.return_value = (True,
+                                                                 'succeeded')
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value='/ifs/path')
+
+        result = self.storage_connection.get_share_status(share, None)
+
+        self.assertEqual({'status': const.STATUS_AVAILABLE}, result)
+        self.mock_private_storage.get.assert_called_once_with(
+            'fake_share_id', 'job_id')
+        self.mock_private_storage.delete.assert_called_once_with(
+            'fake_share_id')
+        self._mock_powerscale_api.quota_set.assert_called_once_with(
+            '/ifs/path', 'directory', 2 * units.Gi)
+
+    def test_get_share_status_in_progress(self):
+        share = {'id': 'fake_share_id', 'size': 2}
+        self.mock_private_storage.get.return_value = 'job-id'
+        self._mock_powerscale_api.get_job_status.return_value = (False,
+                                                                 'running')
+
+        result = self.storage_connection.get_share_status(share, None)
+
+        self.assertEqual({'status': const.STATUS_REVERTING_TO_SNAPSHOT},
+                         result)
+        self.mock_private_storage.get.assert_called_once_with(
+            'fake_share_id', 'job_id')
+        self._mock_powerscale_api.quota_set.assert_not_called()
+
+    def test_create_snapshot_success(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
+        snapshot = {
+            'name': 'snap1',
+            'share_name': self.SHARE_NAME,
+            'share': share,
+        }
+        fake_snap_id = 'snap-id-123'
+        self._mock_powerscale_api.create_snapshot.return_value = fake_snap_id
+
+        result = self.storage_connection.create_snapshot(
+            self.mock_context, snapshot, share_server=None)
+
+        expected_path = self.ROOT_DIR + "/" + self.SHARE_NAME
+        self._mock_powerscale_api.create_snapshot.assert_called_once_with(
+            snapshot['name'], expected_path)
+        self.assertEqual({'provider_location': fake_snap_id}, result)
+
+    def test_create_snapshot_failure(self):
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS',
+                 "mount_snapshot_support": False}
+        snapshot = {
+            'name': 'snap_fail',
+            'share_name': self.SHARE_NAME,
+            'share': share,
+        }
+        self._mock_powerscale_api.create_snapshot.return_value = None
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_snapshot,
+            self.mock_context, snapshot, None)

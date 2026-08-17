@@ -41,8 +41,9 @@ from manila.share import share_types
     1.0.7 - Add support of mount snapshot
     1.0.8 - Add support of mount point name
     1.0.9 - Add support to schedule Dedupe job for a share
+    1.0.10 - Add support for revert to snapshot
 """
-VERSION = "1.0.9"
+VERSION = "1.0.10"
 
 CONF = cfg.CONF
 
@@ -60,7 +61,15 @@ POWERSCALE_OPTS = [
     cfg.StrOpt('powerscale_dedupe_schedule',
                default="every 1 weeks on sunday at 12:00 AM",
                help='Specifies the schedule '
-                    'for triggering Dedupe job in PowerScale')
+                    'for triggering Dedupe job in PowerScale'),
+    cfg.IntOpt('powerscale_job_retries',
+               default=5,
+               help='Maximum number of attempts to poll the job status '
+                    'before the operation is considered failed.'),
+    cfg.IntOpt('powerscale_job_interval',
+               default=2,
+               help='Interval(in seconds), between consecutive job status '
+                    'polling attempts.')
 ]
 
 
@@ -97,9 +106,13 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self.max_over_subscription_ratio = None
         self._threshold_limit = 0
         self.shrink_share_support = True
+        self.private_storage = kwargs.get('private_storage')
         self.manage_existing_support = True
         self.mount_snapshot_support = True
         self._snapshot_root_dir = '/ifs/.snapshot'
+        self.revert_to_snap_support = True
+        self.job_interval = None
+        self.job_retries = None
 
     def _get_container_path(self, share, check_path=None):
         """Return path to a container."""
@@ -146,8 +159,28 @@ class PowerScaleStorageConnection(base.StorageConnection):
         max_share_size = share['size'] * units.Gi
         self._powerscale_api.quota_create(
             self._get_container_path(share), 'directory', max_share_size)
-
+        self._check_domain_mark(share)
         return location
+
+    def _check_domain_mark(self, share):
+        share_type_id = share['share_type_id']
+        revert_snap_support = share_types.parse_boolean_extra_spec(
+            "revert_to_snapshot_support",
+            share_types.get_share_type_extra_specs(
+                share_type_id, "revert_to_snapshot_support"))
+        if revert_snap_support:
+            params = {
+                'type': 'DomainMark',
+                'priority': 10,
+                'allow_dup': True,
+                'policy': 'HIGH',
+                'domainmark_params': {
+                    'delete': False,
+                    'root': self._get_container_path(share),
+                    'type': 'SnapRevert'
+                }
+            }
+            self._powerscale_api.create_job('Domain Mark', params, True)
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server):
@@ -529,6 +562,10 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self._root_dir = config.safe_get("emc_nas_root_dir")
         self._threshold_limit = config.safe_get("powerscale_threshold_limit")
         self._dedupe_schedule = config.safe_get("powerscale_dedupe_schedule")
+        self.job_retries = config.safe_get(
+            'powerscale_job_retries')
+        self.job_interval = config.safe_get(
+            'powerscale_job_interval')
 
         # validate IP, username and password
         if not all([self._server,
@@ -549,7 +586,9 @@ class PowerScaleStorageConnection(base.StorageConnection):
             self._verify_ssl_cert, self._ssl_cert_path,
             self._dir_permission,
             self._threshold_limit,
-            self._dedupe_schedule)
+            self._dedupe_schedule,
+            self.job_retries,
+            self.job_interval)
 
         if not self._powerscale_api.is_path_existent(self._root_dir):
             self._create_directory(self._root_dir, recursive=True)
@@ -593,7 +632,8 @@ class PowerScaleStorageConnection(base.StorageConnection):
             'thin_provisioning': True,
             'mount_snapshot_support': True,
             'mount_point_name_support': True,
-            'dedupe': True
+            'dedupe': True,
+            'revert_to_snapshot_support': True,
         }
         spaces = self._powerscale_api.get_space_stats()
         if spaces:
@@ -1064,3 +1104,75 @@ class PowerScaleStorageConnection(base.StorageConnection):
         dedupe_settings = self._powerscale_api.get_dedupe_settings()
         paths = dedupe_settings["settings"]["paths"]
         return paths
+
+    def revert_to_snapshot(self, context, snapshot, share_access_rules,
+                           snapshot_access_rules, share_server):
+        """Revert a share to the specified snapshot.
+
+        Creates and executes a SnapRevert job on the PowerScale cluster
+        to restore the share to its state at the time of the snapshot.
+        The job runs asynchronously and its status can be tracked
+        using get_share_status.
+
+        :param context: The request context
+        :param snapshot: The snapshot dictionary containing snapshot details
+        :param share_access_rules: List of access rules for the share
+        :param snapshot_access_rules: List of access rules for the snapshot
+        :param share_server: Share server information (not used for PowerScale)
+        :returns: Dictionary with status set to STATUS_REVERTING_TO_SNAPSHOT
+        :raises ShareBackendException: If provider_location is missing
+        """
+        provider_location = snapshot.get('provider_location')
+        if not provider_location:
+            message = (_('Failed to revert snapshot %(snap)s, '
+                         'missing provider location.') %
+                       {'snap': snapshot['name']})
+            LOG.error(message)
+            raise exception.ShareBackendException(msg=message)
+        params = {
+            'type': 'SnapRevert',
+            'priority': 10,
+            'allow_dup': True,
+            'policy': 'HIGH',
+            'snaprevert_params': {
+                'snapid': int(provider_location)
+            }
+        }
+        job_id = (self._powerscale_api.
+                  create_job('Revert to SnapShot', params, False))
+        driver_data = {"job_id": job_id}
+        self.private_storage.update(
+            snapshot['share']['id'],
+            driver_data
+        )
+        return {'status': const.STATUS_REVERTING_TO_SNAPSHOT}
+
+    def get_share_status(self, shares, share_server):
+        """Get the current status of a share operation.
+
+        Checks the status of an asynchronous revert-to-snapshot job
+        that was initiated by revert_to_snapshot and cleans up job
+        data when complete. Snapshot status reconciliation is handled
+        by the share manager.
+
+        :param shares: The share dictionary containing share details
+        :param share_server: Share server information (not used for PowerScale)
+        :returns: Dictionary with current share status:
+                  - STATUS_REVERTING_ERROR if job failed
+                  - STATUS_AVAILABLE if job succeeded
+                  - STATUS_REVERTING_TO_SNAPSHOT if job still running
+        """
+        share_id = shares['id']
+        job_id = self.private_storage.get(share_id, "job_id")
+        completed, status = self._powerscale_api.get_job_status(job_id)
+        if status == "failed":
+            self.private_storage.delete(share_id)
+            return {"status": const.STATUS_REVERTING_ERROR}
+        elif status == "succeeded":
+            self.private_storage.delete(share_id)
+            revert_share_size = shares['size'] * units.Gi
+            (self._powerscale_api.
+             quota_set(self._get_container_path(shares, True), 'directory',
+                       revert_share_size))
+            return {"status": const.STATUS_AVAILABLE}
+        return {"status": const.STATUS_REVERTING_TO_SNAPSHOT}

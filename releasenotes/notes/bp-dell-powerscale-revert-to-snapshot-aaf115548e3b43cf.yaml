@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Added support for revert to snapshot on Dell PowerScale.
+
+    The PowerScale driver now supports asynchronous
+    revert-to-snapshot operations. When enabled through the
+    share type extra spec, the driver prepares shares using
+    a Domain Mark job and monitors backend jobs using
+    powerscale_job_retries and powerscale_job_interval.
+    By default values are powerscale_job_retries = 5,
+    powerscale_job_interval = 2 and backoff_rate = 2.

@@ -48,6 +48,13 @@ class PowerScaleApiTest(test.TestCase):
             dir_permission=self.dir_permission,
             threshold_limit=80
         )
+        self.powerscale_api_revert_to_snap = powerscale_api.PowerScaleApi(
+            self._mock_url, self.username, self.password,
+            dir_permission=self.dir_permission,
+            threshold_limit=80,
+            job_retries=5,
+            job_interval=2,
+        )
 
     @mock.patch('manila.share.drivers.dell_emc.plugins.powerscale.'
                 'powerscale_api.PowerScaleApi.create_session')
@@ -1451,3 +1458,220 @@ class PowerScaleApiTest(test.TestCase):
             self._mock_url + '/platform/1/dedupe/settings'
         )
         mock_response.raise_for_status.assert_called_once()
+
+    @requests_mock.mock()
+    def test_create_domain_mark_job_success(self, m):
+        job_id = 123
+        params = {
+            'type': 'DomainMark',
+            'priority': 10,
+            'allow_dup': True,
+            'policy': 'HIGH',
+            'domainmark_params': {
+                'delete': False,
+                'root': '/ifs/manila/nilesh',
+                'type': 'SnapRevert'
+            }
+        }
+        m.post(
+            self._mock_url + '/platform/12/job/jobs',
+            status_code=201,
+            json={'id': job_id}
+        )
+        m.get(
+            self._mock_url + f'/platform/12/job/jobs/{job_id}',
+            [
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}},
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'SUCCEEDED'}]}}
+            ]
+        )
+        (self.powerscale_api_revert_to_snap.
+         create_job('Domain Mark', params, True))
+        self.assertEqual(3, len(m.request_history))
+        self.assertEqual(params, json.loads(m.request_history[0].body))
+
+    @requests_mock.mock()
+    def test_create_domain_mark_job_failure(self, m):
+        job_id = 999
+        params = {
+            'type': 'DomainMark',
+            'priority': 10,
+            'allow_dup': True,
+            'policy': 'HIGH',
+            'domainmark_params': {
+                'delete': False,
+                'root': '/ifs/manila/nilesh',
+                'type': 'SnapRevert'
+            }
+        }
+        m.post(
+            self._mock_url + '/platform/12/job/jobs',
+            status_code=201,
+            json={'id': job_id}
+        )
+        m.get(
+            self._mock_url + f'/platform/12/job/jobs/{job_id}',
+            [
+                {'status_code': 200, 'json': {'jobs': [{'state': 'FAILED'}]}}
+            ]
+        )
+        m.put(
+            self._mock_url + f'/platform/12/job/jobs/{job_id}',
+            status_code=204
+        )
+        self.assertRaises(exception.ShareBackendException,
+                          self.powerscale_api_revert_to_snap.create_job,
+                          'Domain Mark',
+                          params,
+                          True)
+
+    @requests_mock.mock()
+    def test_create_domain_mark_job_cancel(self, m):
+        job_id = 999
+        params = {
+            'type': 'DomainMark',
+            'priority': 10,
+            'allow_dup': True,
+            'policy': 'HIGH',
+            'domainmark_params': {
+                'delete': False,
+                'root': '/ifs/manila/nilesh',
+                'type': 'SnapRevert'
+            }
+        }
+        m.post(
+            self._mock_url + '/platform/12/job/jobs',
+            status_code=201,
+            json={'id': job_id}
+        )
+        m.get(
+            self._mock_url + f'/platform/12/job/jobs/{job_id}',
+            [
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}},
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}},
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}},
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}},
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}}
+            ]
+        )
+        m.put(
+            self._mock_url + f'/platform/12/job/jobs/{job_id}',
+            status_code=204
+        )
+        self.assertRaises(exception.ShareBackendException,
+                          self.powerscale_api_revert_to_snap.create_job,
+                          'Domain Mark',
+                          params,
+                          True)
+
+    @requests_mock.mock()
+    def test_create_revert_snapshot_job_success(self, m):
+        job_id = 123
+        params = {
+            'type': 'SnapRevert',
+            'priority': 10,
+            'allow_dup': False,
+            'policy': 'HIGH',
+            'snaprevert_params': {
+                'snapid': 5678
+            }
+        }
+        m.post(
+            self._mock_url + '/platform/12/job/jobs',
+            status_code=201,
+            json={'id': job_id}
+        )
+        m.get(
+            self._mock_url + f'/platform/12/job/jobs/{job_id}',
+            [
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'RUNNING'}]}},
+                {'status_code': 200,
+                 'json': {'jobs': [{'state': 'SUCCEEDED'}]}}
+            ]
+        )
+        (self.powerscale_api_revert_to_snap.
+         create_job('Revert to SnapShot', params, True))
+        self.assertEqual(3, len(m.request_history))
+        self.assertEqual(params, json.loads(m.request_history[0].body))
+
+    def test_get_job_status_succeeded(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'jobs': [{'state': 'succeeded'}]
+        }
+        self.powerscale_api_revert_to_snap.send_get_request = (
+            mock.MagicMock(return_value=mock_response))
+        result, status = (
+            self.powerscale_api_revert_to_snap.get_job_status('123'))
+        self.assertTrue(result)
+        self.assertEqual(status, 'succeeded')
+        (self.powerscale_api_revert_to_snap
+            .send_get_request.assert_called_once_with(
+                f'{self.powerscale_api_revert_to_snap.host_url}'
+                '/platform/12/job/jobs/123'))
+
+    def test_get_job_status_failed(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'jobs': [{'state': 'failed'}]
+        }
+        self.powerscale_api_revert_to_snap.send_get_request = (
+            mock.MagicMock(return_value=mock_response))
+        result, status = (
+            self.powerscale_api_revert_to_snap.get_job_status('999'))
+        self.assertTrue(result)
+        self.assertEqual(status, 'failed')
+
+    def test_get_job_status_in_progress(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'jobs': [{'state': 'running'}]
+        }
+        self.powerscale_api_revert_to_snap.send_get_request = (
+            mock.MagicMock(return_value=mock_response))
+        result, status = (
+            self.powerscale_api_revert_to_snap.get_job_status('888'))
+        self.assertFalse(result)
+        self.assertEqual(status, 'running')
+
+    def test_get_job_status_http_error(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 500
+        self.powerscale_api_revert_to_snap.send_get_request = (
+            mock.MagicMock(return_value=mock_response))
+        result, status = (
+            self.powerscale_api_revert_to_snap.get_job_status('777'))
+        self.assertTrue(result)
+        self.assertEqual(status, 'failed')
+
+    def test_cancel_job_success(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 204
+        self.powerscale_api_revert_to_snap.send_put_request = (
+            mock.MagicMock(return_value=mock_response))
+        result = self.powerscale_api_revert_to_snap._cancel_job('123')
+        self.assertTrue(result)
+        (self.powerscale_api_revert_to_snap
+            .send_put_request.assert_called_once_with(
+                f'{self.powerscale_api_revert_to_snap.host_url}'
+                '/platform/12/job/jobs/123',
+                data={'priority': 10, 'state': 'cancel'}))
+
+    def test_cancel_job_failure(self):
+        mock_response = mock.MagicMock()
+        mock_response.status_code = 400
+        self.powerscale_api_revert_to_snap.send_put_request = (
+            mock.MagicMock(return_value=mock_response))
+        result = self.powerscale_api_revert_to_snap._cancel_job('123')
+        self.assertFalse(result)
