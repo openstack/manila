@@ -188,6 +188,10 @@ class Detail(object):
         _("Share driver has failed to create share replica "
           "because of unsupported configuration options. "
           "Please try again with a different configuration."))
+    DRIVER_FAILED_REVERTING_TO_SNAPSHOT = (
+        '035',
+        _("Share driver failed to revert the share to the specified snapshot. "
+          "Contact your administrator if the problem persists."))
 
     ALL = (
         UNKNOWN_ERROR,
@@ -223,7 +227,8 @@ class Detail(object):
         UPDATE_METADATA_NOT_DELETED,
         TARGETED_RESTORE_UNSUPPORTED,
         NEUTRON_SUBNET_FULL,
-        UNSUPPORTED_REPLICA_CREATE_CONFIG
+        UNSUPPORTED_REPLICA_CREATE_CONFIG,
+        DRIVER_FAILED_REVERTING_TO_SNAPSHOT,
     )
 
     # Exception and detail mappings

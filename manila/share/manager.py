@@ -3659,14 +3659,19 @@ class ShareManager(manager.SchedulerDependentManager):
         # Make primitive to pass the information to the driver
         snapshot_instance_dict = self._get_snapshot_instance_dict(
             context, snapshot_instance, snapshot=snapshot)
-
+        updated_share_size = None
+        status = None
         try:
-            updated_share_size = self.driver.revert_to_snapshot(
+            result = self.driver.revert_to_snapshot(
                 context,
                 snapshot_instance_dict,
                 share_access_rules,
                 snapshot_access_rules,
                 share_server=share_server)
+            if isinstance(result, dict):
+                status = result.get('status', status)
+            else:
+                updated_share_size = result
         except Exception as excep:
             with excutils.save_and_reraise_exception():
 
@@ -3695,6 +3700,22 @@ class ShareManager(manager.SchedulerDependentManager):
                     resource_id=share_id,
                     exception=excep)
 
+        share_status = status or constants.STATUS_AVAILABLE
+
+        if share_status == constants.STATUS_REVERTING_TO_SNAPSHOT:
+            # NOTE(siddhvrth): The driver has indicated that the revert is
+            # running asynchronously. Rollback any quota reservations now;
+            # they will be re-reserved and committed when the periodic task
+            # detects successful completion via get_share_status.
+            if reservations:
+                QUOTAS.rollback(
+                    context, reservations, project_id=project_id,
+                    user_id=user_id, share_type_id=share_type_id,
+                )
+            self.db.share_update(
+                context, share_id, {'status': share_status})
+            return
+
         # fail-safe in case driver returned size is None or invalid
         if not updated_share_size:
             updated_share_size = snapshot['size']
@@ -3722,13 +3743,11 @@ class ShareManager(manager.SchedulerDependentManager):
                     LOG.error("Driver returned an unexpected size %d on "
                               "revert to snapshot operation. You need to "
                               "adjust the quota", updated_share_size)
-
         self.db.share_update(
             context, share_id,
-            {'status': constants.STATUS_AVAILABLE, 'size': updated_share_size})
+            {'status': share_status, 'size': updated_share_size})
         self.db.share_snapshot_update(
             context, snapshot_id, {'status': constants.STATUS_AVAILABLE})
-
         msg = ('Share %(share)s reverted to snapshot %(snap)s '
                'successfully.')
         msg_args = {'share': share_id, 'snap': snapshot_id}
@@ -5855,6 +5874,9 @@ class ShareManager(manager.SchedulerDependentManager):
         share_instances = self.db.share_instance_get_all_by_host(
             context, self.host, with_share_data=True,
             status=constants.STATUS_CREATING_FROM_SNAPSHOT)
+        share_instances += self.db.share_instance_get_all_by_host(
+            context, self.host, with_share_data=True,
+            status=constants.STATUS_REVERTING_TO_SNAPSHOT)
 
         for si in share_instances:
             si_dict = self._get_share_instance_dict(context, si)
@@ -5865,6 +5887,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if share_server is not None:
             share_server = self._get_share_server_dict(context,
                                                        share_server)
+        previous_status = share_instance.get('status')
         try:
             data_updates = self.driver.get_share_status(share_instance,
                                                         share_server)
@@ -5875,12 +5898,18 @@ class ShareManager(manager.SchedulerDependentManager):
                 {'id': share_instance['id'],
                  'share_id': share_instance['share_id']}
             )
-            data_updates = {
-                'status': constants.STATUS_ERROR
-            }
+            if (previous_status ==
+                    constants.STATUS_REVERTING_TO_SNAPSHOT):
+                data_updates = {
+                    'status': constants.STATUS_REVERTING_ERROR
+                }
+            else:
+                data_updates = {
+                    'status': constants.STATUS_ERROR
+                }
 
         status = data_updates.get('status')
-        if status == constants.STATUS_ERROR:
+        if status and constants.STATUS_ERROR in status:
             msg = ("Status of share instance %(id)s that belongs to share "
                    "%(share_id)s was updated to '%(status)s'."
                    % {'id': share_instance['id'],
@@ -5889,15 +5918,23 @@ class ShareManager(manager.SchedulerDependentManager):
             LOG.error(msg)
             self.db.share_instance_update(
                 context, share_instance['id'],
-                {'status': constants.STATUS_ERROR,
+                {'status': status,
                  'progress': None})
+            msg_details = message_field.Detail.DRIVER_FAILED_CREATING_FROM_SNAP
+            if status == constants.STATUS_REVERTING_ERROR:
+                msg_details = (
+                    message_field.Detail.DRIVER_FAILED_REVERTING_TO_SNAPSHOT)
             self.message_api.create(
                 context,
                 message_field.Action.UPDATE,
                 share_instance['project_id'],
                 resource_type=message_field.Resource.SHARE,
                 resource_id=share_instance['share_id'],
-                detail=message_field.Detail.DRIVER_FAILED_CREATING_FROM_SNAP)
+                detail=msg_details)
+            if (previous_status ==
+                    constants.STATUS_REVERTING_TO_SNAPSHOT):
+                self._restore_snapshot_after_revert(
+                    context, share_instance)
             return
 
         export_locations = data_updates.get('export_locations')
@@ -5905,7 +5942,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         statuses_requiring_update = [
             constants.STATUS_AVAILABLE,
-            constants.STATUS_CREATING_FROM_SNAPSHOT]
+            constants.STATUS_CREATING_FROM_SNAPSHOT,
+            constants.STATUS_REVERTING_TO_SNAPSHOT]
 
         if status in statuses_requiring_update:
             si_updates = {
@@ -5923,9 +5961,73 @@ class ShareManager(manager.SchedulerDependentManager):
                       'share_id': share_instance['share_id'],
                       'status': status})
             LOG.debug(msg)
+            if (status == constants.STATUS_AVAILABLE and
+                    previous_status ==
+                    constants.STATUS_REVERTING_TO_SNAPSHOT):
+                self._finalize_async_revert(context, share_instance)
+                self._restore_snapshot_after_revert(
+                    context, share_instance)
         if export_locations:
             self.db.export_locations_update(
                 context, share_instance['id'], export_locations)
+
+    def _finalize_async_revert(self, context, share_instance):
+        """Commit quota and update share size/status after async revert."""
+        share_id = share_instance['share_id']
+        share = self.db.share_get(context, share_id)
+        project_id = share['project_id']
+        user_id = share['user_id']
+        share_type_id = share_instance.get('share_type_id')
+
+        # Find the snapshot that was used for the revert (status=restoring)
+        snapshots = self.db.share_snapshot_get_all_for_share(
+            context, share_id,
+            filters={'status': constants.STATUS_RESTORING})
+        if not snapshots:
+            LOG.warning("No snapshot in 'restoring' status found for "
+                        "share %s after async revert completed.", share_id)
+            return
+
+        snapshot = snapshots[0]
+        snapshot_size = snapshot['size']
+        # size_delta may be positive (snapshot larger) or negative (smaller)
+        size_delta = snapshot_size - share['size']
+
+        if size_delta:
+            # NOTE(siddhvrth): Allowing OverQuota to not compromise the
+            # async revert operation. The revert has already completed
+            # on the backend, so we must update the share size to match
+            # reality. The admin will need to adjust quotas afterwards.
+            reservations = QUOTAS.reserve(
+                context,
+                project_id=project_id,
+                gigabytes=size_delta,
+                user_id=user_id,
+                share_type_id=share_type_id,
+                overquota_allowed=True,
+            )
+            QUOTAS.commit(
+                context, reservations, project_id=project_id,
+                user_id=user_id, share_type_id=share_type_id,
+            )
+
+        self.db.share_update(
+            context, share_id,
+            {'status': constants.STATUS_AVAILABLE, 'size': snapshot_size})
+        LOG.info('Share %(share)s reverted to snapshot %(snap)s '
+                 'successfully.',
+                 {'share': share_id, 'snap': snapshot['id']})
+
+    def _restore_snapshot_after_revert(self, context, share_instance):
+        """Restore snapshots from 'restoring' to 'available' after revert."""
+        share_id = share_instance['share_id']
+        snapshots = self.db.share_snapshot_get_all_for_share(
+            context, share_id,
+            filters={'status': constants.STATUS_RESTORING})
+        for snap in snapshots:
+            self.db.share_snapshot_update(
+                context, snap['id'],
+                {'status': constants.STATUS_AVAILABLE})
 
     def _validate_check_compatibility_result(
             self, context, resource_id, share_instances, snapshot_instances,
