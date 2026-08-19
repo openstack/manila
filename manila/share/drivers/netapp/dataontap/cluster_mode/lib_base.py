@@ -1501,8 +1501,8 @@ class NetAppCmodeFileStorageLibrary(object):
         # Check SnapLock license is enabled on cluster
         if self._have_cluster_creds:
             if 'snaplock' not in self._licenses:
-                exception.NetAppException("SnapLock License is not"
-                                          " available on ONTAP")
+                msg = _('SnapLock license is not available on ONTAP.')
+                raise exception.NetAppException(msg)
             if not self._is_snaplock_compliance_configured:
                 msg = _('Compliance clock is not configured for one'
                         ' of the nodes.')
