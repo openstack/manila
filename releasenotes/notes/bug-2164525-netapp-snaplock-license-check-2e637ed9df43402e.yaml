@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed the SnapLock license check in the NetApp ONTAP driver, which
+    built an exception without raising it. Shares with a SnapLock share
+    type are no longer created on clusters that lack the license. For
+    more details, see
+    `Launchpad Bug #2164525 <https://bugs.launchpad.net/manila/+bug/2164525>`_.
