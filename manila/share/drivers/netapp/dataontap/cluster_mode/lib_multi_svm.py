@@ -1331,9 +1331,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                   'configured for the existing share_servers')
         if (encryption_key_ref and encryption_key_ref !=
            share_server['encryption_key_ref']):
-            msg = _('The available share server %(server_id)s is already'
-                    'configured with a different encryption-key-ref',
-                    {'server_id': share_server['id']})
+            msg = _('The available share server %(server_id)s is already '
+                    'configured with a different '
+                    'encryption-key-ref') % {
+                'server_id': share_server['id']}
             LOG.warning(msg)
             return False
 
