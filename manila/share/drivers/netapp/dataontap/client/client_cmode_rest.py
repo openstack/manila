@@ -136,6 +136,27 @@ class NetAppRestClient(object):
             self.get_ontap_version(cached=True)['version-tuple'] >= (9, 14, 1))
         self.features.add_feature('VOLUME_TAGS', supported=ontap_9_14_1)
 
+        ontap_9_19_1 = (
+            self.get_ontap_version(cached=True)['version-tuple'] >= (9, 19, 1))
+        self.features.add_feature('AUTOSIZE_RESET_REST',
+                                  supported=ontap_9_19_1)
+
+    @na_utils.trace
+    def is_svm_dr_supported(self):
+        """Checks if the cluster supports SVM DR."""
+        # NOTE: Explicitly implemented here to avoid falling back to ZAPI via
+        # __getattr__ when ZAPI is disabled. SVM DR requires ONTAP 8.3+, which
+        # predates the REST client minimum of 9.12.1.
+        return self.features.SVM_DR
+
+    @na_utils.trace
+    def is_svm_migrate_supported(self):
+        """Checks if the cluster supports SVM Migrate."""
+        # NOTE: Explicitly implemented here to avoid falling back to ZAPI via
+        # __getattr__ when ZAPI is disabled. SVM Migrate requires ONTAP
+        # 9.10.0+, which predates the REST client minimum of 9.12.1.
+        return self.features.SVM_MIGRATE
+
     def __getattr__(self, name):
         """If method is not implemented for REST, try to call the ZAPI."""
         LOG.debug("The %s call is not supported for REST, falling back to "
@@ -825,7 +846,7 @@ class NetAppRestClient(object):
                 'interface-name': lif_info['name'],
                 'netmask': lif_info['ip']['netmask'],
                 'role': lif_info['services'],
-                'vserver': lif_info['svm']['name'],
+                'vserver': lif_info.get('svm', {}).get('name', ''),
             }
             interfaces.append(lif)
         return interfaces
@@ -3196,21 +3217,48 @@ class NetAppRestClient(object):
         back to its default settings. The autosize feature automatically
         grows or shrinks a volume based on the amount of used space.
         """
-        query = {
-            "vserver": vserver_name,
-            "volume": volume_name
-        }
-        body = {
-            "autosize-reset": "true"
-        }
-
         try:
-            self.send_request('/private/cli/volume', 'patch',
-                              query=query, body=body)
+            if self.features.AUTOSIZE_RESET_REST:
+                volume = self._get_volume_by_args(vol_name=volume_name)
+                body = {'autosize': {'reset': True}}
+                self.send_request(
+                    '/storage/volumes/' + volume['uuid'], 'patch', body=body)
+            else:
+                query = {
+                    'vserver': vserver_name,
+                    'volume': volume_name,
+                }
+                body = {'autosize-reset': 'true'}
+                self.send_request('/private/cli/volume', 'patch',
+                                  query=query, body=body)
         except netapp_api.api.NaApiError as e:
             LOG.error('Failed to reset volume autosize for %s. Error: %s. '
                       'Code: %s', volume_name, e.message, e.code)
             raise
+
+    @na_utils.trace
+    def get_volume_autosize_attributes(self, volume_name):
+        """Returns autosize attributes for a given volume name."""
+        volume = self._get_volume_by_args(vol_name=volume_name)
+        uuid = volume['uuid']
+
+        query = {
+            'fields': 'autosize'
+        }
+        result = self.send_request(f'/storage/volumes/{uuid}', 'get',
+                                   query=query)
+
+        autosize = result.get('autosize', {})
+        # NOTE: 'mode' identifies if autosize is enabled or not. The keys
+        # returned here match the ZAPI 'volume-autosize-get' output so that
+        # callers can pass them directly to modify_volume(autosize_attributes).
+        return {
+            'mode': autosize.get('mode'),
+            'grow-threshold-percent': autosize.get('grow_threshold'),
+            'shrink-threshold-percent': autosize.get('shrink_threshold'),
+            'maximum-size': autosize.get('maximum'),
+            'minimum-size': autosize.get('minimum'),
+        }
 
     @na_utils.trace
     def start_volume_move(self, volume_name, vserver, destination_aggregate,
@@ -4386,6 +4434,41 @@ class NetAppRestClient(object):
         return [svm['name'] for svm in response.get('records', [])]
 
     @na_utils.trace
+    def list_vservers(self, vserver_type='data'):
+        """Get the names of data vservers present."""
+        # REST '/svm/svms' exposes only data SVMs and does not support
+        # '?type=' filtering (ONTAP returns "Unexpected argument").
+        # Keep vserver_type for ZAPI parity, but do not pass it to REST.
+        return self._list_vservers()
+
+    @na_utils.trace
+    def get_data_lif_details_for_nodes(self):
+        """Get the data LIF details for each node."""
+        # NOTE: There is no public REST API for data LIF capacity details yet
+        # (tracked by CONTAP-408454), so the private CLI endpoint is used as
+        # an interim workaround. ONTAP 9.14.1+ returns underscore-separated
+        # field names (e.g. 'limit_for_node'); hyphenated names
+        # (e.g. 'limit-for-node') are handled as a fallback for older versions
+        # that may use CLI-style field naming.
+        query = {
+            'fields': 'limit-for-node,count-for-node,node',
+        }
+        response = self.send_request(
+            '/private/cli/network/interface/capacity/details', 'get',
+            query=query)
+
+        data_lif_info = []
+        for lif_info in response.get('records', []):
+            data_lif_info.append({
+                'limit-for-node': lif_info.get('limit-for-node',
+                                               lif_info.get('limit_for_node')),
+                'count-for-node': lif_info.get('count-for-node',
+                                               lif_info.get('count_for_node')),
+                'node': lif_info.get('node'),
+            })
+        return data_lif_info
+
+    @na_utils.trace
     def _get_ems_log_destination_vserver(self):
         """Returns the best vserver destination for EMS messages."""
 
@@ -4804,7 +4887,8 @@ class NetAppRestClient(object):
                                                           vserver_name,
                                                           aes_encryption,
                                                           smb_signing)
-                vserver_client.configure_cifs_options(security_service)
+                vserver_client.configure_cifs_options(
+                    security_service, vserver_name=vserver_name)
 
             elif security_service['type'].lower() == 'kerberos':
                 vserver_client.create_kerberos_realm(security_service)
@@ -4968,6 +5052,37 @@ class NetAppRestClient(object):
             raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
+    def _get_cifs_server_discovery_mode(self, security_service):
+        """Return the server_discovery_mode value for the ONTAP REST API.
+
+        Used in PATCH /protocols/cifs/domains/{svm.uuid}. Valid values are
+        'none' (specific DC IP set), 'site' (AD site set), or 'all' (default).
+        Note: 'none' is an ONTAP API string, not Python None.
+        """
+        if security_service.get('server'):
+            return 'none'
+        elif security_service.get('default_ad_site'):
+            return 'site'
+        return 'all'
+
+    @na_utils.trace
+    def configure_cifs_options(self, security_service, vserver_name=None):
+        mode = self._get_cifs_server_discovery_mode(security_service)
+        body = {'server_discovery_mode': mode}
+
+        svm_uuid = self._get_unique_svm_by_name(vserver_name)
+
+        try:
+            self.send_request(
+                f'/protocols/cifs/domains/{svm_uuid}',
+                'patch', body=body)
+        except netapp_api.api.NaApiError as e:
+            msg = ('Failed to set cifs domain server discovery mode to '
+                   '%(mode)s. Exception: %(exception)s')
+            msg_args = {'mode': mode, 'exception': e.message}
+            LOG.warning(msg, msg_args)
+
+    @na_utils.trace
     def remove_preferred_dcs(self, security_service, svm_uuid):
         """Drops all preferred DCs at once."""
 
@@ -5028,12 +5143,33 @@ class NetAppRestClient(object):
                 msg = _("Failed to modify existing CIFS server user-name. %s")
                 raise exception.NetAppException(msg % e.message)
 
+        if 'default_ad_site' in differring_keys:
+            if new_security_service['default_ad_site'] is not None:
+                body = {
+                    'ad_domain.default_site': (
+                        new_security_service['default_ad_site']),
+                    'ad_domain.user': new_security_service['user'],
+                    'ad_domain.password': new_security_service['password'],
+                    'force': True,
+                }
+                try:
+                    self.send_request(
+                        f'/protocols/cifs/services/{svm_uuid}',
+                        'patch', body=body)
+                except netapp_api.api.NaApiError as e:
+                    msg = _("Failed to modify CIFS server entry. %s")
+                    raise exception.NetAppException(msg % e.message)
+                self.configure_cifs_options(
+                    new_security_service, vserver_name=vserver_name)
+
         if 'server' in differring_keys:
             if current_security_service['server'] is not None:
                 self.remove_preferred_dcs(current_security_service, svm_uuid)
 
             if new_security_service['server'] is not None:
                 self.set_preferred_dc(new_security_service, svm_uuid)
+                self.configure_cifs_options(
+                    new_security_service, vserver_name=vserver_name)
 
     @na_utils.trace
     def cifs_server_exists(self, vserver_name):
@@ -6118,6 +6254,36 @@ class NetAppRestClient(object):
                     continue
                 msg = ("Failed to disable Kerberos: %s.")
                 raise exception.NetAppException(msg % e.message)
+
+    @na_utils.trace
+    def is_kerberos_enabled(self):
+        """Check if Kerberos is enabled in all NFS/CIFS LIFs."""
+
+        lifs = self.get_network_interfaces(protocols=['NFS', 'CIFS'])
+        if not lifs:
+            LOG.warning("There are no LIFs configured for this Vserver. "
+                        "Kerberos is disabled.")
+            return False
+
+        lif_uuids = {lif['uuid'] for lif in lifs}
+
+        query = {
+            'interface.uuid': '|'.join(sorted(lif_uuids)),
+            'fields': 'enabled,interface.uuid',
+        }
+        try:
+            result = self.send_request(
+                '/protocols/nfs/kerberos/interfaces', 'get', query=query)
+        except netapp_api.api.NaApiError:
+            LOG.exception('Failed to check Kerberos status for LIFs.')
+            raise
+
+        kerberos_enabled_uuids = {
+            r['interface']['uuid']
+            for r in result.get('records', [])
+            if r.get('enabled', False)
+        }
+        return lif_uuids.issubset(kerberos_enabled_uuids)
 
     @na_utils.trace
     def get_vserver_root_volume_name(self, vserver_name):

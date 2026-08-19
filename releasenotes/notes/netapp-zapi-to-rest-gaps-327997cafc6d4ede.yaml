@@ -1,0 +1,10 @@
+---
+other:
+  - |
+    NetApp ONTAP: Several driver operations that previously relied on ZAPI
+    now use the REST API when the REST client is active. This includes SVM
+    DR/migrate support checks, data LIF capacity lookups, volume autosize
+    queries, SVM listing, CIFS domain server discovery mode configuration,
+    and Kerberos status checks across LIFs. The ``modify_volume`` operation
+    now resets autosize via the public REST endpoint on supported ONTAP
+    versions, falling back to the private CLI on older versions.
