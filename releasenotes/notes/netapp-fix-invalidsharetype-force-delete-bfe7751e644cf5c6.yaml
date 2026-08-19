@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp driver: fixed the share type extra specs lookup in the share
+    delete workflow (added for ``netapp:force_delete_time_minutes``
+    support), which could raise an ``InvalidShareType`` exception.

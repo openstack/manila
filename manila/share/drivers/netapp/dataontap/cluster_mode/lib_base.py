@@ -914,7 +914,8 @@ class NetAppCmodeFileStorageLibrary(object):
         src_share_instance = {
             'id': share['id'],
             'host': parent_share.get('host'),
-            'share_server': parent_share_server or None
+            'share_server': parent_share_server or None,
+            'share_type_id': share.get('share_type_id'),
         }
         # NOTE(dviroel): Data Motion functions access share's 'share_server'
         # attribute to get vserser information.
@@ -2280,7 +2281,9 @@ class NetAppCmodeFileStorageLibrary(object):
         # Share doesn't need to exist to be assigned to a fpolicy scope
         self._delete_fpolicy_for_share(share, vserver, vserver_client)
 
-        extra_specs = share_types.get_extra_specs_from_share(share)
+        extra_specs = {}
+        if share.get('share_type_id'):
+            extra_specs = share_types.get_extra_specs_from_share(share)
         force_delete_minutes = int(
             extra_specs.get('netapp:force_delete_time_minutes', 0))
         duration_sec = share.get(
