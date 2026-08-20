@@ -189,6 +189,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['share_replicas_migration_support'] = False
         data['encryption_support'] = None
         data['qos_type_support'] = False
+        data['snapshot_inherit_share_access_support'] = False
         self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):

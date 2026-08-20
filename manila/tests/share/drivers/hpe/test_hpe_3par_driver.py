@@ -757,6 +757,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'share_replicas_migration_support': False,
             'encryption_support': None,
             'qos_type_support': False,
+            'snapshot_inherit_share_access_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -849,6 +850,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'ipv4_support': True,
             'ipv6_support': False,
             'qos_type_support': False,
+            'snapshot_inherit_share_access_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -904,6 +906,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'ipv4_support': True,
             'ipv6_support': False,
             'qos_type_support': False,
+            'snapshot_inherit_share_access_support': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)

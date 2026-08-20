@@ -3534,3 +3534,35 @@ class AddShareReplicaMetadata(BaseMigrationChecks):
     def check_downgrade(self, engine):
         self.test_case.assertRaises(sa_exc.NoSuchTableError, utils.load_table,
                                     self.new_table_name, engine)
+
+
+@map_to_migration('afc3b5e1f406')
+class AddSnapshotInheritShareAccessSupportToShares(BaseMigrationChecks):
+    share_id = uuidutils.generate_uuid()
+
+    def setup_upgrade_data(self, engine):
+        share_data = fake_share(id=self.share_id)
+        shares_table = utils.load_table('shares', engine)
+        engine.execute(shares_table.insert().values(share_data))
+        instance_data = fake_instance(share_id=self.share_id,
+                                      cast_rules_to_readonly=False)
+        instances_table = utils.load_table('share_instances', engine)
+        engine.execute(instances_table.insert().values(instance_data))
+
+    def check_upgrade(self, engine, data):
+        shares_table = utils.load_table('shares', engine)
+        share = engine.execute(
+            shares_table.select().where(
+                shares_table.c.id == self.share_id)).mappings().first()
+        self.test_case.assertTrue(
+            hasattr(share, 'snapshot_inherit_share_access_support'))
+        self.test_case.assertFalse(
+            share['snapshot_inherit_share_access_support'])
+
+    def check_downgrade(self, engine):
+        shares_table = utils.load_table('shares', engine)
+        share = engine.execute(
+            shares_table.select().where(
+                shares_table.c.id == self.share_id)).mappings().first()
+        self.test_case.assertFalse(
+            hasattr(share, 'snapshot_inherit_share_access_support'))

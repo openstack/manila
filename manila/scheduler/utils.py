@@ -69,6 +69,8 @@ def generate_stats(host_state, properties):
             host_state.share_server_multiple_subnet_support),
         'mount_point_name_support': (
             host_state.mount_point_name_support),
+        'snapshot_inherit_share_access_support': (
+            host_state.snapshot_inherit_share_access_support),
         'share_replicas_migration_support': (
             host_state.share_replicas_migration_support),
         'encryption_support': host_state.encryption_support,

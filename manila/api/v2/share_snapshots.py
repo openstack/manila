@@ -363,6 +363,18 @@ class ShareSnapshotsController(
                                      'share': share['id']}
             raise exc.HTTPBadRequest(explanation=msg)
 
+    def _check_snapshot_inherit_share_access_support(self, context, snapshot):
+        share = self.share_api.get(context, snapshot['share_id'])
+        if share.get('snapshot_inherit_share_access_support'):
+            msg = _("Cannot modify access rules for the snapshot "
+                    "%(snap)s since the parent share %(share)s has "
+                    "snapshot_inherit_share_access_support enabled. Snapshot "
+                    "access rules are inherited from the base "
+                    "share.") % {
+                'snap': snapshot['id'],
+                'share': share['id']}
+            raise exc.HTTPBadRequest(explanation=msg)
+
     def _allow(self, req, id, body, enable_ipv6=False):
         context = req.environ['manila.context']
 
@@ -388,6 +400,8 @@ class ShareSnapshotsController(
         self._check_if_share_share_network_is_active(context, snapshot)
 
         self._check_mount_snapshot_support(context, snapshot)
+
+        self._check_snapshot_inherit_share_access_support(context, snapshot)
 
         try:
             access = self.share_api.snapshot_allow_access(
@@ -424,6 +438,8 @@ class ShareSnapshotsController(
         snapshot = self.share_api.get_snapshot(context, id)
 
         self._check_mount_snapshot_support(context, snapshot)
+
+        self._check_snapshot_inherit_share_access_support(context, snapshot)
 
         self._check_if_share_share_network_is_active(context, snapshot)
 

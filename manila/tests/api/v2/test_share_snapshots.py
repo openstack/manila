@@ -572,8 +572,8 @@ class ShareSnapshotAPITest(test.TestCase):
         actual = self.controller.allow_access(req, snapshot['id'], body)
 
         self.assertEqual(access, actual['snapshot_access'])
-        get.assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    share['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
         get_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
         allow_access.assert_called_once_with(
@@ -620,8 +620,8 @@ class ShareSnapshotAPITest(test.TestCase):
                           self.controller.allow_access, req,
                           snapshot['id'], body)
 
-        get.assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    share['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
         get_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
         allow_access.assert_called_once_with(
@@ -653,10 +653,42 @@ class ShareSnapshotAPITest(test.TestCase):
                           self.controller.allow_access, req,
                           snapshot['id'], body)
 
-        get.assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    share['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
         get_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
+
+    def test_allow_access_snapshot_inherit_share_access_support(self):
+        share = db_utils.create_share(
+            mount_snapshot_support=True,
+            snapshot_inherit_share_access_support=True)
+        snapshot = db_utils.create_snapshot(
+            status=constants.STATUS_AVAILABLE, share_id=share['id'])
+
+        access = {
+            'id': 'fake_id',
+            'access_type': 'ip',
+            'access_to': '1.1.1.1',
+            'state': 'new',
+        }
+
+        get_snapshot = self.mock_object(share_api.API, 'get_snapshot',
+                                        mock.Mock(return_value=snapshot))
+        get = self.mock_object(share_api.API, 'get',
+                               mock.Mock(return_value=share))
+
+        body = {'allow_access': access}
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.allow_access, req,
+                          snapshot['id'], body)
+
+        get_snapshot.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
 
     def test_allow_access_empty_parameters(self):
         share = db_utils.create_share(mount_snapshot_support=True)
@@ -697,8 +729,8 @@ class ShareSnapshotAPITest(test.TestCase):
         resp = self.controller.deny_access(req, snapshot['id'], body)
 
         self.assertEqual(202, resp.status_int)
-        get.assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    share['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
         get_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
         access_get.assert_called_once_with(
@@ -745,13 +777,40 @@ class ShareSnapshotAPITest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.deny_access, req, snapshot['id'],
                           body)
-        get.assert_called_once_with(utils.IsAMatcher(context.RequestContext),
-                                    share['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
         get_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), snapshot['id'])
         access_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             body['deny_access']['access_id'])
+
+    def test_deny_access_snapshot_inherit_share_access_support(self):
+        share = db_utils.create_share(
+            mount_snapshot_support=True,
+            snapshot_inherit_share_access_support=True)
+        snapshot = db_utils.create_snapshot(
+            status=constants.STATUS_AVAILABLE, share_id=share['id'])
+        access = db_utils.create_snapshot_access(
+            share_snapshot_id=snapshot['id'])
+
+        get_snapshot = self.mock_object(share_api.API, 'get_snapshot',
+                                        mock.Mock(return_value=snapshot))
+        get = self.mock_object(share_api.API, 'get',
+                               mock.Mock(return_value=share))
+
+        body = {'deny_access': {'access_id': access.id}}
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/snapshots/%s/action' % snapshot['id'], version='2.32')
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.deny_access, req,
+                          snapshot['id'], body)
+
+        get_snapshot.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), snapshot['id'])
+        get.assert_called_with(utils.IsAMatcher(context.RequestContext),
+                               share['id'])
 
 
 @ddt.ddt

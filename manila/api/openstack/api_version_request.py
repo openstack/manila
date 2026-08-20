@@ -218,13 +218,15 @@ REST_API_VERSION_HISTORY = """
     * 2.97 - Added availability_zone filter to share list API.
     * 2.98 - Added dedicated GET endpoint for migration_get_progress:
              GET /v2/shares/{share_id}/migration-progress.
+    * 2.99 - Added ``snapshot_inherit_share_access_support`` to share details
+             and share type API.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.98"
+_MAX_API_VERSION = "2.99"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

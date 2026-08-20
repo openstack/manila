@@ -40,6 +40,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_share_recycle_bin_field",
         "add_source_backup_id_field",
         "add_encryption_key_ref_field",
+        "add_snapshot_inherit_share_access_support_field",
     ]
 
     def summary_list(self, request, shares, count=None):
@@ -216,3 +217,9 @@ class ViewBuilder(common.ViewBuilder):
     def add_encryption_key_ref_field(self, context, share_dict, share):
         share_dict['encryption_key_ref'] = share.get('instance', {}).get(
             'encryption_key_ref')
+
+    @common.ViewBuilder.versioned_method("2.99")
+    def add_snapshot_inherit_share_access_support_field(self, context,
+                                                        share_dict, share):
+        share_dict['snapshot_inherit_share_access_support'] = share.get(
+            'snapshot_inherit_share_access_support')

@@ -520,3 +520,8 @@ user documentation.
   Added dedicated ``GET /v2/shares/{share_id}/migration-progress``
   endpoint for querying share migration progress (``migration_get_progress``).
   The prior POST action remains available even though deprecated.
+
+2.99
+----
+  Added ``snapshot_inherit_share_access_support`` to the share details
+  and share type API.

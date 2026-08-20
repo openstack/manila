@@ -30,9 +30,16 @@ class ViewBuilder(common.ViewBuilder):
         "add_is_public_attr_core_api_like",
         "add_is_public_attr_extension_like",
         "add_inferred_optional_extra_specs",
+        "add_inferred_snapshot_inherit_share_access_support",
         "add_description_attr",
         "add_is_default_attr"
     ]
+
+    # Inferred specs introduced after 2.24, each injected by its own versioned
+    # method so that responses at older microversions stay unchanged.
+    _deferred_inferred_extra_specs = (
+        constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT,
+    )
 
     def show(self, request, share_type, brief=False):
         """Trim away extraneous share type attributes."""
@@ -82,9 +89,19 @@ class ViewBuilder(common.ViewBuilder):
         # that aren't explicitly set on the type.
         if not context.is_admin:
             for extra_spec in constants.ExtraSpecs.INFERRED_OPTIONAL_MAP:
+                if extra_spec in self._deferred_inferred_extra_specs:
+                    continue
                 if extra_spec not in share_type_dict['extra_specs']:
                     share_type_dict['extra_specs'][extra_spec] = (
                         constants.ExtraSpecs.INFERRED_OPTIONAL_MAP[extra_spec])
+
+    @common.ViewBuilder.versioned_method("2.99")
+    def add_inferred_snapshot_inherit_share_access_support(
+            self, context, share_type_dict, share_type):
+        if not context.is_admin:
+            key = constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT
+            share_type_dict['extra_specs'].setdefault(
+                key, constants.ExtraSpecs.INFERRED_OPTIONAL_MAP[key])
 
     def index(self, request, share_types):
         """Index over trimmed share types."""

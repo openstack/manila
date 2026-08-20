@@ -63,7 +63,7 @@ class ViewBuilderTestCase(test.TestCase):
         self.assertEqual('shares', self.builder._collection_name)
 
     @ddt.data('2.6', '2.9', '2.10', '2.11', '2.16',
-              '2.24', '2.27', '2.54', '2.69')
+              '2.24', '2.27', '2.54', '2.69', '2.99')
     def test_detail(self, microversion):
         req = fakes.HTTPRequest.blank('/shares', version=microversion)
 
@@ -95,6 +95,8 @@ class ViewBuilderTestCase(test.TestCase):
             expected['progress'] = '100%'
         if self.is_microversion_ge(microversion, '2.69'):
             expected['scheduled_to_be_deleted_at'] = 'fake_datetime'
+        if self.is_microversion_ge(microversion, '2.99'):
+            expected['snapshot_inherit_share_access_support'] = False
 
         self.assertSubDictMatch(expected, result['share'])
 

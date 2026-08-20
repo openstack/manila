@@ -36,40 +36,44 @@ important terms:
   your cloud administrator has not made a default share type accessible to
   you. Share types specify some capabilities for your use:
 
-+------------------------------------+-------------------------+---------------------------------------------------------+
-|             Capability             |     Possible values     |                       Consequence                       |
-+====================================+=========================+=========================================================+
-| driver_handles_share_servers       | true or false           | you can or cannot use share networks to create shares   |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| snapshot_support                   | true or false           | you can or cannot create snapshots of shares            |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| create_share_from_snapshot_support | true or false           | you can or cannot create clones of share snapshots      |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| revert_to_snapshot_support         | true or false           | you can or cannot revert your shares in-place to the    |
-|                                    |                         | most recent snapshot                                    |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| mount_snapshot_support             | true or false           | you can or cannot export your snapshots and mount them  |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| replication_type                   | dr                      | you can create replicas for disaster recovery, only one |
-|                                    |                         | active export allowed at a time                         |
-|                                    +-------------------------+---------------------------------------------------------+
-|                                    | readable                | you can create read-only replicas, only one writable    |
-|                                    |                         | active export allowed at a time                         |
-|                                    +-------------------------+---------------------------------------------------------+
-|                                    | writable                | you can create read/write replicas, any number          |
-|                                    |                         | of active exports per share                             |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| availability_zones                 | a list of one or        | shares are limited to these availability zones          |
-|                                    | more availability zones |                                                         |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| mount_point_name_support           | true or false           | share can or cannot have customized export location     |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| encryption_support                 | share                   | share is encrypted with share encryption key            |
-|                                    +-------------------------+---------------------------------------------------------+
-|                                    | share_server            | share is encrypted with share server encryption key     |
-+------------------------------------+-------------------------+---------------------------------------------------------+
-| provisioning:mount_point_prefix    | string                  | prefix used for custom export location                  |
-+------------------------------------+-------------------------+---------------------------------------------------------+
++---------------------------------------+-------------------------+---------------------------------------------------------+
+|              Capability               |     Possible values     |                       Consequence                       |
++=======================================+=========================+=========================================================+
+| driver_handles_share_servers          | true or false           | you can or cannot use share networks to create shares   |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| snapshot_support                      | true or false           | you can or cannot create snapshots of shares            |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| create_share_from_snapshot_support    | true or false           | you can or cannot create clones of share snapshots      |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| revert_to_snapshot_support            | true or false           | you can or cannot revert your shares in-place to the    |
+|                                       |                         | most recent snapshot                                    |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| mount_snapshot_support                | true or false           | you can or cannot export your snapshots and mount them  |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| snapshot_inherit_share_access_support | true or false           | you can or cannot inherit snapshot access rules from    |
+|                                       |                         | parent share, snapshot access rules cannot be updated   |
+|                                       |                         | when true                                               |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| replication_type                      | dr                      | you can create replicas for disaster recovery, only one |
+|                                       |                         | active export allowed at a time                         |
+|                                       +-------------------------+---------------------------------------------------------+
+|                                       | readable                | you can create read-only replicas, only one writable    |
+|                                       |                         | active export allowed at a time                         |
+|                                       +-------------------------+---------------------------------------------------------+
+|                                       | writable                | you can create read/write replicas, any number          |
+|                                       |                         | of active exports per share                             |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| availability_zones                    | a list of one or        | shares are limited to these availability zones          |
+|                                       | more availability zones |                                                         |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| mount_point_name_support              | true or false           | share can or cannot have customized export location     |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| encryption_support                    | share                   | share is encrypted with share encryption key            |
+|                                       +-------------------------+---------------------------------------------------------+
+|                                       | share_server            | share is encrypted with share server encryption key     |
++---------------------------------------+-------------------------+---------------------------------------------------------+
+| provisioning:mount_point_prefix       | string                  | prefix used for custom export location                  |
++---------------------------------------+-------------------------+---------------------------------------------------------+
 
 .. note::
 
@@ -80,6 +84,8 @@ important terms:
       the cloud.
    -  When ``mount_point_name_support`` extra specification is not present in the
       share type, or is set to False, you cannot customize the export location.
+   -  When ``snapshot_inherit_share_access_support`` extra specification is set to
+      True, you are blocked from updating snapshot access rules.
 
 - ``status`` of resources: Resources that you create or modify with manila
   may not be "available" immediately. The API service is designed to respond

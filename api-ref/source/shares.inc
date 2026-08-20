@@ -254,6 +254,7 @@ Response parameters
    - share_group_id: share_group_id
    - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
    - mount_snapshot_support: mount_snapshot_support_share_capability
+   - snapshot_inherit_share_access_support: snapshot_inherit_share_access_support_share_capability
    - progress: progress_share_instance
    - count: count
    - volume_type: volume_type_shares_response
@@ -335,6 +336,7 @@ Response parameters
    - share_group_id: share_group_id
    - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
    - mount_snapshot_support: mount_snapshot_support_share_capability
+   - snapshot_inherit_share_access_support: snapshot_inherit_share_access_support_share_capability
    - progress: progress_share_instance
    - count: count
    - volume_type: volume_type_shares_response
@@ -505,6 +507,7 @@ Response parameters
    - share_group_id: share_group_id
    - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
    - mount_snapshot_support: mount_snapshot_support_share_capability
+   - snapshot_inherit_share_access_support: snapshot_inherit_share_access_support_share_capability
    - progress: progress_share_instance
    - count: count
    - volume_type: volume_type_shares_response
@@ -614,6 +617,7 @@ Response parameters
    - share_group_id: share_group_id
    - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
    - mount_snapshot_support: mount_snapshot_support_share_capability
+   - snapshot_inherit_share_access_support: snapshot_inherit_share_access_support_share_capability
    - progress: progress_share_instance
    - volume_type: volume_type_shares_response
    - is_soft_deleted: is_soft_deleted_response
@@ -713,6 +717,7 @@ Response parameters
    - share_group_id: share_group_id
    - source_share_group_snapshot_member_id: source_share_group_snapshot_member_id
    - mount_snapshot_support: mount_snapshot_support_share_capability
+   - snapshot_inherit_share_access_support: snapshot_inherit_share_access_support_share_capability
    - progress: progress_share_instance
    - count: count
    - volume_type: volume_type_shares_response

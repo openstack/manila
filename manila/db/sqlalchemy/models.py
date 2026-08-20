@@ -317,6 +317,7 @@ class Share(BASE, ManilaBase):
     revert_to_snapshot_support = Column(Boolean, default=False)
     replication_type = Column(String(255), nullable=True)
     mount_snapshot_support = Column(Boolean, default=False)
+    snapshot_inherit_share_access_support = Column(Boolean, default=False)
     share_proto = Column(String(255))
     is_public = Column(Boolean, default=False)
     share_group_id = Column(String(36),

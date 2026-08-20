@@ -385,6 +385,7 @@ class ZFSonLinuxShareDriverTestCase(test.TestCase):
             'share_replicas_migration_support': False,
             'encryption_support': None,
             'qos_type_support': False,
+            'snapshot_inherit_share_access_support': False,
         }
         if replication_domain:
             expected['replication_type'] = 'readable'

@@ -154,6 +154,7 @@ class ShareAPITest(test.TestCase):
                      'source_share_group_snapshot_member_id': None},
             '2.32': {'mount_snapshot_support': False},
             '2.90': {'encryption_key_ref': None},
+            '2.99': {'snapshot_inherit_share_access_support': False},
         }
 
         # Apply all the share transformations
@@ -4161,6 +4162,12 @@ class ShareManageTest(test.TestCase):
             mount_point_name='mount_point', is_public=False,
             share_server_id='fake_share_server_id'), "2.92")
 
+    def test_share_manage_with_snapshot_inherit_share_access_support(self):
+        self._test_share_manage(get_fake_manage_body(
+            name='foo', description='bar',
+            mount_point_name='mount_point', is_public=False,
+            share_server_id='fake_share_server_id'), "2.99")
+
     def _test_share_manage(self, data, version):
         expected = {
             'share': {
@@ -4271,6 +4278,10 @@ class ShareManageTest(test.TestCase):
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.90')):
             expected['share']['encryption_key_ref'] = None
+
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.99')):
+            expected['share']['snapshot_inherit_share_access_support'] = False
 
         if (api_version.APIVersionRequest(version) >=
                 api_version.APIVersionRequest('2.8')):

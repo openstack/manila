@@ -323,6 +323,8 @@ class ShareTypesAPITest(test.TestCase):
         ('2.27', 'share_type_access', False),
         ('2.41', 'share_type_access', True),
         ('2.41', 'share_type_access', False),
+        ('2.99', 'share_type_access', True),
+        ('2.99', 'share_type_access', False),
     )
     @ddt.unpack
     def test_view_builder_show(self, version, prefix, admin):
@@ -356,11 +358,18 @@ class ShareTypesAPITest(test.TestCase):
             'id': 42,
         }
         if self.is_microversion_ge(version, '2.24') and not admin:
+            inherit_key = (
+                constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT)
             for extra_spec in constants.ExtraSpecs.INFERRED_OPTIONAL_MAP:
+                if extra_spec == inherit_key:
+                    if not self.is_microversion_ge(version, '2.99'):
+                        continue
                 expected_share_type['extra_specs'][extra_spec] = (
                     constants.ExtraSpecs.INFERRED_OPTIONAL_MAP[extra_spec])
         if self.is_microversion_ge(version, '2.41'):
             expected_share_type['description'] = 'description_test'
+        if self.is_microversion_ge(version, '2.46'):
+            expected_share_type['is_default'] = False
 
         self.assertDictEqual(expected_share_type, output['share_type'])
 
@@ -390,6 +399,7 @@ class ShareTypesAPITest(test.TestCase):
             constants.ExtraSpecs.REVERT_TO_SNAPSHOT_SUPPORT: True,
             constants.ExtraSpecs.MOUNT_SNAPSHOT_SUPPORT: True,
             constants.ExtraSpecs.MOUNT_POINT_NAME_SUPPORT: True,
+            constants.ExtraSpecs.SNAPSHOT_INHERIT_SHARE_ACCESS_SUPPORT: False,
         }
 
         now = timeutils.utcnow().isoformat()

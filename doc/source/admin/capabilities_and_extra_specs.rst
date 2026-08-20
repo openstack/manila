@@ -187,6 +187,14 @@ Share type common capability extra-specs that are visible to end users:
   share snapshots for mounting. Users can provide and revoke access to
   mountable snapshots just like they can with their shares.
 
+* **snapshot_inherit_share_access_support** indicates that a share's mountable
+  snapshots inherit the access rules of their parent share. When this
+  capability is enabled through a share type, access rules cannot be managed
+  on the snapshots directly; each snapshot automatically uses the access
+  rules of its base share. This is intended for back ends that cannot define
+  access rules for a snapshot independently from its parent share, and is
+  typically used together with ``mount_snapshot_support``.
+
 * **replication_type** indicates the style of replication supported for the
   backend/pool. This extra_spec will have a string value and could be one
   of :term:`writable`, :term:`readable` or :term:`dr`. `writable` replication
