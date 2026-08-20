@@ -969,6 +969,9 @@ function allow_host_ports_for_share_mounting {
         # clients need access to the ceph daemons
         MANILA_TCP_PORTS=(${MANILA_TCP_PORTS[*]} 6789 6800:7300)
     fi
+    if [[ $MANILA_ENABLED_SHARE_PROTOCOLS =~ LUSTRE ]]; then
+        MANILA_TCP_PORTS=(${MANILA_TCP_PORTS[*]} 988)
+    fi
 
     if [[ -n "${MANILA_TCP_PORTS+x}" || -n "${MANILA_UDP_PORTS+x}" ]]; then
         for ipcmd in iptables ip6tables; do
