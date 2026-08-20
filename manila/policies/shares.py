@@ -552,7 +552,11 @@ shares_policies = [
             {
                 'method': 'POST',
                 'path': '/shares/{share_id}/action',
-            }
+            },
+            {
+                'method': 'GET',
+                'path': '/shares/{share_id}/migration-progress',
+            },
         ],
         deprecated_rule=deprecated_share_migration_get_progress
     ),

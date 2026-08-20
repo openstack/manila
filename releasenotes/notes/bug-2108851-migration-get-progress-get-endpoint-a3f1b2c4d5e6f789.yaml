@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Manila has now a new REST API GET endpoint for querying a share's
+    migration progress. API consumers should no longer send POST requests
+    to the action endpoint for getting migration progress. For more
+    details, please refer to
+    `Bug #2108851 <https://bugs.launchpad.net/manila/+bug/2108851>`_

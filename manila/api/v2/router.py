@@ -169,6 +169,15 @@ class APIRouter(manila.api.openstack.APIRouter):
         for path_prefix in ['/{project_id}', '']:
             # project_id is optional
             mapper.connect("shares",
+                           "%s/shares/{id}/migration-progress"
+                           % path_prefix,
+                           controller=self.resources["shares"],
+                           action="migration_progress_show",
+                           conditions={"method": ["GET"]})
+
+        for path_prefix in ['/{project_id}', '']:
+            # project_id is optional
+            mapper.connect("shares",
                            "%s/shares/manage" % path_prefix,
                            controller=self.resources["shares"],
                            action="manage",
