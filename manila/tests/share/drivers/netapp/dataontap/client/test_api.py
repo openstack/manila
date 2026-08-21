@@ -35,6 +35,24 @@ from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 class NetAppApiElementTransTests(test.TestCase):
     """Test case for NetApp API element translations."""
 
+    def test_zapi_client_init_ssl_verify_precedence(self):
+        no_verify_client = api.ZapiClient(
+            'localhost', ssl_cert_verify=False, ssl_cert_path='fake_cert')
+        self.assertFalse(no_verify_client._ssl_verify)
+
+        path_verify_client = api.ZapiClient(
+            'localhost', ssl_cert_verify=True, ssl_cert_path='fake_cert')
+        self.assertEqual('fake_cert', path_verify_client._ssl_verify)
+
+        default_verify_client = api.ZapiClient(
+            'localhost', ssl_cert_verify=True, ssl_cert_path=None)
+        self.assertTrue(default_verify_client._ssl_verify)
+
+    def test_na_server_init_ssl_verify_plumbed_to_both_clients(self):
+        server = api.NaServer('localhost', ssl_cert_verify=False)
+        self.assertFalse(server.zapi_client._ssl_verify)
+        self.assertFalse(server.rest_client._ssl_verify)
+
     def test_get_set_system_version(self):
         napi = api.NaServer('localhost')
 

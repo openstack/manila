@@ -89,7 +89,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
-            ssl_cert_path='/etc/ssl/certs', trace=mock.ANY, vserver=None,
+            ssl_cert_path='/etc/ssl/certs', ssl_cert_verify=True,
+            trace=mock.ANY, vserver=None,
             private_key_file='/fake_private_key.pem',
             certificate_file='/fake_cert.pem',
             ca_certificate_file='/fake_ca_cert.crt',
@@ -107,8 +108,8 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.mock_cmode_client.assert_called_once_with(
             hostname='fake.hostname', password='fake_password',
             username='fake_user', transport_type='https', port=8866,
-            ssl_cert_path='/etc/ssl/certs', trace=mock.ANY,
-            vserver='fake_vserver',
+            ssl_cert_path='/etc/ssl/certs', ssl_cert_verify=True,
+            trace=mock.ANY, vserver='fake_vserver',
             private_key_file='/fake_private_key.pem',
             certificate_file='/fake_cert.pem',
             ca_certificate_file='/fake_ca_cert.crt',

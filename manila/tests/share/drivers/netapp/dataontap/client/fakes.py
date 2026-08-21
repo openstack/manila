@@ -24,6 +24,7 @@ CONNECTION_INFO = {
     'hostname': 'hostname',
     'transport_type': 'https',
     'ssl_cert_path': '/etc/ssl/certs/',
+    'ssl_cert_verify': True,
     'port': 443,
     'username': 'admin',
     'password': 'passw0rd',
