@@ -1,0 +1,10 @@
+---
+other:
+  - |
+    NetApp ONTAP driver: a new configuration option
+    ``netapp_zapi_fallback_enabled`` (default ``True``) has been added.
+    When using the REST client (``netapp_use_legacy_client = False``),
+    this option controls whether unimplemented REST methods are allowed
+    to fall back to ZAPI. Set ``netapp_zapi_fallback_enabled = False`` in
+    ``manila.conf`` to disable the fallback and enforce REST-only
+    operation.

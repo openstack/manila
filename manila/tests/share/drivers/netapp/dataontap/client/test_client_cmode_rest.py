@@ -293,9 +293,38 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         ])
 
     def test__getattr__(self):
+        self.client.zapi_fallback_enabled = True
+        mock_zapi = mock.Mock()
+        self.client.zapi_client = mock_zapi
         # NOTE(nahimsouza): get_ontapi_version is implemented only in ZAPI
         # client, therefore, it will call __getattr__
         self.client.get_ontapi_version()
+        mock_zapi.get_ontapi_version.assert_called_once()
+
+    def test__getattr_zapi_fallback_disabled(self):
+        self.client.zapi_fallback_enabled = False
+
+        with self.assertRaises(exception.NetAppException):
+            self.client.get_ontapi_version()
+
+    def test__getattr_zapi_fallback_disabled_logs_warning(self):
+        self.client.zapi_fallback_enabled = False
+
+        with mock.patch.object(client_cmode_rest, 'LOG') as mock_log:
+            with self.assertRaises(exception.NetAppException):
+                self.client.get_ontapi_version()
+            mock_log.warning.assert_called_once()
+            self.assertIn('get_ontapi_version',
+                          str(mock_log.warning.call_args))
+
+    def test___init___zapi_fallback_enabled(self):
+        connection_info = copy.deepcopy(fake.CONNECTION_INFO)
+        connection_info['zapi_fallback_enabled'] = True
+        mock_zapi_ctor = self.mock_object(client_cmode, 'NetAppCmodeClient')
+
+        client_cmode_rest.NetAppRestClient(**connection_info)
+
+        mock_zapi_ctor.assert_called_once_with(**connection_info)
 
     @ddt.data(True, False)
     def test_get_ontap_version(self, cached):
@@ -5398,7 +5427,9 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                                         mock.Mock(return_value=fake_response))
         self.mock_object(self.client, 'configure_ldap')
         self.mock_object(self.client, 'configure_active_directory')
-        self.mock_object(self.client, 'configure_cifs_options')
+        # configure_cifs_options is ZAPI-only; set directly to avoid
+        # mock.patch.object triggering __getattr__ with fallback disabled.
+        self.client.configure_cifs_options = mock.Mock()
         self.mock_object(self.client, 'create_kerberos_realm')
         self.mock_object(self.client, 'configure_kerberos')
 

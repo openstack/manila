@@ -319,6 +319,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 private_key_file=config.netapp_private_key_file,
                 certificate_file=config.netapp_certificate_file,
                 ca_certificate_file=config.netapp_ca_certificate_file,
+                zapi_fallback_enabled=config.netapp_zapi_fallback_enabled,
                 certificate_host_validation=(
                     config.netapp_certificate_host_validation))
         return client
