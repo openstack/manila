@@ -314,7 +314,7 @@ option.
   to end users through the ``__mount_options`` metadata. Make sure to add
   the ``__mount_options`` metadata key to the list of admin only modifiable
   metadata keys (``admin_only_metadata``), as explained in the
-  :ref:`additional configuration options page <manila-common>`.
+  :doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 
 .. code-block:: ini
@@ -674,7 +674,8 @@ share backend is suitable only in private clouds where guests can be trusted.
 Configuration Reference
 -----------------------
 
-.. include:: ../../tables/manila-cephfs.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 
 The :mod:`manila.share.drivers.cephfs.driver` Module

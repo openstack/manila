@@ -84,7 +84,5 @@ Known restrictions
 Driver options
 ~~~~~~~~~~~~~~
 
-The following table contains the configuration options specific to this
-driver.
-
-.. include:: ../../tables/manila-lvm.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.

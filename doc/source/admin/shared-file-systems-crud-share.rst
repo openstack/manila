@@ -599,12 +599,12 @@ You also can unset the metadata using
   In case you want to prevent certain metadata key-values to be manipulated by
   less privileged users, you can provide a list of such keys through the admin
   only metadata configuration option listed in the
-  :ref:`additional configuration options page <manila-common>`.
+  :doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
   In case you want to pass certain metadata key-values to be consumed by share
   drivers, you can provide a list of such keys through the driver updatable
   metadata configuration option listed in the
-  :ref:`additional configuration options page <manila-common>`.
+  :doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 Reset share state
 -----------------

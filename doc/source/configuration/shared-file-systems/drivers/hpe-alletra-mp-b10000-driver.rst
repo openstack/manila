@@ -96,10 +96,8 @@ defines and configures the Manila drivers and backends. After updating the
 configuration file, the Manila share service must be restarted for changes
 to take effect.
 
-The following table contains the configuration options specific to the
-HPE Alletra MP B10000 share driver.
-
-.. include:: ../../tables/manila-hpealletra.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 #. ``Enable share protocols``
 

@@ -94,7 +94,5 @@ More information can be found at the `Nexenta documentation webpage
 Driver options
 ~~~~~~~~~~~~~~
 
-The following table contains the configuration options specific to the
-share driver.
-
-.. include:: ../../tables/manila-nexentastor5.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.

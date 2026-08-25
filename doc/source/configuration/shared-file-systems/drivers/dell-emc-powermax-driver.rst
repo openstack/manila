@@ -562,6 +562,5 @@ Other Remarks
 Driver options
 ~~~~~~~~~~~~~~
 
-Configuration options specific to this driver:
-
-.. include:: ../../tables/manila-powermax.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.

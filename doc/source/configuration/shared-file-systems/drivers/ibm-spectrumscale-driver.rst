@@ -117,10 +117,8 @@ in the ``manila.conf`` as:
 
    gpfs_share_helpers = CES=manila.share.drivers.ibm.gpfs.CESHelper
 
-Following table lists the additional configuration options which are used with
-this driver configuration.
-
-.. include:: ../../tables/manila-spectrumscale_ces.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 .. note::
 
@@ -137,10 +135,8 @@ in the ``manila.conf`` as:
 
    gpfs_share_helpers = KNFS=manila.share.drivers.ibm.gpfs.KNFSHelper
 
-Following table lists the additional configuration options which are used with
-this driver configuration.
-
-.. include:: ../../tables/manila-spectrumscale_knfs.inc
+All configuration options for this driver are documented in the
+:doc:`Configuration Reference </configuration/shared-file-systems/config-reference>`.
 
 .. note::
 

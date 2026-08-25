@@ -2,10 +2,6 @@
 Shared File Systems API configuration
 =====================================
 
-Configuration options
-~~~~~~~~~~~~~~~~~~~~~
-
-The following options allow configuration of the APIs that
-Shared File Systems service supports.
-
-.. include:: ../tables/manila-api.inc
+The Shared File Systems API service (``manila-api``) can be configured
+with options in the ``[DEFAULT]`` section of ``manila.conf``. See the
+:doc:`config-reference` for a complete listing of all available options.
