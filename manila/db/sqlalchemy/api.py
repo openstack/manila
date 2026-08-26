@@ -3496,7 +3496,7 @@ def share_instance_access_delete(context, mapping_id):
     ).filter_by(id=mapping_id).first()
 
     if not mapping:
-        exception.NotFound()
+        raise exception.NotFound()
 
     mapping.soft_delete(
         session=context.session, update_status=True,
