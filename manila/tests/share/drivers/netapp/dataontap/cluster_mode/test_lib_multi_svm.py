@@ -2090,6 +2090,24 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_get_extra_spec.assert_called_once_with(fake.SHARE_2)
             mock_get_nfs_config.assert_called_once_with(fake.EMPTY_EXTRA_SPEC)
 
+    def test_choose_share_server_compatible_with_share_encryption_mismatch(
+            self):
+        self.library.is_nfs_config_supported = False
+        share_server = copy.deepcopy(fake.SHARE_SERVER)
+        share_server['encryption_key_ref'] = None
+        self.mock_object(
+            share_types, 'get_extra_specs_from_share',
+            mock.Mock(return_value=fake.EMPTY_EXTRA_SPEC))
+        self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={}))
+
+        result = self.library.choose_share_server_compatible_with_share(
+            None, [share_server], fake.SHARE_2,
+            None, None, encryption_key_ref='new_encryption_key')
+
+        self.assertIsNone(result)
+
     def test_manage_existing_error(self):
         fake_server = {'id': 'id'}
         fake_nfs_config = 'fake_nfs_config'
