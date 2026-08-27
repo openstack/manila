@@ -5041,7 +5041,7 @@ GET_IPSPACES_RESPONSE = {
     'ipspace': IPSPACE_NAME,
     'uuid': FAKE_UUID,
     'broadcast-domains': [BROADCAST_DOMAIN],
-    'ports': [PORT],
+    'ports': [NODE_NAME + ':' + PORT],
     'vservers': [VSERVER_NAME, VSERVER_NAME_2]
 }
 
@@ -5063,6 +5063,24 @@ REST_SINGLE_PORT = {
             "node": {
                 "name": NODE_NAME
             },
+            "broadcast_domain": {
+                "name": "fake_domain_1",
+                "ipspace": {
+                    "name": "Default"
+                }
+            },
+            "state": "up",
+            "speed": 10,
+        }
+    ]
+}
+
+REST_SINGLE_PORT_NO_NODE = {
+    "records": [
+        {
+            "uuid": "fake_uuid2",
+            "name": PORT,
+            "type": "physical",
             "broadcast_domain": {
                 "name": "fake_domain_1",
                 "ipspace": {

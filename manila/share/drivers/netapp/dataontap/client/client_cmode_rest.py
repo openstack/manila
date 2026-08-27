@@ -5752,11 +5752,17 @@ class NetAppRestClient(object):
     @na_utils.trace
     def _delete_port_by_ipspace_and_broadcast_domain(self, port,
                                                      domain, ipspace):
+        node = None
+        if ':' in port:
+            node, port = port.split(':', 1)
         query = {
             'broadcast_domain.ipspace.name': ipspace,
             'broadcast_domain.name': domain,
             'name': port
         }
+        if node:
+            query['node.name'] = node
+
         self.send_request('/network/ethernet/ports/', 'delete', query=query)
 
     @na_utils.trace
@@ -6105,6 +6111,14 @@ class NetAppRestClient(object):
             return response['records'][0].get('ipspace', {}).get('name')
 
         return None
+
+    @na_utils.trace
+    def get_vserver_custom_ipspace_name(self, vserver_name):
+        """Get the custom (non-cluster) IPspace name for a Vserver."""
+        ipspace_name = self.get_vserver_ipspace(vserver_name)
+        if not ipspace_name or ipspace_name in CLUSTER_IPSPACES:
+            return None
+        return ipspace_name
 
     @na_utils.trace
     def get_snapmirror_policies(self, vserver_name):
@@ -6532,6 +6546,11 @@ class NetAppRestClient(object):
     def get_ipspaces(self, ipspace_name=None, vserver_name=None):
         """Gets one or more IPSpaces."""
 
+        if vserver_name and not ipspace_name:
+            ipspace_name = self.get_vserver_custom_ipspace_name(vserver_name)
+            if not ipspace_name:
+                return []
+
         query = {
             'name': ipspace_name
         }
@@ -6544,7 +6563,8 @@ class NetAppRestClient(object):
         ipspace_info = result.get('records')[0]
 
         query = {
-            'broadcast_domain.ipspace.name': ipspace_name
+            'broadcast_domain.ipspace.name': ipspace_name,
+            'fields': 'node.name,name',
         }
         ports = self.send_request('/network/ethernet/ports',
                                   'get', query=query)
@@ -6565,7 +6585,12 @@ class NetAppRestClient(object):
         }
 
         for port in ports.get('records'):
-            ipspace['ports'].append(port.get('name'))
+            node_name = port.get('node', {}).get('name')
+            port_name = port.get('name')
+            if node_name:
+                ipspace['ports'].append(f"{node_name}:{port_name}")
+            else:
+                ipspace['ports'].append(port_name)
 
         for vserver in vservers.get('records'):
             ipspace['vservers'].append(vserver.get('name'))
@@ -6577,7 +6602,7 @@ class NetAppRestClient(object):
 
         ipspace['uuid'] = ipspace_info.get('uuid')
 
-        return ipspace
+        return [ipspace]
 
     @na_utils.trace
     def _delete_port_and_broadcast_domain(self, domain, ipspace):
@@ -6603,13 +6628,13 @@ class NetAppRestClient(object):
     @na_utils.trace
     def _delete_port_and_broadcast_domains_for_ipspace(self, ipspace_name):
         """Deletes all broadcast domains in an IPspace."""
-        ipspace = self.get_ipspaces(ipspace_name)
-        if not ipspace:
+        ipspaces = self.get_ipspaces(ipspace_name)
+        if not ipspaces:
             return
 
-        for broadcast_domain_name in ipspace['broadcast-domains']:
+        for broadcast_domain_name in ipspaces[0]['broadcast-domains']:
             self._delete_port_and_broadcast_domain(broadcast_domain_name,
-                                                   ipspace)
+                                                   ipspaces[0])
 
     @na_utils.trace
     def delete_ipspace(self, ipspace_name):
