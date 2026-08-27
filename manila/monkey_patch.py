@@ -13,9 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Enable eventlet monkey patching."""
-
-"""This approach is based on Nova's monkey_patch.py and adapted for Manila."""
+"""Service concurrency backend selection."""
 
 import os
 
@@ -41,15 +39,15 @@ def _monkey_patch():
     return True
 
 
-def patch(backend='eventlet'):
-    """Apply eventlet monkey patching according to environment.
+def patch(backend='threading'):
+    """Select the service concurrency backend.
 
     :param backend: Defines the default backend if not explicitly set via
-        the environment. If 'eventlet', then monkey patch if environment
-        variable is not defined. If 'threading', then do not monkey patch if
-        environment variable is not defined. Any other value results in a
-        ValueError. If the environment variable is defined this parameter
-        is ignored.
+        the environment. If 'threading', use native threads when the
+        environment variable is not defined. If 'eventlet', monkey patch
+        when the environment variable is not defined. Any other value
+        results in a ValueError. If the environment variable is defined
+        this parameter is ignored.
     """
     if backend not in ('eventlet', 'threading'):
         raise ValueError(
@@ -63,33 +61,36 @@ def patch(backend='eventlet'):
     else:
         should_patch = True
 
+    import oslo_service.backend as service
+    from oslo_service.backend.exceptions import BackendAlreadySelected
+
     if should_patch:
         if _monkey_patch():
             global MONKEY_PATCHED
             MONKEY_PATCHED = True
 
-            import oslo_service.backend as service
-            service.init_backend(service.BackendType.EVENTLET)
+            try:
+                service.init_backend(service.BackendType.EVENTLET)
+            except BackendAlreadySelected:
+                pass
             from oslo_log import log as logging
             LOG = logging.getLogger(__name__)
-            LOG.info("Service is starting with Eventlet based service backend")
+            LOG.warning(
+                "Service is starting with the eventlet backend. Eventlet "
+                "is deprecated and will be removed in the next release. "
+                "Unset OS_MANILA_DISABLE_EVENTLET_PATCHING to use the "
+                "native threading backend.")
     else:
-        # We asked not to monkey patch so we will run in native threading mode
-        # NOTE(gibi): This will raise if the backend is already initialized
-        # with Eventlet
-        import oslo_service.backend as service
-        service.init_backend(service.BackendType.THREADING)
+        try:
+            service.init_backend(service.BackendType.THREADING)
+        except BackendAlreadySelected:
+            pass
 
-        # NOTE(gibi): We were asked not to monkey patch. Let's enforce it by
-        # removing the possibility to monkey_patch accidentally
         poison_eventlet()
 
         from oslo_log import log as logging
         LOG = logging.getLogger(__name__)
-        LOG.warning(
-            "Service is starting with native threading. This is currently "
-            "experimental. Do not use it in production without first "
-            "testing it in pre-production.")
+        LOG.info("Service is starting with the native threading backend.")
 
 
 def _poison(*args, **kwargs):

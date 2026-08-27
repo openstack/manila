@@ -22,7 +22,6 @@ Unit Tests for remote procedure calls using queue
 """
 
 from datetime import timedelta
-import os
 import unittest
 from unittest import mock
 
@@ -35,6 +34,7 @@ from manila import context
 from manila import db
 from manila import exception
 from manila import manager
+from manila import monkey_patch
 from manila import service
 from manila import test
 from manila import utils
@@ -322,9 +322,8 @@ class ServiceTestCase(test.TestCase):
                     mock.ANY, service_ref_stopped['id'])
 
 
-@unittest.skipIf(
-    os.environ.get('OS_MANILA_DISABLE_EVENTLET_PATCHING', '').lower()
-    in ('1', 'true', 'yes'),
+@unittest.skipUnless(
+    monkey_patch.is_patched(),
     'WSGIService is not compatible with the threading backend')
 class TestWSGIService(test.TestCase):
 

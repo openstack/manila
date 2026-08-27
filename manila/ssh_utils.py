@@ -203,7 +203,6 @@ class SSHPool:
         except Exception:
             pass  # Ignore errors when closing
 
-    # Properties for backward compatibility with eventlet.pools.Pool
     @property
     def current_size(self):
         """Current number of connections in the pool."""

@@ -17,13 +17,13 @@
 Provides common functionality for integrated unit tests
 """
 
-import os
 import random
 import string
 import unittest
 
 from oslo_log import log
 
+from manila import monkey_patch
 from manila import service
 from manila import test  # For the flags
 from manila.tests.integrated.api import client
@@ -59,9 +59,8 @@ def generate_new_element(items, prefix, numeric=False):
         LOG.debug("Random collision on %s.", candidate)
 
 
-@unittest.skipIf(
-    os.environ.get('OS_MANILA_DISABLE_EVENTLET_PATCHING', '').lower()
-    in ('1', 'true', 'yes'),
+@unittest.skipUnless(
+    monkey_patch.is_patched(),
     'WSGIService is not compatible with the threading backend')
 class _IntegratedTestBase(test.TestCase):
     def setUp(self):

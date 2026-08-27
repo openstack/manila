@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    Manila services now use the native threading backend by default.
+    The ``manila-scheduler``, ``manila-share``, and ``manila-data``
+    services no longer require eventlet monkey patching. The
+    ``manila-api`` service is unaffected when deployed behind an external
+    WSGI server (uWSGI, gunicorn, Apache mod_wsgi) since that path
+    already uses native threads.
+
+    Operators who need to temporarily revert to the eventlet backend can
+    set ``OS_MANILA_DISABLE_EVENTLET_PATCHING=False`` in the service
+    environment before starting each service.
+deprecations:
+  - |
+    The eventlet concurrency backend is deprecated and will be removed
+    in a future release. Set ``OS_MANILA_DISABLE_EVENTLET_PATCHING=False``
+    to force the legacy behavior while migrating to the native threading
+    backend.
