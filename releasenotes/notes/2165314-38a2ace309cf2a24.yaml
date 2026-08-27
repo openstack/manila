@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp driver `bug #2165314
+    <https://bugs.launchpad.net/manila/+bug/2165314>`: Fixed an issue
+    where storage backend stanza configured with
+    netapp_use_legacy_client = False (REST) fails to delete the
+    Custom IP space when the share server (DHSS=True) is deleted.
