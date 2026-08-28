@@ -56,14 +56,33 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
             hpealletradriver.filesetup_handler,
             'FileSetupHandler')
         self.mock_object(
+            hpealletradriver.filesystem_handler,
+            'FileSystemHandler')
+        self.mock_object(
+            hpealletradriver.snapshot_handler,
+            'SnapshotHandler')
+        self.mock_object(
             hpealletradriver.rest_client,
             'HpeAlletraRestClient')
+        self.mock_object(
+            hpealletradriver,
+            'HPEAlletraFeatureSupportHandler')
         self.mock_fileshare_handler = (
             hpealletradriver.fileshare_handler.FileShareHandler())
         self.mock_filesetup_handler = (
             hpealletradriver.filesetup_handler.FileSetupHandler())
+        self.mock_filesystem_handler = (
+            hpealletradriver.filesystem_handler.FileSystemHandler())
+        self.mock_snapshot_handler = (
+            hpealletradriver.snapshot_handler.SnapshotHandler())
         self.mock_rest_client = (
             hpealletradriver.rest_client.HpeAlletraRestClient())
+        self.mock_feature_support_handler = (
+            hpealletradriver.HPEAlletraFeatureSupportHandler())
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = False
+        hpealletradriver.filesetup_handler.FileSetupHandler\
+            .get_device_version.return_value = "10.5.0"
         self.mock_private_storage = mock.Mock()
 
         # Init alletra b10000 driver
@@ -78,6 +97,12 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
             self.mock_private_storage.get_share_by_id)
         self.driver.privatestorage_handler.delete_share_by_id = (
             self.mock_private_storage.delete_share_by_id)
+        self.driver.privatestorage_handler.update_snapshot_by_id = (
+            self.mock_private_storage.update_snapshot_by_id)
+        self.driver.privatestorage_handler.get_snapshot_by_id = (
+            self.mock_private_storage.get_snapshot_by_id)
+        self.driver.privatestorage_handler.delete_snapshot_by_id = (
+            self.mock_private_storage.delete_snapshot_by_id)
 
     def test_conf_safe_get_existing_attr(self):
         """Test safe_get returns value for existing attribute."""
@@ -92,17 +117,21 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
     def init_driver(self):
         """Helper to set up the driver with mock handlers for testing."""
 
-        # Initialize mock handlers for rest, fileshare, filesetup. Real handler
-        # for driverhelper
+        # Initialize mock handlers for rest, fileshare, filesetup. Real
+        # handler for driverhelper
         self.driver.rest_client = self.mock_rest_client
         self.driver.fileshare_handler = self.mock_fileshare_handler
         self.driver.filesetup_handler = self.mock_filesetup_handler
-        # Init actual driver helper object with mock rest_clints
+        self.driver.filesystem_handler = self.mock_filesystem_handler
+        self.driver.snapshot_handler = self.mock_snapshot_handler
+        self.driver.feature_support_handler = (
+            self.mock_feature_support_handler)
+        # Init actual driver helper object with mock rest_client
         self.driver.driver_helper = (
             hpealletradriver.HPEAlletraMPB10000ShareDriverHelper(
                 self.driver.rest_client))
 
-        # To do: Check this. Mock share_types if the driver uses it
+        # Mock share_types
         self.mock_object(hpealletradriver, 'share_types')
         get_extra_specs = (
             hpealletradriver.share_types.get_extra_specs_from_share)
@@ -116,16 +145,16 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         hpealletradriver.rest_client.HpeAlletraRestClient.reset_mock()
         hpealletradriver.filesetup_handler.FileSetupHandler.reset_mock()
         hpealletradriver.fileshare_handler.FileShareHandler.reset_mock()
+        hpealletradriver.filesystem_handler.FileSystemHandler.reset_mock()
+        hpealletradriver.snapshot_handler.SnapshotHandler.reset_mock()
+        hpealletradriver.HPEAlletraFeatureSupportHandler.reset_mock()
 
         # Configure mocks
         self.mock_rest_client.session_key = None
         self.mock_rest_client.authenticate.return_value = (True, 200)
 
-        mock_systems = {'version': '10.5.0'}
         mock_osinfo = {'be_is_fileservice_supported': True}
         mock_fileservice = {'be_is_fileservice_enabled': True}
-        self.mock_filesetup_handler.get_systems.return_value = (
-            mock_systems)
         self.mock_filesetup_handler.get_osinfo.return_value = (
             mock_osinfo)
         self.mock_filesetup_handler.get_fileservice.return_value = (
@@ -139,15 +168,28 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         hpealletradriver.rest_client.HpeAlletraRestClient \
             .assert_called_once_with(
                 constants.WSAPI_URL, constants.USERNAME, constants.PASSWORD,
-                debug=False)
+                debug=False, timeout=120)
         self.mock_rest_client.authenticate.assert_called_once()
+        hpealletradriver.HPEAlletraFeatureSupportHandler \
+            .assert_called_once()
         hpealletradriver.filesetup_handler.FileSetupHandler \
             .assert_called_once_with(
-                self.mock_rest_client)
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
         hpealletradriver.fileshare_handler.FileShareHandler \
             .assert_called_once_with(
-                self.mock_rest_client)
-        self.mock_filesetup_handler.get_systems.assert_called_once()
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
+        hpealletradriver.filesystem_handler.FileSystemHandler \
+            .assert_called_once_with(
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
+        hpealletradriver.snapshot_handler.SnapshotHandler \
+            .assert_called_once_with(
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
+        self.mock_feature_support_handler \
+            .validate_min_driver_version.assert_called_once()
         self.mock_filesetup_handler.get_osinfo.assert_called_once()
         self.mock_filesetup_handler.get_fileservice.assert_called_once()
 
@@ -157,8 +199,10 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         # Reset older mock counts
         hpealletradriver.rest_client.HpeAlletraRestClient.reset_mock()
         hpealletradriver.filesetup_handler.FileSetupHandler.reset_mock()
-        hpealletradriver.fileshare_handler.FileShareHandler \
-            .reset_mock()
+        hpealletradriver.fileshare_handler.FileShareHandler.reset_mock()
+        hpealletradriver.filesystem_handler.FileSystemHandler.reset_mock()
+        hpealletradriver.snapshot_handler.SnapshotHandler.reset_mock()
+        hpealletradriver.HPEAlletraFeatureSupportHandler.reset_mock()
 
         # Set existing rest_client with session_key (simulating previous
         # do_setup)
@@ -166,11 +210,8 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         self.driver.rest_client.session_key = 'existing_session_key'
 
         # Configure mocks - no authentication needed since reusing session
-        mock_systems = {'version': '10.5.0'}
         mock_osinfo = {'be_is_fileservice_supported': True}
         mock_fileservice = {'be_is_fileservice_enabled': True}
-        self.mock_filesetup_handler.get_systems.return_value = (
-            mock_systems)
         self.mock_filesetup_handler.get_osinfo.return_value = (
             mock_osinfo)
         self.mock_filesetup_handler.get_fileservice.return_value = (
@@ -184,20 +225,33 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         hpealletradriver.rest_client.HpeAlletraRestClient \
             .assert_called_once_with(
                 constants.WSAPI_URL, constants.USERNAME, constants.PASSWORD,
-                debug=False)
+                debug=False, timeout=120)
         # Authentication should not be called when reusing session key
         self.mock_rest_client.authenticate.assert_not_called()
 
-        # Verify handlers were initialized
+        # Verify feature support handler and all BE handlers initialized
+        hpealletradriver.HPEAlletraFeatureSupportHandler \
+            .assert_called_once()
         hpealletradriver.filesetup_handler.FileSetupHandler \
             .assert_called_once_with(
-                self.mock_rest_client)
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
         hpealletradriver.fileshare_handler.FileShareHandler \
             .assert_called_once_with(
-                self.mock_rest_client)
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
+        hpealletradriver.filesystem_handler.FileSystemHandler \
+            .assert_called_once_with(
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
+        hpealletradriver.snapshot_handler.SnapshotHandler \
+            .assert_called_once_with(
+                self.mock_rest_client,
+                self.mock_feature_support_handler)
 
         # Verify validation calls still happen
-        self.mock_filesetup_handler.get_systems.assert_called_once()
+        self.mock_feature_support_handler \
+            .validate_min_driver_version.assert_called_once()
         self.mock_filesetup_handler.get_osinfo.assert_called_once()
         self.mock_filesetup_handler.get_fileservice.assert_called_once()
 
@@ -214,11 +268,8 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         self.mock_rest_client.session_key = None
         self.mock_rest_client.authenticate.return_value = (True, 200)
 
-        mock_systems = {'version': '10.5.0'}
         mock_osinfo = {'be_is_fileservice_supported': True}
         mock_fileservice = {'be_is_fileservice_enabled': True}
-        self.mock_filesetup_handler.get_systems.return_value = (
-            mock_systems)
         self.mock_filesetup_handler.get_osinfo.return_value = (
             mock_osinfo)
         self.mock_filesetup_handler.get_fileservice.return_value = (
@@ -232,7 +283,7 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         hpealletradriver.rest_client.HpeAlletraRestClient \
             .assert_called_once_with(
                 constants.WSAPI_URL, constants.USERNAME, constants.PASSWORD,
-                debug=True)
+                debug=True, timeout=120)
         self.mock_rest_client.authenticate.assert_called_once()
 
     @ddt.data('wsapi_url', 'username', 'password')
@@ -258,6 +309,36 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         # Execute do_setup and expect HPEAlletraB10000DriverException
         self.assertRaises(exception.HPEAlletraB10000DriverException,
                           self.driver.do_setup, None)
+
+    def test_driver_setup_r6_snapshot_support(self):
+        """Test do_setup enables snapshot support for R6 device version."""
+
+        # Reset older mock counts
+        hpealletradriver.rest_client.HpeAlletraRestClient.reset_mock()
+        hpealletradriver.filesetup_handler.FileSetupHandler.reset_mock()
+        hpealletradriver.fileshare_handler.FileShareHandler.reset_mock()
+        hpealletradriver.filesystem_handler.FileSystemHandler.reset_mock()
+        hpealletradriver.snapshot_handler.SnapshotHandler.reset_mock()
+        hpealletradriver.HPEAlletraFeatureSupportHandler.reset_mock()
+
+        # Configure R6 device mock
+        self.mock_rest_client.session_key = None
+        self.mock_rest_client.authenticate.return_value = (True, 200)
+        self.mock_feature_support_handler\
+            .check_min_r6_device_version.return_value = True
+        self.mock_filesetup_handler.get_osinfo.return_value = (
+            {'be_is_fileservice_supported': True})
+        self.mock_filesetup_handler.get_fileservice.return_value = (
+            {'be_is_fileservice_enabled': True})
+
+        # Execute do_setup
+        self.driver.do_setup(None)
+
+        # Verify snapshot capabilities are enabled
+        self.assertTrue(self.driver.snapshot_support)
+        self.assertTrue(self.driver.revert_to_snapshot_support)
+        self.assertTrue(self.driver.mount_snapshot_support)
+        self.assertTrue(self.driver.snapshot_inherit_share_access_support)
 
     # create_share()
     def test_driver_create_share_success(self):
@@ -454,6 +535,62 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
         self.mock_private_storage.delete_share_by_id.assert_called_once_with(
             constants.EXPECTED_SHARE_ID
         )
+
+    def test_driver_delete_share_failure_snapshots_exist(self):
+        """Test delete_share raises exception when backend snapshots exist."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_share_by_id.return_value = (
+            constants.EXPECTED_BE_SHARE_ID,
+            constants.EXPECTED_BE_SHARE_NAME,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_BE_SHARESETTING_NAME
+        )
+        self.mock_fileshare_handler.delete_fileshare_by_id.side_effect = \
+            exception.HPEAlletraB10000DriverException(
+                reason="snapshots fileshare exist")
+
+        # Execute delete_share - should raise HPEAlletraB10000DriverException
+        context = None
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.driver.delete_share, context, constants.SHARE_INFO)
+
+        # Verify delete was attempted
+        self.mock_fileshare_handler.delete_fileshare_by_id \
+            .assert_called_once_with(
+                constants.EXPECTED_SHARE_ID, constants.EXPECTED_BE_SHARE_ID)
+        # Verify private storage was NOT cleared (share not deleted)
+        self.mock_private_storage.delete_share_by_id.assert_not_called()
+
+    def test_driver_delete_share_failure_other_be_exception(self):
+        """Test delete_share re-raises non-snapshot backend exceptions."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_share_by_id.return_value = (
+            constants.EXPECTED_BE_SHARE_ID,
+            constants.EXPECTED_BE_SHARE_NAME,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_BE_SHARESETTING_NAME
+        )
+        self.mock_fileshare_handler.delete_fileshare_by_id.side_effect = \
+            exception.HPEAlletraB10000DriverException(
+                reason="some other backend error")
+
+        # Execute delete_share - should re-raise the original exception
+        context = None
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.driver.delete_share, context, constants.SHARE_INFO)
+
+        # Verify delete was attempted
+        self.mock_fileshare_handler.delete_fileshare_by_id \
+            .assert_called_once_with(
+                constants.EXPECTED_SHARE_ID, constants.EXPECTED_BE_SHARE_ID)
+        # Verify private storage was NOT cleared
+        self.mock_private_storage.delete_share_by_id.assert_not_called()
 
     # extend_share()
     def test_driver_extend_share_success(self):
@@ -742,6 +879,319 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
             constants.EXPECTED_SHARE_ID
         )
 
+    # create_snapshot()
+    def test_create_snapshot_success(self):
+        """Test successful snapshot creation."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_share_by_id.return_value = (
+            constants.EXPECTED_BE_SHARE_ID,
+            constants.EXPECTED_BE_SHARE_NAME,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_BE_SHARESETTING_NAME)
+        self.mock_snapshot_handler.create_snapshot.return_value = (
+            constants.BACKEND_SNAP_FILESHARE,
+            constants.BACKEND_SNAP_FILESYSTEM)
+
+        # Execute
+        result = self.driver.create_snapshot(
+            None, constants.SNAPSHOT_INFO)
+
+        # Verify parent share lookup and validation
+        self.mock_private_storage.get_share_by_id\
+            .assert_called_once_with(constants.EXPECTED_SHARE_ID)
+        self.mock_fileshare_handler._compare_values_with_be_share\
+            .assert_called_once_with(
+                constants.EXPECTED_BE_SHARE_ID,
+                constants.EXPECTED_BE_SHARE_NAME,
+                constants.EXPECTED_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_BE_SHARESETTING_NAME)
+
+        # Verify snapshot created in BE
+        self.mock_snapshot_handler.create_snapshot.assert_called_once_with(
+            constants.SNAPSHOT_INFO,
+            constants.EXPECTED_BE_SHARE_NAME,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_BE_SHARESETTING_NAME)
+
+        # Verify private storage updated with snapshot BE details
+        self.mock_private_storage.update_snapshot_by_id\
+            .assert_called_once_with(
+                constants.EXPECTED_SNAP_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_ID,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_NAME,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+
+        # Verify return value has provider_location
+        self.assertIn('provider_location', result)
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            result['provider_location'])
+
+    # delete_snapshot()
+    def test_delete_snapshot_success(self):
+        """Test successful snapshot deletion."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.return_value = (
+            constants.EXPECTED_SNAP_BE_SHARE_ID,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+
+        # Execute
+        self.driver.delete_snapshot(None, constants.SNAPSHOT_INFO)
+
+        # Verify
+        self.mock_private_storage.get_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+        self.mock_snapshot_handler._compare_values_with_be_snap\
+            .assert_called_once_with(
+                constants.EXPECTED_SNAP_BE_SHARE_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_NAME,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+        self.mock_snapshot_handler.delete_snapshot.assert_called_once_with(
+            constants.SNAPSHOT_INFO,
+            constants.EXPECTED_SNAP_BE_SHARE_ID)
+        self.mock_private_storage.delete_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+
+    def test_delete_snapshot_not_in_private_storage(self):
+        """Test delete_snapshot when snapshot not found in private storage."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.side_effect = (
+            exception.HPEAlletraB10000DriverException(reason='not found'))
+
+        # Execute - should not raise
+        self.driver.delete_snapshot(None, constants.SNAPSHOT_INFO)
+
+        # Verify BE snapshot handler not invoked
+        self.mock_snapshot_handler.delete_snapshot.assert_not_called()
+        self.mock_private_storage.delete_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+
+    def test_delete_snapshot_not_found_on_be(self):
+        """Test delete_snapshot when snap not found on backend."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.return_value = (
+            constants.EXPECTED_SNAP_BE_SHARE_ID,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+        self.mock_snapshot_handler._compare_values_with_be_snap\
+            .side_effect = exception.HPEAlletraB10000DriverException(
+                reason='not found')
+
+        # Execute - should not raise
+        self.driver.delete_snapshot(None, constants.SNAPSHOT_INFO)
+
+        # Verify private storage cleared, BE delete not called
+        self.mock_snapshot_handler.delete_snapshot.assert_not_called()
+        self.mock_private_storage.delete_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+
+    def test_delete_snapshot_not_in_private_storage_cleanup_fails(self):
+        """Test delete_snapshot when private storage read and cleanup fail."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.side_effect = (
+            exception.HPEAlletraB10000DriverException(reason='not found'))
+        self.mock_private_storage.delete_snapshot_by_id.side_effect = (
+            Exception("Failed to clear private storage"))
+
+        # Execute - should not raise despite both failures
+        self.driver.delete_snapshot(None, constants.SNAPSHOT_INFO)
+
+        # Verify BE snapshot handler not invoked
+        self.mock_snapshot_handler.delete_snapshot.assert_not_called()
+        # Verify cleanup delete was attempted
+        self.mock_private_storage.delete_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+
+    # revert_to_snapshot()
+    def test_revert_to_snapshot_success(self):
+        """Test successful revert to snapshot."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.return_value = (
+            constants.EXPECTED_SNAP_BE_SHARE_ID,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+        self.mock_private_storage.get_share_by_id.return_value = (
+            constants.EXPECTED_BE_SHARE_ID,
+            constants.EXPECTED_BE_SHARE_NAME,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_BE_SHARESETTING_NAME)
+        self.mock_snapshot_handler.revert_to_snapshot.return_value = 10240
+
+        # Execute
+        result = self.driver.revert_to_snapshot(
+            None, constants.SNAPSHOT_INFO, [], [])
+
+        # Verify the post-revert size is reported back in GB
+        self.assertEqual(10, result)
+
+        # Verify lookup calls
+        self.mock_private_storage.get_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+        self.mock_private_storage.get_share_by_id\
+            .assert_called_once_with(constants.EXPECTED_SHARE_ID)
+
+        # Verify revert called with correct filesystem names
+        self.mock_snapshot_handler.revert_to_snapshot.assert_called_once_with(
+            constants.SNAPSHOT_INFO,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME)
+
+    # snapshot_update_access()
+    def test_snapshot_update_access_is_noop(self):
+        """Test snapshot_update_access is a no-op (pass)."""
+
+        # Configure
+        self.init_driver()
+
+        # Execute - should not raise and return None
+        result = self.driver.snapshot_update_access(
+            None, constants.SNAPSHOT_INFO, [], [], [])
+
+        # Verify no backend calls were made
+        self.assertIsNone(result)
+        self.mock_snapshot_handler._compare_values_with_be_snap\
+            .assert_not_called()
+
+    # manage_existing_snapshot()
+    def test_manage_existing_snapshot_success(self):
+        """Test successful manage_existing_snapshot."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_share_by_id.return_value = (
+            constants.EXPECTED_BE_SHARE_ID,
+            constants.EXPECTED_BE_SHARE_NAME,
+            constants.EXPECTED_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_BE_SHARESETTING_NAME)
+        self.mock_snapshot_handler.manage_snapshot.return_value = (
+            constants.BACKEND_SNAP_FILESHARE,
+            constants.BACKEND_SNAP_FILESYSTEM)
+
+        # Execute
+        result = self.driver.manage_existing_snapshot(
+            constants.SNAPSHOT_INFO, {})
+
+        # Verify parent share validated
+        self.mock_private_storage.get_share_by_id\
+            .assert_called_once_with(constants.EXPECTED_SHARE_ID)
+        self.mock_fileshare_handler._compare_values_with_be_share\
+            .assert_called_once_with(
+                constants.EXPECTED_BE_SHARE_ID,
+                constants.EXPECTED_BE_SHARE_NAME,
+                constants.EXPECTED_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_BE_SHARESETTING_NAME)
+
+        # Verify manage_snapshot called
+        self.mock_snapshot_handler.manage_snapshot.assert_called_once_with(
+            constants.SNAPSHOT_INFO,
+            constants.EXPECTED_BE_FILESYSTEM_NAME)
+
+        # Verify private storage updated
+        self.mock_private_storage.update_snapshot_by_id\
+            .assert_called_once_with(
+                constants.EXPECTED_SNAP_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_ID,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_NAME,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+
+        # Verify return value
+        self.assertIn('provider_location', result)
+        self.assertIn('size', result)
+
+    # unmanage_snapshot()
+    def test_unmanage_snapshot_success(self):
+        """Test successful unmanage_snapshot."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.return_value = (
+            constants.EXPECTED_SNAP_BE_SHARE_ID,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+
+        # Execute
+        self.driver.unmanage_snapshot(constants.SNAPSHOT_INFO)
+
+        # Verify
+        self.mock_private_storage.get_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+        self.mock_snapshot_handler._compare_values_with_be_snap\
+            .assert_called_once_with(
+                constants.EXPECTED_SNAP_BE_SHARE_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_NAME,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+        self.mock_private_storage.delete_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+
+    def test_unmanage_snapshot_not_in_private_storage(self):
+        """Test unmanage_snapshot when not found in private storage."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.side_effect = (
+            exception.HPEAlletraB10000DriverException(reason='not found'))
+
+        # Execute - should not raise
+        self.driver.unmanage_snapshot(constants.SNAPSHOT_INFO)
+
+        # Verify private storage delete not called
+        self.mock_private_storage.delete_snapshot_by_id.assert_not_called()
+
+    def test_unmanage_snapshot_not_found_on_be(self):
+        """Test unmanage_snapshot when BE compare fails & clears storage."""
+
+        # Configure Mocks
+        self.init_driver()
+        self.mock_private_storage.get_snapshot_by_id.return_value = (
+            constants.EXPECTED_SNAP_BE_SHARE_ID,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+        self.mock_snapshot_handler._compare_values_with_be_snap\
+            .side_effect = Exception("Snapshot not found on backend")
+
+        # Execute - should not raise
+        self.driver.unmanage_snapshot(constants.SNAPSHOT_INFO)
+
+        # Verify comparison was attempted
+        self.mock_snapshot_handler._compare_values_with_be_snap\
+            .assert_called_once_with(
+                constants.EXPECTED_SNAP_BE_SHARE_ID,
+                constants.EXPECTED_SNAP_BE_SHARE_NAME,
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+        # Verify private storage still cleared despite BE failure
+        self.mock_private_storage.delete_snapshot_by_id\
+            .assert_called_once_with(constants.EXPECTED_SNAP_ID)
+
     # get_backend_info()
     def test_get_backend_info_returns_config_parameters(self):
         """Test get_backend_info returns all configuration parameters."""
@@ -949,6 +1399,8 @@ class HPEAlletraMPB10000ShareDriverTestCase(test.TestCase):
                 'snapshot_support': False,
                 'create_share_from_snapshot_support': False,
                 'revert_to_snapshot_support': False,
+                'mount_snapshot_support': False,
+                'snapshot_inherit_share_access_support': False,
             }
             mock_super_update.assert_called_once_with(expected_data)
 
@@ -1173,6 +1625,232 @@ class HPEAlletraPrivateStorageHandlerTestCase(test.TestCase):
         # Verify private storage delete was not called
         self.mock_private_storage.delete.assert_not_called()
 
+    # update_snapshot_by_id()
+    def test_update_snapshot_by_id_success(self):
+        """Test successful update of snapshot in private storage."""
+
+        # Execute update_snapshot_by_id
+        self.handler.update_snapshot_by_id(
+            constants.EXPECTED_SNAP_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_ID,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID,
+            constants.EXPECTED_SNAP_BE_SHARE_NAME,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME)
+
+        # Verify private storage update was called with correct data
+        expected_data = {
+            'alletra_be_snap_share_id': (
+                constants.EXPECTED_SNAP_BE_SHARE_ID),
+            'alletra_be_snap_filesystem_id': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID),
+            'alletra_be_snap_share_name': (
+                constants.EXPECTED_SNAP_BE_SHARE_NAME),
+            'alletra_be_snap_filesystem_name': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME),
+            'alletra_be_snap_sharesetting_name': (
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME),
+        }
+        self.mock_private_storage.update.assert_called_once_with(
+            constants.EXPECTED_SNAP_ID, expected_data)
+
+    # get_snapshot_by_id()
+    def test_get_snapshot_by_id_success(self):
+        """Test successful retrieval of snapshot from private storage."""
+
+        # Configure mock
+        self.mock_private_storage.get.return_value = {
+            'alletra_be_snap_share_id': (
+                constants.EXPECTED_SNAP_BE_SHARE_ID),
+            'alletra_be_snap_filesystem_id': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID),
+            'alletra_be_snap_share_name': (
+                constants.EXPECTED_SNAP_BE_SHARE_NAME),
+            'alletra_be_snap_filesystem_name': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME),
+            'alletra_be_snap_sharesetting_name': (
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME),
+        }
+
+        # Execute get_snapshot_by_id
+        (be_share_id, be_filesystem_id, be_share_name,
+         be_filesystem_name, be_sharesetting_name) = (
+            self.handler.get_snapshot_by_id(constants.EXPECTED_SNAP_ID))
+
+        # Verify private storage get was called
+        self.mock_private_storage.get.assert_called_once_with(
+            constants.EXPECTED_SNAP_ID)
+
+        # Verify returned values
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_SHARE_ID, be_share_id)
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_ID, be_filesystem_id)
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_SHARE_NAME, be_share_name)
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME, be_filesystem_name)
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_SHARESETTING_NAME,
+            be_sharesetting_name)
+
+    def test_get_snapshot_by_id_with_none_snap_id(self):
+        """Test get_snapshot_by_id with None raises InvalidInput."""
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.InvalidInput,
+            self.handler.get_snapshot_by_id,
+            None)
+
+        # Verify private storage get was not called
+        self.mock_private_storage.get.assert_not_called()
+
+    def test_get_snapshot_by_id_not_in_private_storage(self):
+        """Test get_snapshot_by_id when not found in private storage."""
+
+        # Configure mock to return None
+        self.mock_private_storage.get.return_value = None
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.get_snapshot_by_id,
+            constants.EXPECTED_SNAP_ID)
+
+    def test_get_snapshot_by_id_missing_be_snap_share_id(self):
+        """Test get_snapshot_by_id when be_snap_share_id is missing."""
+
+        # Configure mock with missing be_snap_share_id
+        self.mock_private_storage.get.return_value = {
+            'alletra_be_snap_share_id': None,
+            'alletra_be_snap_filesystem_id': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID),
+            'alletra_be_snap_share_name': (
+                constants.EXPECTED_SNAP_BE_SHARE_NAME),
+            'alletra_be_snap_filesystem_name': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME),
+            'alletra_be_snap_sharesetting_name': (
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME),
+        }
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.get_snapshot_by_id,
+            constants.EXPECTED_SNAP_ID)
+
+    def test_get_snapshot_by_id_missing_be_snap_filesystem_id(self):
+        """Test get_snapshot_by_id when be_snap_filesystem_id is missing."""
+
+        # Configure mock with missing be_snap_filesystem_id
+        self.mock_private_storage.get.return_value = {
+            'alletra_be_snap_share_id': (
+                constants.EXPECTED_SNAP_BE_SHARE_ID),
+            'alletra_be_snap_filesystem_id': None,
+            'alletra_be_snap_share_name': (
+                constants.EXPECTED_SNAP_BE_SHARE_NAME),
+            'alletra_be_snap_filesystem_name': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME),
+            'alletra_be_snap_sharesetting_name': (
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME),
+        }
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.get_snapshot_by_id,
+            constants.EXPECTED_SNAP_ID)
+
+    def test_get_snapshot_by_id_missing_be_snap_sharesetting_name(self):
+        """Test get_snapshot_by_id when be_snap_sharesetting_name missing."""
+
+        # Configure mock with missing be_snap_sharesetting_name
+        self.mock_private_storage.get.return_value = {
+            'alletra_be_snap_share_id': (
+                constants.EXPECTED_SNAP_BE_SHARE_ID),
+            'alletra_be_snap_filesystem_id': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID),
+            'alletra_be_snap_share_name': (
+                constants.EXPECTED_SNAP_BE_SHARE_NAME),
+            'alletra_be_snap_filesystem_name': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME),
+            'alletra_be_snap_sharesetting_name': None,
+        }
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.get_snapshot_by_id,
+            constants.EXPECTED_SNAP_ID)
+
+    def test_get_snapshot_by_id_missing_be_snap_share_name(self):
+        """Test get_snapshot_by_id when be_snap_share_name is missing."""
+
+        # Configure mock with missing be_snap_share_name
+        self.mock_private_storage.get.return_value = {
+            'alletra_be_snap_share_id': (
+                constants.EXPECTED_SNAP_BE_SHARE_ID),
+            'alletra_be_snap_filesystem_id': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID),
+            'alletra_be_snap_share_name': None,
+            'alletra_be_snap_filesystem_name': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME),
+            'alletra_be_snap_sharesetting_name': (
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME),
+        }
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.get_snapshot_by_id,
+            constants.EXPECTED_SNAP_ID)
+
+    def test_get_snapshot_by_id_missing_be_snap_filesystem_name(self):
+        """Test get_snapshot_by_id when be_snap_filesystem_name is missing."""
+
+        # Configure mock with missing be_snap_filesystem_name
+        self.mock_private_storage.get.return_value = {
+            'alletra_be_snap_share_id': (
+                constants.EXPECTED_SNAP_BE_SHARE_ID),
+            'alletra_be_snap_filesystem_id': (
+                constants.EXPECTED_SNAP_BE_FILESYSTEM_ID),
+            'alletra_be_snap_share_name': (
+                constants.EXPECTED_SNAP_BE_SHARE_NAME),
+            'alletra_be_snap_filesystem_name': None,
+            'alletra_be_snap_sharesetting_name': (
+                constants.EXPECTED_SNAP_BE_SHARESETTING_NAME),
+        }
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            self.handler.get_snapshot_by_id,
+            constants.EXPECTED_SNAP_ID)
+
+    # delete_snapshot_by_id()
+    def test_delete_snapshot_by_id_success(self):
+        """Test successful deletion of snapshot from private storage."""
+
+        # Execute delete_snapshot_by_id
+        self.handler.delete_snapshot_by_id(constants.EXPECTED_SNAP_ID)
+
+        # Verify private storage delete was called
+        self.mock_private_storage.delete.assert_called_once_with(
+            constants.EXPECTED_SNAP_ID)
+
+    def test_delete_snapshot_by_id_with_none_snap_id(self):
+        """Test delete_snapshot_by_id with None raises InvalidInput."""
+
+        # Execute and expect exception
+        self.assertRaises(
+            exception.InvalidInput,
+            self.handler.delete_snapshot_by_id,
+            None)
+
+        # Verify private storage delete was not called
+        self.mock_private_storage.delete.assert_not_called()
+
 
 @ddt.ddt
 class HPEAlletraMPB10000ShareDriverHelperTestCase(test.TestCase):
@@ -1189,59 +1867,6 @@ class HPEAlletraMPB10000ShareDriverHelperTestCase(test.TestCase):
         # Initialize helper
         self.helper = hpealletradriver.HPEAlletraMPB10000ShareDriverHelper(
             self.mock_rest_client
-        )
-
-    # _validate_device_version()
-    def test_validate_device_version_success(self):
-        """Test successful device version validation."""
-
-        # Configure mock systems data
-        fe_systems = {'version': '10.5.0'}
-        minimum_device_version = '10.5.0'
-
-        # Execute validation - should not raise exception
-        self.helper._validate_device_version(
-            fe_systems, minimum_device_version)
-
-    def test_validate_device_version_success_higher_version(self):
-        """Test successful device version validation with higher version."""
-
-        # Configure mock systems data with higher version
-        fe_systems = {'version': '10.6.0'}
-        minimum_device_version = '10.5.0'
-
-        # Execute validation - should not raise exception
-        self.helper._validate_device_version(
-            fe_systems, minimum_device_version)
-
-    def test_validate_device_version_failure_lower_major(self):
-        """Test device version validation failure with lower major version."""
-
-        # Configure mock systems data with lower major version
-        fe_systems = {'version': '9.5.0'}
-        minimum_device_version = '10.5.0'
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.helper._validate_device_version,
-            fe_systems,
-            minimum_device_version
-        )
-
-    def test_validate_device_version_failure_lower_minor(self):
-        """Test device version validation failure with lower minor version."""
-
-        # Configure mock systems data with lower minor version
-        fe_systems = {'version': '10.4.0'}
-        minimum_device_version = '10.5.0'
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.helper._validate_device_version,
-            fe_systems,
-            minimum_device_version
         )
 
     # _validate_is_file_service_supported()
@@ -1366,3 +1991,146 @@ class HPEAlletraMPB10000ShareDriverHelperTestCase(test.TestCase):
         expected_path = constants.EXPECTED_HOST_IP + ":" + \
             constants.EXPECTED_MOUNT_PATH
         self.assertEqual(expected_path, result[0]['path'])
+
+    # _build_create_snapshot_resp()
+    def test_build_create_snapshot_resp_without_mount_support(self):
+        """Test create snapshot response without mount snapshot support."""
+
+        # Execute - mount_snapshot_support=False (no export_locations)
+        result = self.helper._build_create_snapshot_resp(
+            constants.EXPECTED_HOST_IP,
+            constants.EXPECTED_SNAP_MOUNT_PATH,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            False)
+
+        # Verify only provider_location returned (no export_locations)
+        self.assertIn('provider_location', result)
+        self.assertEqual(
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            result['provider_location'])
+        self.assertNotIn('export_locations', result)
+
+    def test_build_create_snapshot_resp_with_mount_support(self):
+        """Test create snapshot response with mount snapshot support."""
+
+        # Execute - mount_snapshot_support=True (includes export_locations)
+        result = self.helper._build_create_snapshot_resp(
+            constants.EXPECTED_HOST_IP,
+            constants.EXPECTED_SNAP_MOUNT_PATH,
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            True)
+
+        # Verify provider_location and export_locations returned
+        self.assertIn('provider_location', result)
+        self.assertIn('export_locations', result)
+        self.assertEqual(1, len(result['export_locations']))
+        self.assertIn(
+            constants.EXPECTED_HOST_IP,
+            result['export_locations'][0]['path'])
+
+    # _build_manage_snapshot_resp()
+    def test_build_manage_snapshot_resp_without_mount_support(self):
+        """Test manage snapshot response without mount snapshot support."""
+
+        # Execute
+        result = self.helper._build_manage_snapshot_resp(
+            constants.EXPECTED_HOST_IP,
+            constants.EXPECTED_SNAP_MOUNT_PATH,
+            constants.BACKEND_SNAP_FILESYSTEM['be_filesystem_size'],
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            False)
+
+        # Verify size and provider_location returned, no export_locations
+        self.assertIn('size', result)
+        self.assertIn('provider_location', result)
+        self.assertNotIn('export_locations', result)
+        self.assertEqual(2, result['size'])  # 2048 MiB = 2 GB
+
+    def test_build_manage_snapshot_resp_with_mount_support(self):
+        """Test manage snapshot response with mount snapshot support."""
+
+        # Execute
+        result = self.helper._build_manage_snapshot_resp(
+            constants.EXPECTED_HOST_IP,
+            constants.EXPECTED_SNAP_MOUNT_PATH,
+            constants.BACKEND_SNAP_FILESYSTEM['be_filesystem_size'],
+            constants.EXPECTED_SNAP_BE_FILESYSTEM_NAME,
+            True)
+
+        # Verify size, provider_location and export_locations returned
+        self.assertIn('size', result)
+        self.assertIn('provider_location', result)
+        self.assertIn('export_locations', result)
+        self.assertEqual(1, len(result['export_locations']))
+
+
+class HPEAlletraFeatureSupportHandlerTestCase(test.TestCase):
+    """Test case for HPEAlletraFeatureSupportHandler class."""
+
+    # validate_min_driver_version()
+    def test_validate_min_driver_version_success(self):
+        """Test validate_min_driver_version succeeds for R5 device."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.5.0')
+        # Execute - should not raise for version 10.5.0
+        handler.validate_min_driver_version()
+
+    def test_validate_min_driver_version_failure(self):
+        """Test validate_min_driver_version raises for below R5 version."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.4.0')
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            handler.validate_min_driver_version)
+
+    def test_validate_min_driver_version_failure_lower_major(self):
+        """Test validate_min_driver_version raises for lower major version."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('9.5.0')
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            handler.validate_min_driver_version)
+
+    # check_min_r5_device_version()
+    def test_check_min_r5_device_version_true(self):
+        """Test check_min_r5_device_version returns True for R5 device."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.5.0')
+        result = handler.check_min_r5_device_version()
+        self.assertTrue(result)
+
+    def test_check_min_r5_device_version_true_higher(self):
+        """Test check_min_r5_device_version returns True for R6 device."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.6.0')
+        result = handler.check_min_r5_device_version()
+        self.assertTrue(result)
+
+    def test_check_min_r5_device_version_false(self):
+        """Test check_min_r5_device_version returns False below R5."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.4.0')
+        result = handler.check_min_r5_device_version()
+        self.assertFalse(result)
+
+    # check_min_r6_device_version()
+    def test_check_min_r6_device_version_true(self):
+        """Test check_min_r6_device_version returns True for R6 device."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.6.0')
+        result = handler.check_min_r6_device_version()
+        self.assertTrue(result)
+
+    def test_check_min_r6_device_version_false(self):
+        """Test check_min_r6_device_version returns False for R5 device."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.5.0')
+        result = handler.check_min_r6_device_version()
+        self.assertFalse(result)
+
+    def test_check_min_r6_device_version_false_lower_minor(self):
+        """Test check_min_r6_device_version returns False below R6."""
+
+        handler = hpealletradriver.HPEAlletraFeatureSupportHandler('10.5.9')
+        result = handler.check_min_r6_device_version()
+        self.assertFalse(result)

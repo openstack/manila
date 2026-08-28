@@ -24,24 +24,25 @@ from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
 from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import (
     filesystem_handler)
 from manila.share.drivers.hpe.alletra_mp_b10000.fileshare import helpers
+from manila.share import share_types
 from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
 class FileShareHandler(object):
-    def __init__(self, rest_client, **kwargs):
+    def __init__(self, rest_client, feature_support_handler, **kwargs):
         self.rest_client = rest_client
-        self.validator = FileShareValidator()
-        self.convert = FileShareModelConvert()
+        self.feature_support_handler = feature_support_handler
+        self.validator = FileShareValidator(self.feature_support_handler)
+        self.convert = FileShareModelConvert(self.feature_support_handler)
         self.task = helpers.TaskHelper()
 
         self.filesystem_handler = filesystem_handler.FileSystemHandler(
-            rest_client)
+            rest_client, self.feature_support_handler)
         self.filesharesetting_handler = (
             filesharesetting_handler.FileSharesettingHandler(
-                rest_client)
-        )
+                rest_client))
 
     # BE APIs
     def create_fileshare(self, fe_create_fileshare, extra_specs):
@@ -167,8 +168,24 @@ class FileShareHandler(object):
             update_access_rules,
             fe_new_access_rules)
 
-        be_response_header, be_response_body = self.rest_client.post(
-            '/fileshares', body=be_edit_fileshare)
+        try:
+            be_response_header, be_response_body = self.rest_client.post(
+                '/fileshares', body=be_edit_fileshare)
+        except exception.HPEAlletraB10000DriverException as e:
+            # Treat a "Client IP not found in file share setting" backend
+            # error as an idempotent no-op for access-rule updates
+            if (update_access_rules
+                    and constants.BE_CLIENT_IP_NOT_FOUND_ERROR in str(e)):
+                LOG.warning(
+                    "Ignoring access-rule update error for share "
+                    "%(fe_id)s (backend share id %(be_id)s): the backend "
+                    "reported the client IP was not found in the file share "
+                    "setting. Error: %(error)s",
+                    {'fe_id': fe_fileshare_id,
+                     'be_id': be_fileshare_uid,
+                     'error': str(e)})
+                return
+            raise
 
         try:
             self.validator.validate_fileshare_api_be_task_resp_header(
@@ -263,7 +280,7 @@ class FileShareHandler(object):
                     "%(be_host_ip)s mountpath %(be_mount_path)s. "
                     "Reduce parameter value does not match between "
                     "share type and backend share."
-                    "(DefaultSharetypeReduce:False) "
+                    "(DefaultSharetypeReduce:True) "
                     "Sharetype Reduce: %(share_type_reduce)s "
                     "BE Reduce: %(be_share_reduce)s") % {
                     'be_host_ip': be_manage_fileshare['be_host_ip'],
@@ -383,6 +400,24 @@ class FileShareHandler(object):
         LOG.error(msg)
         raise exception.HPEAlletraB10000DriverException(reason=msg)
 
+    def _get_fileshare_by_filesystem_name(
+            self,
+            be_filesystem_name):
+        fe_fileshares = self.get_fileshares()
+        for fileshare in fe_fileshares:
+            if fileshare['be_filesystem_name'] == be_filesystem_name:
+                # We assume only one share will exist with this condition
+                # Due to BE uniqueness constraint on filesystem and
+                # sharesetting name
+                return fileshare
+
+        msg = _(
+            "Not able to find fileshare by name. "
+            "Filesystem name: %(filesystem_name)s, ") % {
+            'filesystem_name': be_filesystem_name}
+        LOG.error(msg)
+        raise exception.HPEAlletraB10000DriverException(reason=msg)
+
     def _compare_values_with_be_share(
             self,
             be_share_id,
@@ -403,6 +438,9 @@ class FileShareHandler(object):
 
 
 class FileShareModelConvert(object):
+    def __init__(self, feature_support_handler, **kwargs):
+        self.feature_support_handler = feature_support_handler
+
     # Create fileshare
     def convert_fileshare_to_be_model(self, fe_create_fileshare, extra_specs):
         be_fileshare_name, be_filesystem_name, be_sharesetting_name = (
@@ -489,6 +527,10 @@ class FileShareModelConvert(object):
         )
         fe_fileshare['host_ip'] = be_fileshare['hostip']
         fe_fileshare['mount_path'] = be_fileshare['mountpath']
+
+        if self.feature_support_handler.check_min_r6_device_version():
+            fe_fileshare['be_detailed_state'] = be_fileshare['detailedState']
+
         return fe_fileshare
 
     # Edit fileshare by uid
@@ -613,6 +655,9 @@ class FileShareModelConvert(object):
 
 
 class FileShareValidator(object):
+    def __init__(self, feature_support_handler, **kwargs):
+        self.feature_support_handler = feature_support_handler
+
     # Create fileshare
     def validate_create_fileshare_fe_req(self, fe_fileshare, extra_specs):
         if 'size' not in fe_fileshare:
@@ -745,6 +790,13 @@ class FileShareValidator(object):
             msg = _("Mount path not found in get fileshare by id response")
             LOG.error(msg)
             raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        if self.feature_support_handler.check_min_r6_device_version():
+            if 'detailedState' not in be_fileshare:
+                msg = _("Detailed state not found in get fileshare by"
+                        " id response")
+                LOG.error(msg)
+                raise exception.HPEAlletraB10000DriverException(reason=msg)
 
     def _validate_be_share_values(
             self,
@@ -1034,6 +1086,36 @@ class FileShareValidator(object):
 
         thin_provisioning_str = extra_specs.get('thin_provisioning')
         self._validate_share_type_thin_prov_value(thin_provisioning_str)
+
+        mount_snapshot_support = extra_specs.get('mount_snapshot_support')
+        snapshot_inherit_share_access_support = extra_specs.get(
+            'snapshot_inherit_share_access_support')
+        self._validate_mount_snapshot_support_with_inherit(
+            mount_snapshot_support, snapshot_inherit_share_access_support)
+
+    def _validate_mount_snapshot_support_with_inherit(
+            self, mount_snapshot_support_str,
+            snapshot_inherit_share_access_support_str):
+        """Validate that mount_snapshot_support requires inherit.
+
+        This driver cannot apply independent snapshot access rules
+        (snapshot_update_access is a no-op). Mountable snapshots must
+        therefore inherit access rules from the parent share.
+        """
+        if (mount_snapshot_support_str is None or
+                not share_types.parse_boolean_extra_spec(
+                    'mount_snapshot_support', mount_snapshot_support_str)):
+            return
+
+        if (snapshot_inherit_share_access_support_str is None or
+                not share_types.parse_boolean_extra_spec(
+                    'snapshot_inherit_share_access_support',
+                    snapshot_inherit_share_access_support_str)):
+            msg = _("Share type extra spec 'mount_snapshot_support' requires "
+                    "'snapshot_inherit_share_access_support' to also be set "
+                    "to True for the HPE Alletra MP B10000 driver.")
+            LOG.error(msg)
+            raise exception.InvalidInput(msg)
 
     def _validate_share_type_dedupe_compression_comb_values(
             self, dedupe_str, compression_str):

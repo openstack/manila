@@ -33,9 +33,98 @@ class FileSetupHandlerTestCase(test.TestCase):
 
         # Create mock rest client
         self.mock_rest_client = mock.Mock()
+        self.mock_feature_support_handler = mock.Mock()
 
         # Initialize handler
         self.handler = filesetup.FileSetupHandler(
+            self.mock_rest_client,
+            self.mock_feature_support_handler
+        )
+
+    # get_device_version()
+    def test_get_device_version_success(self):
+        """Test successful device version retrieval."""
+        be_systems = {
+            'members': {
+                'key1': {
+                    'version': {'base': '10.5.0'}
+                }
+            }
+        }
+        self.mock_rest_client.get.return_value = (200, be_systems)
+
+        result = filesetup.FileSetupHandler.get_device_version(
+            self.mock_rest_client)
+
+        self.mock_rest_client.get.assert_called_once_with('/systems')
+        self.assertEqual('10.5.0', result)
+
+    def test_get_device_version_none_response(self):
+        """Test get_device_version raises exception when response is None."""
+        self.mock_rest_client.get.return_value = (200, None)
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            filesetup.FileSetupHandler.get_device_version,
+            self.mock_rest_client
+        )
+
+    def test_get_device_version_missing_members(self):
+        """Test get_device_version raises exception when members missing."""
+        self.mock_rest_client.get.return_value = (200, {})
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            filesetup.FileSetupHandler.get_device_version,
+            self.mock_rest_client
+        )
+
+    def test_get_device_version_empty_members(self):
+        """Test get_device_version raises exception when members empty."""
+        self.mock_rest_client.get.return_value = (
+            200, {'members': {}})
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            filesetup.FileSetupHandler.get_device_version,
+            self.mock_rest_client
+        )
+
+    def test_get_device_version_multiple_members_raises_exception(self):
+        """Test get_device_version raises exception for more than 1 key."""
+        be_systems = {
+            'members': {
+                'key1': {'version': {'base': '10.5.0'}},
+                'key2': {'version': {'base': '10.6.0'}}
+            }
+        }
+        self.mock_rest_client.get.return_value = (200, be_systems)
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            filesetup.FileSetupHandler.get_device_version,
+            self.mock_rest_client
+        )
+
+    def test_get_device_version_missing_version(self):
+        """Test get_device_version raises exception when version missing."""
+        be_systems = {'members': {'key1': {}}}
+        self.mock_rest_client.get.return_value = (200, be_systems)
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            filesetup.FileSetupHandler.get_device_version,
+            self.mock_rest_client
+        )
+
+    def test_get_device_version_missing_base(self):
+        """Test get_device_version raises exception when base missing."""
+        be_systems = {'members': {'key1': {'version': {}}}}
+        self.mock_rest_client.get.return_value = (200, be_systems)
+
+        self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            filesetup.FileSetupHandler.get_device_version,
             self.mock_rest_client
         )
 
@@ -69,31 +158,6 @@ class FileSetupHandlerTestCase(test.TestCase):
         self.assertEqual(2195865, result['be_available_capacity'])
         self.assertEqual(2195866, result['be_used_capacity'])
         self.assertEqual(4391731, result['be_total_capacity'])
-
-    # get_systems()
-    def test_get_systems_success(self):
-        """Test successful systems retrieval."""
-
-        # Configure mock backend response with valid data
-        be_systems = {
-            'members': {
-                'key1': {
-                    'version': {
-                        'base': '10.5.0'
-                    }
-                }
-            }
-        }
-        self.mock_rest_client.get.return_value = (200, be_systems)
-
-        # Execute get_systems
-        result = self.handler.get_systems()
-
-        # Verify rest client call
-        self.mock_rest_client.get.assert_called_once_with('/systems')
-
-        # Verify result structure
-        self.assertEqual('10.5.0', result['version'])
 
     # get_osinfo()
     def test_get_osinfo_success(self):
@@ -130,7 +194,9 @@ class FileSetupValidatorTestCase(test.TestCase):
         super(FileSetupValidatorTestCase, self).setUp()
 
         # Initialize validator
-        self.validator = filesetup.FileSetupValidator()
+        self.mock_feature_support_handler = mock.Mock()
+        self.validator = filesetup.FileSetupValidator(
+            self.mock_feature_support_handler)
 
     # validate_get_fileservice_be_resp()
     def test_validate_get_fileservice_be_resp_success(self):
@@ -332,121 +398,6 @@ class FileSetupValidatorTestCase(test.TestCase):
             be_fileservice
         )
 
-    # validate_get_systems_be_resp()
-    def test_validate_get_systems_be_resp_success(self):
-        """Test successful validation of systems response."""
-
-        # Configure valid backend response
-        be_systems = {
-            'members': {
-                'key1': {
-                    'version': {
-                        'base': '10.5.0'
-                    }
-                }
-            }
-        }
-
-        # Execute validation - should not raise exception
-        self.validator.validate_get_systems_be_resp(be_systems)
-
-    def test_validate_get_systems_be_resp_none_response(self):
-        """Test validation failure when response is None."""
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.validator.validate_get_systems_be_resp,
-            None
-        )
-
-    def test_validate_get_systems_be_resp_missing_members(self):
-        """Test validation failure when members field is missing."""
-
-        # Configure response without members
-        be_systems = {}
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.validator.validate_get_systems_be_resp,
-            be_systems
-        )
-
-    def test_validate_get_systems_be_resp_empty_members(self):
-        """Test validation failure when members field is empty."""
-
-        # Configure response with empty members
-        be_systems = {
-            'members': {}
-        }
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.validator.validate_get_systems_be_resp,
-            be_systems
-        )
-
-    def test_validate_get_systems_be_resp_multiple_members(self):
-        """Test validation with multiple members (processes first)."""
-
-        # Configure response with multiple members
-        be_systems = {
-            'members': {
-                'key1': {
-                    'version': {
-                        'base': '10.5.0'
-                    }
-                },
-                'key2': {
-                    'version': {
-                        'base': '9.4.0'
-                    }
-                }
-            }
-        }
-
-        # Execute validation - should not raise exception
-        # (processes first member only)
-        self.validator.validate_get_systems_be_resp(be_systems)
-
-    def test_validate_get_systems_be_resp_missing_version(self):
-        """Test validation failure when version field is missing."""
-
-        # Configure response without version
-        be_systems = {
-            'members': {
-                'key1': {}
-            }
-        }
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.validator.validate_get_systems_be_resp,
-            be_systems
-        )
-
-    def test_validate_get_systems_be_resp_missing_base(self):
-        """Test validation failure when base field is missing."""
-
-        # Configure response without base
-        be_systems = {
-            'members': {
-                'key1': {
-                    'version': {}
-                }
-            }
-        }
-
-        # Execute validation and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.validator.validate_get_systems_be_resp,
-            be_systems
-        )
-
     # validate_get_osinfo_be_resp()
     def test_validate_get_osinfo_be_resp_success(self):
         """Test successful validation of osinfo response."""
@@ -573,7 +524,9 @@ class FileSetupModelConvertTestCase(test.TestCase):
         super(FileSetupModelConvertTestCase, self).setUp()
 
         # Initialize converter
-        self.converter = filesetup.FileSetupModelConvert()
+        self.mock_feature_support_handler = mock.Mock()
+        self.converter = filesetup.FileSetupModelConvert(
+            self.mock_feature_support_handler)
 
     # convert_fileservice_to_fe_model()
     def test_convert_fileservice_to_fe_model_success(self):
@@ -626,53 +579,6 @@ class FileSetupModelConvertTestCase(test.TestCase):
             exception.HPEAlletraB10000DriverException,
             self.converter.convert_fileservice_to_fe_model,
             be_fileservice
-        )
-
-    # convert_systems_to_fe_model()
-    def test_convert_systems_to_fe_model_success(self):
-        """Test successful conversion of systems to FE model."""
-
-        # Configure backend response
-        be_systems = {
-            'members': {
-                'key1': {
-                    'version': {
-                        'base': '10.5.0'
-                    }
-                }
-            }
-        }
-
-        # Execute conversion
-        result = self.converter.convert_systems_to_fe_model(be_systems)
-
-        # Verify result
-        expected = {
-            'version': '10.5.0'
-        }
-        self.assertEqual(expected, result)
-
-    def test_convert_systems_to_fe_model_failure_none(self):
-        """Test conversion failure when systems is None."""
-
-        # Execute conversion and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.converter.convert_systems_to_fe_model,
-            None
-        )
-
-    def test_convert_systems_to_fe_model_failure_missing_members(self):
-        """Test conversion failure when members field is missing."""
-
-        # Configure response without members
-        be_systems = {}
-
-        # Execute conversion and expect exception
-        self.assertRaises(
-            exception.HPEAlletraB10000DriverException,
-            self.converter.convert_systems_to_fe_model,
-            be_systems
         )
 
     # convert_osinfo_to_fe_model()

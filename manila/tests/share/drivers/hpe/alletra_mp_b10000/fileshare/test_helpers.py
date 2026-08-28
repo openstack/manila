@@ -234,3 +234,90 @@ class TaskWaiterTestCase(test.TestCase):
         exc = self.assertRaises(exception.HPEAlletraB10000DriverException,
                                 self.task_waiter._wait_for_task)
         self.assertIn('id parameter', str(exc))
+
+
+@ddt.ddt
+class PollForResourceTestCase(test.TestCase):
+    """Test case for poll_for_resource function."""
+
+    def setUp(self):
+        super(PollForResourceTestCase, self).setUp()
+        # avoid real sleeps between retry attempts
+        patcher = mock.patch.object(
+            helpers, 'POLL_RESOURCE_LOOKUP_INTERVAL', 0)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_poll_for_resource_success_returns_resource(self):
+        """Test poll returns the resource when get_resource succeeds."""
+        expected = {'id': 'res-1', 'name': 'my_resource'}
+        get_resource = mock.Mock(return_value=expected)
+
+        result = helpers.poll_for_resource(get_resource, 'my resource')
+
+        self.assertEqual(expected, result)
+        get_resource.assert_called_once()
+
+    def test_poll_for_resource_retries_then_succeeds(self):
+        """Test poll retries on DriverException then returns resource."""
+        expected = {'id': 'res-1'}
+        get_resource = mock.Mock(side_effect=[
+            exception.HPEAlletraB10000DriverException(reason='not yet'),
+            expected
+        ])
+
+        result = helpers.poll_for_resource(get_resource, 'my resource')
+
+        self.assertEqual(expected, result)
+        self.assertEqual(2, get_resource.call_count)
+
+    def test_poll_for_resource_retries_exhausted_raises_exception(self):
+        """Test poll raises DriverException when retries are exhausted."""
+        self.mock_object(helpers, 'POLL_RESOURCE_LOOKUP_RETRIES', 3)
+        get_resource = mock.Mock(
+            side_effect=exception.HPEAlletraB10000DriverException(
+                reason='not yet'))
+
+        exc = self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            helpers.poll_for_resource,
+            get_resource, 'my resource')
+
+        self.assertIn('Timed out waiting for my resource', str(exc))
+        self.assertEqual(3, get_resource.call_count)
+
+    @ddt.data(None, {}, [])
+    def test_poll_for_resource_empty_result_keeps_polling(self, empty):
+        """Test poll retries when the lookup returns an empty result."""
+        expected = {'id': 'res-1'}
+        get_resource = mock.Mock(side_effect=[empty, expected])
+
+        result = helpers.poll_for_resource(get_resource, 'my resource')
+
+        self.assertEqual(expected, result)
+        self.assertEqual(2, get_resource.call_count)
+
+    @ddt.data(None, {}, [])
+    def test_poll_for_resource_always_empty_raises_exception(self, empty):
+        """Test poll never returns an empty result to the caller."""
+        self.mock_object(helpers, 'POLL_RESOURCE_LOOKUP_RETRIES', 3)
+        get_resource = mock.Mock(return_value=empty)
+
+        exc = self.assertRaises(
+            exception.HPEAlletraB10000DriverException,
+            helpers.poll_for_resource,
+            get_resource, 'my resource')
+
+        self.assertIn('Timed out waiting for my resource', str(exc))
+        self.assertEqual(3, get_resource.call_count)
+
+    def test_poll_for_resource_non_driver_exception_propagates(self):
+        """Test that non-DriverExceptions propagate immediately."""
+        get_resource = mock.Mock(side_effect=ValueError('unexpected'))
+
+        self.assertRaises(
+            ValueError,
+            helpers.poll_for_resource,
+            get_resource, 'my resource')
+
+        get_resource.assert_called_once()

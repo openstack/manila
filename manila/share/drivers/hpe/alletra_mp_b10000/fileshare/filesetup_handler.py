@@ -22,10 +22,54 @@ LOG = log.getLogger(__name__)
 
 
 class FileSetupHandler(object):
-    def __init__(self, rest_client, **kwargs):
+    def __init__(self, rest_client, feature_support_handler, **kwargs):
         self.rest_client = rest_client
-        self.validator = FileSetupValidator()
-        self.convert = FileSetupModelConvert()
+        self.feature_support_handler = feature_support_handler
+        self.validator = FileSetupValidator(self.feature_support_handler)
+        self.convert = FileSetupModelConvert(self.feature_support_handler)
+
+    @staticmethod
+    def get_device_version(rest_client):
+        """Fetch device version before feature_support_handler is available"""
+        status, be_systems = rest_client.get('/systems')
+
+        # Validate response
+        if be_systems is None:
+            msg = _("Received empty object from BE Systems Response")
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        if 'members' not in be_systems:
+            msg = _("BE Systems Response does not contain members field")
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        systems_dict = be_systems['members']
+        if len(systems_dict) == 0:
+            msg = _("BE Systems members field has no keys")
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+        elif len(systems_dict) > 1:
+            msg = _("BE Systems members field has more than 1 key")
+            LOG.error(msg)
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+        version = None
+        for key in systems_dict:
+            if 'version' not in systems_dict[key]:
+                msg = _("BE Systems Response members does not have "
+                        "version field")
+                LOG.error(msg)
+                raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+            if 'base' not in systems_dict[key]['version']:
+                msg = _("BE Systems version field does not have base field")
+                LOG.error(msg)
+                raise exception.HPEAlletraB10000DriverException(reason=msg)
+
+            version = systems_dict[key]['version']['base']
+
+        return version
 
     def get_fileservice(self):
         _, be_fileservice = self.rest_client.get('/fileservice')
@@ -36,15 +80,6 @@ class FileSetupHandler(object):
             be_fileservice)
 
         return fe_fileservice
-
-    def get_systems(self):
-        _, be_systems = self.rest_client.get('/systems')
-
-        self.validator.validate_get_systems_be_resp(be_systems)
-
-        fe_systems = self.convert.convert_systems_to_fe_model(be_systems)
-
-        return fe_systems
 
     def get_osinfo(self):
         _, be_osinfo = self.rest_client.get('/osinfo')
@@ -57,6 +92,9 @@ class FileSetupHandler(object):
 
 
 class FileSetupModelConvert(object):
+    def __init__(self, feature_support_handler, **kwargs):
+        self.feature_support_handler = feature_support_handler
+
     def convert_fileservice_to_fe_model(self, be_fileservice):
         fe_fileservice = {}
         if be_fileservice and 'members' in be_fileservice:
@@ -83,22 +121,6 @@ class FileSetupModelConvert(object):
         LOG.error(msg)
         raise exception.HPEAlletraB10000DriverException(reason=msg)
 
-    def convert_systems_to_fe_model(self, be_systems):
-        fe_systems = {}
-        if be_systems and 'members' in be_systems:
-            systems_dict = be_systems['members']
-            for key in systems_dict:
-                fe_systems['version'] = (
-                    systems_dict[key]['version']['base'])
-            return fe_systems
-
-        msg = _(
-            "Failure in converting be systems to fe model. "
-            "BE model %(be_model)s") % {
-            'be_model': repr(be_systems)}
-        LOG.error(msg)
-        raise exception.HPEAlletraB10000DriverException(reason=msg)
-
     def convert_osinfo_to_fe_model(self, be_osinfo):
         fe_osinfo = {}
         if be_osinfo and 'members' in be_osinfo:
@@ -117,6 +139,9 @@ class FileSetupModelConvert(object):
 
 
 class FileSetupValidator(object):
+    def __init__(self, feature_support_handler, **kwargs):
+        self.feature_support_handler = feature_support_handler
+
     def validate_get_fileservice_be_resp(self, be_fileservice):
         if be_fileservice is None:
             msg = _("Received empty object from BE Fileservice Response")
@@ -173,42 +198,6 @@ class FileSetupValidator(object):
                 msg = _(
                     "BE Fileservice Response members capacitySummary "
                     "does not have usedCapacity field")
-                LOG.error(msg)
-                raise exception.HPEAlletraB10000DriverException(reason=msg)
-
-    def validate_get_systems_be_resp(self, be_systems):
-        if be_systems is None:
-            msg = _(
-                "Received empty object from BE Systems Response")
-            LOG.error(msg)
-            raise exception.HPEAlletraB10000DriverException(reason=msg)
-
-        if 'members' not in be_systems:
-            msg = _("BE Systems Response does not contain members field")
-            LOG.error(msg)
-            raise exception.HPEAlletraB10000DriverException(reason=msg)
-
-        systems_dict = be_systems['members']
-        if len(systems_dict) == 0:
-            msg = _("BE Systems members field has no keys")
-            LOG.error(msg)
-            raise exception.HPEAlletraB10000DriverException(reason=msg)
-        elif len(systems_dict) > 1:
-            # Allowing to continue in case of multiple keys. We will only pick
-            # up first key
-            msg = _("BE Systems members field has more than 1 key")
-            LOG.error(msg)
-
-        for key in systems_dict:
-            if 'version' not in systems_dict[key]:
-                msg = _(
-                    "BE Systems Response members does not have "
-                    "version field")
-                LOG.error(msg)
-                raise exception.HPEAlletraB10000DriverException(reason=msg)
-
-            if 'base' not in systems_dict[key]['version']:
-                msg = _("BE Systems version field does not have base field")
                 LOG.error(msg)
                 raise exception.HPEAlletraB10000DriverException(reason=msg)
 

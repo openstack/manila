@@ -18,10 +18,12 @@ from oslo_service import loopingcall
 
 from manila import exception
 from manila.i18n import _
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
+# Task Helpers
 class TaskHelper(object):
 
     # Task States
@@ -88,3 +90,37 @@ class TaskWaiter(object):
         timer = loopingcall.FixedIntervalLoopingCall(self._wait_for_task)
         return timer.start(interval=self.interval,
                            initial_delay=self.initial_delay).wait()
+
+
+# Other helpers
+POLL_RESOURCE_LOOKUP_INTERVAL = 3
+POLL_RESOURCE_LOOKUP_RETRIES = 10
+
+
+def poll_for_resource(get_resource, resource_description):
+    """Poll a backend lookup until it succeeds or retries are exhausted.
+
+    Works around backend eventual consistency where a just-created
+    resource is not yet returned by the listing APIs.
+    """
+    @utils.retry(retry_param=exception.HPEAlletraB10000DriverException,
+                 interval=POLL_RESOURCE_LOOKUP_INTERVAL,
+                 retries=POLL_RESOURCE_LOOKUP_RETRIES,
+                 backoff_rate=1)
+    def _attempt():
+        resource = get_resource()
+        if not resource:
+            msg = _("Lookup for %(resource)s returned an empty "
+                    "result.") % {'resource': resource_description}
+            raise exception.HPEAlletraB10000DriverException(reason=msg)
+        return resource
+
+    try:
+        return _attempt()
+    except exception.HPEAlletraB10000DriverException:
+        msg = _("Timed out waiting for %(resource)s to become available "
+                "on the backend after %(retries)s attempts.") % {
+            'resource': resource_description,
+            'retries': POLL_RESOURCE_LOOKUP_RETRIES}
+        LOG.error(msg)
+        raise exception.HPEAlletraB10000DriverException(reason=msg)
