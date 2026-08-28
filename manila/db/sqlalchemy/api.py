@@ -2252,6 +2252,8 @@ def share_instance_get_all_by_share_group_id(context, share_group_id):
     instances = []
     for share in result:
         instance = share.instance
+        if instance is None:
+            continue
         instance.set_share_data(share)
         instances.append(instance)
 
