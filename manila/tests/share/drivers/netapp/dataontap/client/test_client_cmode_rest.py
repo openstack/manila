@@ -2376,6 +2376,161 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_send_request.assert_called_once_with(
             f'/storage/volumes/{uuid}/snapshots', 'post', body=body)
 
+    def test_create_cg(self):
+        cg_uuid = fake.FAKE_UUID
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock())
+        mock_get_uuid = self.mock_object(
+            self.client, '_get_cg_uuid',
+            mock.Mock(return_value=cg_uuid))
+
+        result = self.client.create_cg(
+            'fake_cg', list(fake.VOLUME_NAMES))
+
+        self.assertEqual(cg_uuid, result)
+        body = {
+            'name': 'fake_cg',
+            'svm': {'name': self.client.vserver},
+            'volumes': [
+                {'name': vol, 'provisioning_options': {'action': 'add'}}
+                for vol in fake.VOLUME_NAMES
+            ],
+        }
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups', 'post', body=body)
+        mock_get_uuid.assert_called_once_with('fake_cg')
+
+    def test__get_cg_uuid(self):
+        cg_uuid = fake.FAKE_UUID
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value={
+                'num_records': 1,
+                'records': [{'uuid': cg_uuid}],
+            }))
+
+        result = self.client._get_cg_uuid('fake_cg')
+
+        self.assertEqual(cg_uuid, result)
+        query = {
+            'name': 'fake_cg',
+            'svm.name': self.client.vserver,
+        }
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups', 'get', query=query)
+
+    def test__get_cg_uuid_not_found(self):
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value={'num_records': 0, 'records': []}))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client._get_cg_uuid,
+            'fake_cg')
+
+    def test_delete_cg(self):
+        cg_uuid = fake.FAKE_UUID
+        mock_send_request = self.mock_object(self.client, 'send_request')
+
+        self.client.delete_cg(cg_uuid)
+
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups/%s' % cg_uuid, 'delete')
+
+    def test_delete_cg_not_found(self):
+        cg_uuid = fake.FAKE_UUID
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EREST_ENTRY_NOT_FOUND))
+
+        # Should not raise when the CG is already gone.
+        self.client.delete_cg(cg_uuid)
+
+    def test_delete_cg_error(self):
+        cg_uuid = fake.FAKE_UUID
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code='fake'))
+
+        self.assertRaises(
+            netapp_api.api.NaApiError,
+            self.client.delete_cg, cg_uuid)
+
+    def test_add_volumes_to_cg(self):
+        cg_uuid = fake.FAKE_UUID
+        mock_send_request = self.mock_object(self.client, 'send_request')
+
+        self.client.add_volumes_to_cg(cg_uuid, list(fake.VOLUME_NAMES))
+
+        body = {
+            'volumes': [
+                {'name': vol, 'provisioning_options': {'action': 'add'}}
+                for vol in fake.VOLUME_NAMES
+            ],
+        }
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups/%s' % cg_uuid, 'patch',
+            body=body)
+
+    def test_add_volumes_to_cg_no_volumes(self):
+        cg_uuid = fake.FAKE_UUID
+        mock_send_request = self.mock_object(self.client, 'send_request')
+
+        self.client.add_volumes_to_cg(cg_uuid, [])
+
+        mock_send_request.assert_not_called()
+
+    def test_create_cg_snapshot(self):
+        cg_uuid = fake.FAKE_UUID
+        snap_uuid = 'fake_snap_uuid'
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=[
+                {},
+                {'num_records': 1, 'records': [{'uuid': snap_uuid}]},
+            ]))
+
+        result = self.client.create_cg_snapshot(cg_uuid, fake.SNAPSHOT_NAME)
+
+        self.assertEqual(snap_uuid, result)
+        mock_send_request.assert_has_calls([
+            mock.call(
+                '/application/consistency-groups/%s/snapshots' % cg_uuid,
+                'post', body={
+                    'name': fake.SNAPSHOT_NAME,
+                    'consistency_type': 'crash',
+                }),
+            mock.call(
+                '/application/consistency-groups/%s/snapshots' % cg_uuid,
+                'get', query={'name': fake.SNAPSHOT_NAME, 'fields': 'uuid'}),
+        ])
+
+    def test_delete_cg_snapshot(self):
+        cg_uuid = fake.FAKE_UUID
+        snap_uuid = 'fake_snap_uuid'
+        mock_send_request = self.mock_object(self.client, 'send_request')
+
+        self.client.delete_cg_snapshot(cg_uuid, snap_uuid)
+
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups/%s/snapshots/%s' % (
+                cg_uuid, snap_uuid), 'delete')
+
+    def test_delete_cg_snapshot_not_found(self):
+        cg_uuid = fake.FAKE_UUID
+        snap_uuid = 'fake_snap_uuid'
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EREST_ENTRY_NOT_FOUND))
+
+        self.client.delete_cg_snapshot(cg_uuid, snap_uuid)
+
+        mock_send_request.assert_called_once_with(
+            '/application/consistency-groups/%s/snapshots/%s' % (
+                cg_uuid, snap_uuid), 'delete')
+
     def test_is_flexgroup_supported(self):
         flexgroup_supported = self.client.is_flexgroup_supported()
 

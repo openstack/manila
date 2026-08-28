@@ -213,6 +213,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._client = None
         self._clients = {}
         self._backend_clients = {}
+        self._cg_rest_clients = {}
         self._ssc_stats = {}
         self._have_cluster_creds = None
         self._revert_to_snapshot_support = False
@@ -284,8 +285,8 @@ class NetAppCmodeFileStorageLibrary(object):
     def _get_vserver(self, share_server=None):
         raise NotImplementedError()
 
-    def _get_client(self, config, vserver=None):
-        if config.netapp_use_legacy_client:
+    def _get_client(self, config, vserver=None, force_rest=False):
+        if config.netapp_use_legacy_client and not force_rest:
             client = client_cmode.NetAppCmodeClient(
                 transport_type=config.netapp_transport_type,
                 ssl_cert_path=config.netapp_ssl_cert_path,
@@ -343,6 +344,74 @@ class NetAppCmodeFileStorageLibrary(object):
             client = self._get_client(config, vserver=vserver)
             self._backend_clients[key] = client
         return client
+
+    @na_utils.trace
+    def _get_rest_client_for_cg_operations(self, vserver_client, vserver=None):
+        """Return a REST client suitable for consistency group operations.
+
+        In REST mode the existing vserver_client is returned directly.
+        In ZAPI mode a parallel REST client is created (and cached) because
+        CG snapshot operations require the REST API on ONTAP >= 9.11.1.
+        Callers must verify ``vserver_client.features.CG_SNAPSHOT`` is True
+        before calling this method.
+        """
+        if isinstance(vserver_client, client_cmode_rest.NetAppRestClient):
+            return vserver_client
+        cg_client = self._cg_rest_clients.get(vserver)
+        if cg_client is None:
+            LOG.warning('netapp_use_legacy_client is True but ONTAP '
+                        '>= 9.11.1 was detected; consistency group '
+                        'operations will use REST.')
+            cg_client = self._get_client(
+                self.configuration, vserver=vserver, force_rest=True)
+            self._cg_rest_clients[vserver] = cg_client
+        return cg_client
+
+    @staticmethod
+    def _get_backend_cg_name():
+        """Generate a unique ONTAP consistency group name."""
+        return 'cg_share_' + str(int(timeutils.utcnow().timestamp() * 1e6))
+
+    def _get_or_create_cg_uuid(self, sg_id, volume_names, cg_client):
+        """Return the stored CG UUID or create and persist a new one."""
+        cg_uuid = self.private_storage.get(sg_id, 'cg_uuid')
+        if cg_uuid:
+            return cg_uuid
+        cg_name = self._get_backend_cg_name()
+        cg_uuid = cg_client.create_cg(cg_name, volume_names)
+        self.private_storage.update(sg_id, {'cg_uuid': cg_uuid})
+        return cg_uuid
+
+    def _add_share_to_group(self, share, sg_id, vserver_client,
+                            vserver=None, share_group_members=None):
+        """Add a share volume to the ONTAP consistency group for a group."""
+        if not vserver_client.features.CG_SNAPSHOT:
+            return
+
+        cg_client = self._get_rest_client_for_cg_operations(
+            vserver_client, vserver=vserver)
+        volume_name = self._get_backend_share_name(share['id'])
+        # Lock ensures concurrent share creations in the same group do not
+        # race to create duplicate ONTAP consistency groups.
+        with coordination.Lock(sg_id):
+            cg_uuid = self.private_storage.get(sg_id, 'cg_uuid')
+            if cg_uuid:
+                try:
+                    cg_client.add_volumes_to_cg(cg_uuid, [volume_name])
+                    return
+                except netapp_api.NaApiError as e:
+                    if e.code not in (rest_api.EREST_ENTRY_NOT_FOUND,
+                                      rest_api.EREST_CG_NOT_FOUND):
+                        raise
+                    LOG.warning('Consistency group %s no longer exists on '
+                                'ONTAP; clearing stale UUID and creating a '
+                                'new CG for share group %s.', cg_uuid, sg_id)
+                    self.private_storage.delete(sg_id, 'cg_uuid')
+            existing = [s for s in (share_group_members or [])
+                        if s['id'] != share['id']]
+            all_names = [self._get_backend_share_name(s['id'])
+                         for s in existing] + [volume_name]
+            self._get_or_create_cg_uuid(sg_id, all_names, cg_client)
 
     @na_utils.trace
     def _get_licenses(self):
@@ -882,6 +951,11 @@ class NetAppCmodeFileStorageLibrary(object):
         """Creates new share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         self._allocate_container(share, vserver, vserver_client)
+        if share.get('share_group_id'):
+            self._add_share_to_group(
+                share, share['share_group_id'], vserver_client,
+                vserver=vserver,
+                share_group_members=share.get('share_group_members', []))
         return self._create_export(share, share_server, vserver,
                                    vserver_client)
 
@@ -2961,9 +3035,53 @@ class NetAppCmodeFileStorageLibrary(object):
                        snap_dict.get('share_group_snapshot_members', [])]
         snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
 
-        if share_names:
-            LOG.debug('Creating CG snapshot %s.', snapshot_name)
+        if not share_names:
+            return None, None
+
+        # ONTAP < 9.11.1: fall back to ZAPI.
+        if not vserver_client.features.CG_SNAPSHOT:
+            LOG.debug('Creating CG snapshot %s via ZAPI.', snapshot_name)
             vserver_client.create_cg_snapshot(share_names, snapshot_name)
+            return None, None
+
+        cg_client = self._get_rest_client_for_cg_operations(
+            vserver_client, vserver)
+
+        # ONTAP >= 9.11.1: use a persistent REST consistency group.
+        LOG.debug('Creating CG snapshot %s via REST.', snapshot_name)
+        share_group_id = snap_dict['share_group']['id']
+
+        with coordination.Lock(share_group_id):
+            cg_uuid = self.private_storage.get(share_group_id, 'cg_uuid')
+            cg_volumes = set()
+
+            if cg_uuid:
+                try:
+                    cg_volumes = cg_client.get_cg_volume_names(cg_uuid)
+                except netapp_api.NaApiError as e:
+                    if e.code == rest_api.EREST_ENTRY_NOT_FOUND:
+                        # Stored CG no longer exists on the backend;
+                        # recreate it.
+                        cg_uuid = None
+                    else:
+                        raise
+
+            if cg_uuid:
+                # Add any shares that joined the group after the CG
+                # was created.
+                missing = [name for name in share_names
+                           if name not in cg_volumes]
+                if missing:
+                    cg_client.add_volumes_to_cg(cg_uuid, missing)
+            else:
+                cg_name = self._get_backend_cg_name()
+                cg_uuid = cg_client.create_cg(cg_name, share_names)
+                self.private_storage.update(
+                    share_group_id, {'cg_uuid': cg_uuid})
+
+        snapshot_uuid = cg_client.create_cg_snapshot(cg_uuid, snapshot_name)
+        self.private_storage.update(
+            snap_dict['id'], {'cg_snapshot_uuid': snapshot_uuid})
 
         return None, None
 
@@ -2982,10 +3100,32 @@ class NetAppCmodeFileStorageLibrary(object):
                         {'snap': snap_dict['id'], 'error': error})
             return None, None
 
+        snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
         share_names = [self._get_backend_share_name(member['share_id'])
                        for member in (
                            snap_dict.get('share_group_snapshot_members', []))]
-        snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
+
+        if not share_names:
+            return None, None
+
+        # ONTAP >= 9.11.1: delete the REST consistency group snapshot by UUID.
+        if vserver_client.features.CG_SNAPSHOT:
+            cg_client = self._get_rest_client_for_cg_operations(
+                vserver_client, vserver)
+            cg_uuid = self.private_storage.get(
+                snap_dict['share_group']['id'], 'cg_uuid')
+            snapshot_uuid = self.private_storage.get(
+                snap_dict['id'], 'cg_snapshot_uuid')
+            if cg_uuid and snapshot_uuid:
+                cg_client.delete_cg_snapshot(cg_uuid, snapshot_uuid)
+                self.private_storage.delete(
+                    snap_dict['id'], 'cg_snapshot_uuid')
+                return None, None
+            # Fall through to per-volume deletion for pre-upgrade snapshots
+            # or when the CG snapshot UUID was not persisted.
+            LOG.debug('CG snapshot UUID not found in private storage for '
+                      'snapshot %s; falling back to per-volume deletion.',
+                      snap_dict['id'])
 
         for share_name in share_names:
             try:
@@ -3038,6 +3178,41 @@ class NetAppCmodeFileStorageLibrary(object):
         else:
             return fallback_create(context, share_group, snapshot_dict,
                                    share_server=share_server)
+
+    @na_utils.trace
+    def delete_share_group(self, context, share_group_dict,
+                           share_server=None):
+        """Delete a share group, removing the ONTAP CG object if present."""
+        cg_uuid = self.private_storage.get(share_group_dict['id'], 'cg_uuid')
+        if not cg_uuid:
+            return None
+
+        try:
+            vserver, vserver_client = self._get_vserver(
+                share_server=share_server)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning("Could not determine share server for share group "
+                        "being deleted: %(group)s. Deletion will proceed "
+                        "anyway. Error: %(error)s",
+                        {'group': share_group_dict['id'], 'error': error})
+            return None
+
+        if vserver_client.features.CG_SNAPSHOT:
+            cg_client = self._get_rest_client_for_cg_operations(
+                vserver_client, vserver=vserver)
+            try:
+                cg_client.delete_cg(cg_uuid)
+            except netapp_api.NaApiError:
+                LOG.exception('Failed to delete consistency group %(cg)s '
+                              'for share group %(sg)s. The CG may need '
+                              'manual cleanup on the backend.',
+                              {'cg': cg_uuid,
+                               'sg': share_group_dict['id']})
+                raise
+            self.private_storage.delete(share_group_dict['id'])
+        return None
 
     @na_utils.trace
     def _adjust_qos_policy_with_volume_resize(self, share, new_size,

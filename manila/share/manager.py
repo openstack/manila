@@ -2342,6 +2342,10 @@ class ShareManager(manager.SchedulerDependentManager):
 
         status = constants.STATUS_AVAILABLE
         try:
+            if share_instance.get('share_group_id'):
+                share_instance['share_group_members'] = (
+                    self.db.share_instance_get_all_by_share_group_id(
+                        context, share_instance['share_group_id']))
             if snapshot_ref:
                 # NOTE(dviroel): we need to provide the parent share info to
                 # assist drivers that create shares from snapshot in different

@@ -123,6 +123,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                   supported=ontap_9_12_1)
         self.features.add_feature('NAE_SUPPORT', supported=ontap_9_6)
         self.features.add_feature('VOLUME_TAGS', supported=ontap_9_14_1)
+        self.features.add_feature('CG_SNAPSHOT', supported=ontap_9_11_1)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
