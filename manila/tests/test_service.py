@@ -322,6 +322,15 @@ class ServiceTestCase(test.TestCase):
                     mock.ANY, service_ref_stopped['id'])
 
 
+@unittest.skipIf(
+    monkey_patch.is_patched(),
+    'Only runs under the threading backend')
+class TestWSGIServiceThreadingGuard(test.TestCase):
+
+    def test_wsgi_service_refuses_threading_backend(self):
+        self.assertRaises(RuntimeError, service.WSGIService, 'osapi_share')
+
+
 @unittest.skipUnless(
     monkey_patch.is_patched(),
     'WSGIService is not compatible with the threading backend')

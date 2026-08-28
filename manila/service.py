@@ -25,7 +25,6 @@ from oslo_config import cfg
 from oslo_log import log
 import oslo_messaging as messaging
 from oslo_service import service
-from oslo_service import wsgi
 from oslo_utils import importutils
 
 from manila import context
@@ -351,6 +350,15 @@ class WSGIService(service.ServiceBase):
         :returns: None
 
         """
+        from manila import monkey_patch
+        if not monkey_patch.is_patched():
+            raise RuntimeError(
+                "The built-in WSGI server requires the eventlet backend. "
+                "Deploy manila-api with an external WSGI server (uWSGI, "
+                "gunicorn, or Apache mod_wsgi) instead."
+            )
+        from oslo_service import wsgi
+
         self.name = name
         self.manager = self._get_manager()
         self.loader = loader or wsgi.Loader(CONF)
