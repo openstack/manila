@@ -86,6 +86,7 @@ import manila.share.drivers.quobyte.quobyte
 import manila.share.drivers.service_instance
 import manila.share.drivers.tegile.tegile
 import manila.share.drivers.vastdata.driver
+import manila.share.drivers.weka.config
 import manila.share.drivers.windows.service_instance
 import manila.share.drivers.windows.winrm_helper
 import manila.share.drivers.zfsonlinux.driver
@@ -193,6 +194,7 @@ _global_opt_lists = [
     manila.share.drivers.service_instance.no_share_servers_handling_mode_opts,
     manila.share.drivers.service_instance.share_servers_handling_mode_opts,
     manila.share.drivers.tegile.tegile.tegile_opts,
+    manila.share.drivers.weka.config.weka_opts,
     manila.share.drivers.windows.service_instance.windows_share_server_opts,
     manila.share.drivers.windows.winrm_helper.winrm_opts,
     manila.share.drivers.zfsonlinux.driver.zfsonlinux_opts,
