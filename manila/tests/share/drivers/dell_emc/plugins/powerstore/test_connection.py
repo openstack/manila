@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Dell Inc. or its subsidiaries.
+# Copyright (c) 2026 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -740,10 +740,11 @@ class PowerStoreTest(test.TestCase):
             "name": self.SNAPSHOT_NAME,
             "share_name": self.SHARE_NAME
         }
-        self.storage_connection.create_snapshot(
+        result = self.storage_connection.create_snapshot(
             self.mock_context, snapshot, None
         )
 
+        self.assertEqual(self.SNAPSHOT_NAME, result['provider_location'])
         self._mock_powerstore_client.get_filesystem_id. \
             assert_called_with(
                 self.SHARE_NAME
@@ -1458,10 +1459,11 @@ class PowerStoreTest(test.TestCase):
             self.SNAPSHOT_ID
         )
 
-        self.storage_connection.create_snapshot(
+        result = self.storage_connection.create_snapshot(
             self.mock_context, snapshot, None
         )
 
+        self.assertEqual(self.SNAPSHOT_NAME, result['provider_location'])
         self._mock_powerstore_client.get_filesystem_id.assert_called_with(
             backend_name
         )
@@ -1590,10 +1592,11 @@ class PowerStoreTest(test.TestCase):
             self.SNAPSHOT_ID
         )
 
-        self.storage_connection.create_snapshot(
+        result = self.storage_connection.create_snapshot(
             self.mock_context, snapshot, None
         )
 
+        self.assertEqual(self.SNAPSHOT_NAME, result['provider_location'])
         self._mock_powerstore_client.get_fsid_from_export_name.\
             assert_called_with(backend_name)
         self._mock_powerstore_client.create_snapshot.assert_called_with(
@@ -1781,4 +1784,494 @@ class PowerStoreTest(test.TestCase):
             exception.ShareBackendException,
             self.storage_connection.extend_share,
             share, self.SHARE_NEW_SIZE_GB, None
+        )
+
+    def test_manage_existing_snapshot_success(self):
+        """Successfully manage an existing snapshot."""
+        backend_snap_name = "backend_snap_001"
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share": share,
+        }
+
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+            "size_total": self.SHARE_SIZE_GB * units.Gi,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot, driver_options={}
+        )
+
+        self.assertEqual(self.SHARE_SIZE_GB, result['size'])
+        self.assertEqual(backend_snap_name, result['provider_location'])
+        self._mock_powerstore_client.get_snapshot_filesystem.\
+            assert_called_with(backend_snap_name)
+
+    def test_manage_existing_snapshot_with_driver_options_size(self):
+        """Backend size takes precedence over driver_options size."""
+        backend_snap_name = "backend_snap_001"
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share": share,
+        }
+
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+            "size_total": self.SHARE_SIZE_GB * units.Gi,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot, driver_options={"size": "10"}
+        )
+
+        self.assertEqual(self.SHARE_SIZE_GB, result['size'])
+
+    def test_manage_existing_snapshot_no_provider_location(self):
+        """Fails when provider_location is not provided."""
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options={},
+        )
+
+    def test_manage_existing_snapshot_not_found(self):
+        """Fails when snapshot is not found on the backend."""
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "missing_snap",
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = (
+            None
+        )
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options={},
+        )
+
+    def test_manage_existing_snapshot_not_a_snapshot(self):
+        """Fails when the filesystem has no parent (not a snapshot)."""
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "regular_filesystem",
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.FILESYSTEM_ID,
+            "parent_id": None,
+            "size_total": self.SHARE_SIZE_GB * units.Gi,
+        }
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options={},
+        )
+
+    def test_manage_existing_snapshot_parent_mismatch(self):
+        """Fails when snapshot's parent doesn't match the share."""
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "snap_wrong_parent",
+            "share": share,
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": "wrong-parent-id",
+            "size_total": self.SHARE_SIZE_GB * units.Gi,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options={},
+        )
+
+    def test_manage_existing_snapshot_invalid_size(self):
+        """Backend size_total takes precedence; invalid driver ignored."""
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "backend_snap",
+            "share": share,
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+            "size_total": self.SHARE_SIZE_GB * units.Gi,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot,
+            driver_options={"size": "abc"},
+        )
+
+        self.assertEqual(self.SHARE_SIZE_GB, result['size'])
+        self.assertEqual("backend_snap", result['provider_location'])
+
+    def test_manage_existing_snapshot_invalid_size_no_backend_size(self):
+        """Fails when driver_options size is invalid AND no backend size."""
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "backend_snap",
+            "share": share,
+        }
+        # Backend has NO size_total
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        self.assertRaises(
+            exception.ManageInvalidShareSnapshot,
+            self.storage_connection.manage_existing_snapshot,
+            snapshot,
+            driver_options={"size": "invalid"},
+        )
+
+    def test_manage_existing_snapshot_size_from_backend(self):
+        """Uses backend-reported size when no size in driver_options."""
+        backend_snap_name = "backend_snap_001"
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": 5,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share": share,
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+            "size_total": 5 * units.Gi,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot, driver_options={}
+        )
+
+        self.assertEqual(5, result['size'])
+
+    def test_manage_existing_snapshot_size_not_available(self):
+        """Returns 0 when backend doesn't provide size_total and no user size.
+
+        The Manila manager framework will fall back to using the parent share's
+        size.
+        """
+        backend_snap_name = "backend_snap_001"
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": 5,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share": share,
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot,
+            driver_options={}
+        )
+
+        self.assertEqual(0, result['size'])
+        self.assertEqual(backend_snap_name, result['provider_location'])
+
+    def test_manage_existing_snapshot_user_size_as_fallback(self):
+        """Uses driver_options size when backend doesn't provide size_total."""
+        backend_snap_name = "backend_snap_001"
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": 5,
+        }
+        snapshot = {
+            "id": "fake-snap-id",
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share": share,
+        }
+        self._mock_powerstore_client.get_snapshot_filesystem.return_value = {
+            "id": self.SNAPSHOT_ID,
+            "parent_id": self.FILESYSTEM_ID,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.FILESYSTEM_ID
+        )
+
+        result = self.storage_connection.manage_existing_snapshot(
+            snapshot,
+            driver_options={"size": "15"}
+        )
+
+        self.assertEqual(15, result['size'])
+        self.assertEqual(backend_snap_name, result['provider_location'])
+
+    def test_get_snapshot_filesystem_id_uses_provider_location(self):
+        """Uses provider_location to resolve snapshot filesystem ID."""
+        backend_snap_name = "backend_snap"
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+
+        result = self.storage_connection._get_snapshot_filesystem_id(snapshot)
+
+        self.assertEqual(self.SNAPSHOT_ID, result)
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_snap_name
+        )
+
+    def test_get_snapshot_filesystem_id_fallback_to_name(self):
+        """Falls back to snapshot name when provider_location not found."""
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+
+        result = self.storage_connection._get_snapshot_filesystem_id(snapshot)
+
+        self.assertEqual(self.SNAPSHOT_ID, result)
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            self.SNAPSHOT_NAME
+        )
+
+    def test_get_snapshot_filesystem_id_provider_location_not_found(self):
+        """Falls back to name when provider_location lookup returns None."""
+        backend_snap_name = "stale_backend_name"
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+        }
+        self._mock_powerstore_client.get_filesystem_id.side_effect = [
+            None,
+            self.SNAPSHOT_ID,
+        ]
+
+        result = self.storage_connection._get_snapshot_filesystem_id(snapshot)
+
+        self.assertEqual(self.SNAPSHOT_ID, result)
+        calls = self._mock_powerstore_client.get_filesystem_id.call_args_list
+        self.assertEqual(mock.call(backend_snap_name), calls[0])
+        self.assertEqual(mock.call(self.SNAPSHOT_NAME), calls[1])
+
+    def test_delete_managed_snapshot(self):
+        """Delete uses provider_location to find backend snapshot."""
+        backend_snap_name = "backend_snap"
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share_name": self.SHARE_NAME,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+        self._mock_powerstore_client.delete_filesystem.return_value = True
+
+        self.storage_connection.delete_snapshot(
+            self.mock_context, snapshot, None
+        )
+
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_snap_name
+        )
+        self._mock_powerstore_client.delete_filesystem.assert_called_with(
+            self.SNAPSHOT_ID
+        )
+
+    def test_revert_managed_snapshot(self):
+        """Revert uses provider_location to find backend snapshot."""
+        backend_snap_name = "backend_snap"
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "share_name": self.SHARE_NAME,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+        self._mock_powerstore_client.restore_snapshot.return_value = True
+
+        self.storage_connection.revert_to_snapshot(
+            self.mock_context, snapshot, None, None, None
+        )
+
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_snap_name
+        )
+        self._mock_powerstore_client.restore_snapshot.assert_called_with(
+            self.SNAPSHOT_ID
+        )
+
+    def test_create_share_from_managed_snapshot(self):
+        """Create share from snapshot uses provider_location."""
+        backend_snap_name = "backend_snap"
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": backend_snap_name,
+            "size": self.SHARE_SIZE_GB,
+        }
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = (
+            self.SNAPSHOT_ID
+        )
+        self._mock_powerstore_client.clone_snapshot.return_value = (
+            self.CLONE_ID
+        )
+        self._mock_powerstore_client.get_nas_server_id.return_value = (
+            self.NAS_SERVER_ID
+        )
+        self._mock_powerstore_client.create_nfs_export.return_value = (
+            self.NFS_EXPORT_ID
+        )
+        self._mock_powerstore_client.get_nas_server_interfaces.return_value = (
+            [{"ip": self.NAS_SERVER_IP, "preferred": True}]
+        )
+
+        locations = self.storage_connection.create_share_from_snapshot(
+            self.mock_context, share, snapshot
+        )
+
+        self._mock_powerstore_client.get_filesystem_id.assert_called_with(
+            backend_snap_name
+        )
+        self._mock_powerstore_client.clone_snapshot.assert_called_with(
+            self.SNAPSHOT_ID, self.SHARE_NAME
+        )
+        expected_locations = [
+            {"path": "%s:/%s" % (self.NAS_SERVER_IP, self.SHARE_NAME),
+             "metadata": {"preferred": True}}
+        ]
+        self.assertEqual(expected_locations, locations)
+
+    def test_delete_snapshot_not_found_on_backend(self):
+        """Delete should succeed silently if snapshot not on backend."""
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "gone_snap",
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+
+        self.storage_connection.delete_snapshot(
+            self.mock_context, snapshot, None
+        )
+
+        self._mock_powerstore_client.delete_filesystem.assert_not_called()
+
+    def test_revert_snapshot_not_found_on_backend(self):
+        """Revert should raise if snapshot not found on backend."""
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "gone_snap",
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.revert_to_snapshot,
+            self.mock_context, snapshot, None, None, None
+        )
+
+    def test_create_share_from_snapshot_not_found_on_backend(self):
+        """Create from snapshot should raise if snapshot not on backend."""
+        snapshot = {
+            "name": self.SNAPSHOT_NAME,
+            "provider_location": "gone_snap",
+            "size": self.SHARE_SIZE_GB,
+        }
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": "NFS",
+            "size": self.SHARE_SIZE_GB,
+        }
+        self._mock_powerstore_client.get_filesystem_id.return_value = None
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_share_from_snapshot,
+            self.mock_context, share, snapshot
         )

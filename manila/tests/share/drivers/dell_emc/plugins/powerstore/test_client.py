@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Dell Inc. or its subsidiaries.
+# Copyright (c) 2026 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -676,6 +676,49 @@ class TestClient(test.TestCase):
                 self._mock_url, name
             )
         m.get(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_get_snapshot_filesystem(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_snapshot_filesystem_response(
+            m, self.SNAPSHOT_NAME,
+            self._getJsonFile("get_snapshot_filesystem_response.json")
+        )
+        result = self.client.get_snapshot_filesystem(self.SNAPSHOT_NAME)
+        self.assertEqual(result['id'], self.SNAPSHOT_ID)
+        self.assertEqual(result['parent_id'], self.FILESYSTEM_ID)
+        self.assertEqual(result['size_total'], self.NFS_EXPORT_SIZE)
+
+    def _add_get_snapshot_filesystem_response(self, m, name, json_str):
+        url = ("{0}/file_system?name=eq.{1}"
+               "&select=id,parent_id,size_total".format(
+                   self._mock_url, name))
+        m.get(url, status_code=200, json=json_str)
+
+    @requests_mock.mock()
+    def test_get_snapshot_filesystem_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_snapshot_filesystem_response_failure(
+            m, self.SNAPSHOT_NAME
+        )
+        result = self.client.get_snapshot_filesystem(self.SNAPSHOT_NAME)
+        self.assertIsNone(result)
+
+    def _add_get_snapshot_filesystem_response_failure(self, m, name):
+        url = ("{0}/file_system?name=eq.{1}"
+               "&select=id,parent_id,size_total".format(
+                   self._mock_url, name))
+        m.get(url, status_code=400)
+
+    @requests_mock.mock()
+    def test_get_snapshot_filesystem_empty_response(self, m):
+        self.assertEqual(0, len(m.request_history))
+        url = ("{0}/file_system?name=eq.{1}"
+               "&select=id,parent_id,size_total".format(
+                   self._mock_url, self.SNAPSHOT_NAME))
+        m.get(url, status_code=200, json=[])
+        result = self.client.get_snapshot_filesystem(self.SNAPSHOT_NAME)
+        self.assertIsNone(result)
 
     @requests_mock.mock()
     def test_set_acl(self, m):

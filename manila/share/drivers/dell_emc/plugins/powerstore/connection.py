@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Dell Inc. or its subsidiaries.
+# Copyright (c) 2026 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -31,8 +31,9 @@ from manila.share.drivers.dell_emc.plugins.powerstore import client
 """Version history:
     1.0 - Initial version
     1.1 - Add support for manage/unmanage share
+    1.2 - Add support for manage/unmanage snapshot
 """
-VERSION = "1.1"
+VERSION = "1.2"
 
 CONF = cfg.CONF
 
@@ -85,6 +86,7 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         self.revert_to_snap_support = True
         self.shrink_share_support = True
         self.manage_existing_support = True
+        self.manage_existing_snapshot_support = True
 
         # props from super class
         self.driver_handles_share_servers = False
@@ -421,6 +423,72 @@ class PowerStoreStorageConnection(driver.StorageConnection):
 
         return {'size': size_gb, 'export_locations': locations}
 
+    def _get_snapshot_filesystem_id(self, snapshot):
+        """Resolve the PowerStore filesystem ID for a snapshot."""
+        provider_location = snapshot.get('provider_location')
+        if provider_location:
+            filesystem_id = self.client.get_filesystem_id(provider_location)
+            if filesystem_id:
+                return filesystem_id
+        return self.client.get_filesystem_id(snapshot['name'])
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Brings an existing snapshot under Manila management."""
+        provider_location = snapshot.get('provider_location')
+        if not provider_location:
+            raise exception.ManageInvalidShareSnapshot(
+                reason=_("provider_location is required to manage a "
+                         "snapshot."))
+
+        LOG.info("Managing existing snapshot with provider_location: "
+                 "%(provider_location)s.",
+                 {'provider_location': provider_location})
+
+        snap_details = self.client.get_snapshot_filesystem(provider_location)
+        if not snap_details:
+            raise exception.ManageInvalidShareSnapshot(
+                reason=(_("Snapshot '%(name)s' was not found on the "
+                          "PowerStore backend.") %
+                        {'name': provider_location}))
+
+        parent_id = snap_details.get('parent_id')
+        if not parent_id:
+            raise exception.ManageInvalidShareSnapshot(
+                reason=(_("'%(name)s' is not a snapshot on the "
+                          "PowerStore backend.") %
+                        {'name': provider_location}))
+
+        share = snapshot.get('share')
+        if share:
+            share_filesystem_id = self._get_filesystem_id(share)
+            if share_filesystem_id and parent_id != share_filesystem_id:
+                raise exception.ManageInvalidShareSnapshot(
+                    reason=(_("Snapshot '%(snap)s' does not belong to "
+                              "share '%(share)s'.") %
+                            {'snap': provider_location,
+                             'share': share.get('name', '')}))
+
+        backend_size_bytes = snap_details.get('size_total')
+        if backend_size_bytes is not None:
+            snapshot_size = backend_size_bytes // units.Gi
+        else:
+            try:
+                snapshot_size = int(driver_options.get("size", 0))
+            except (ValueError, TypeError):
+                msg = _("The size in driver options to manage snapshot "
+                        "%(snap_id)s should be an integer, in format "
+                        "driver-options size=<SIZE>. Value passed: "
+                        "%(size)s.") % {'snap_id': snapshot['id'],
+                                        'size': driver_options.get("size")}
+                raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        LOG.info("Snapshot %(provider_location)s in PowerStore will be "
+                 "managed with ID %(snapshot_id)s.",
+                 {'provider_location': provider_location,
+                  'snapshot_id': snapshot['id']})
+
+        return {"size": snapshot_size, "provider_location": provider_location}
+
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
         raise NotImplementedError()
@@ -570,15 +638,21 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                 {'snapshot': snapshot_name})
             LOG.error(message)
             raise exception.ShareBackendException(msg=message)
-        else:
-            LOG.info("Snapshot %(snapshot)s successfully created.",
-                     {'snapshot': snapshot_name})
+
+        LOG.info("Snapshot %(snapshot)s successfully created.",
+                 {'snapshot': snapshot_name})
+        return {'provider_location': snapshot_name}
 
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to delete snapshot."""
-        snapshot_name = snapshot['name']
+        snapshot_name = snapshot.get('provider_location') or snapshot['name']
         LOG.debug(f'Retrieving filesystem ID for snapshot {snapshot_name}')
-        filesystem_id = self.client.get_filesystem_id(snapshot_name)
+        filesystem_id = self._get_snapshot_filesystem_id(snapshot)
+        if not filesystem_id:
+            LOG.warning("Snapshot '%(snapshot)s' was not found on the "
+                        "PowerStore backend. Skipping deletion.",
+                        {'snapshot': snapshot_name})
+            return
         LOG.debug(f'Deleting filesystem ID {filesystem_id}')
         snapshot_deleted = self.client.delete_filesystem(filesystem_id)
         if not snapshot_deleted:
@@ -594,8 +668,15 @@ class PowerStoreStorageConnection(driver.StorageConnection):
     def revert_to_snapshot(self, context, snapshot, share_access_rules,
                            snapshot_access_rules, share_server=None):
         """Reverts a share (in place) to the specified snapshot."""
-        snapshot_name = snapshot['name']
-        snapshot_id = self.client.get_filesystem_id(snapshot_name)
+        snapshot_name = snapshot.get('provider_location') or snapshot['name']
+        snapshot_id = self._get_snapshot_filesystem_id(snapshot)
+        if not snapshot_id:
+            message = (
+                _('Snapshot "%(snapshot)s" was not found on the '
+                  'PowerStore backend.') %
+                {'snapshot': snapshot_name})
+            LOG.error(message)
+            raise exception.ShareBackendException(msg=message)
         snapshot_restored = self.client.restore_snapshot(snapshot_id)
         if not snapshot_restored:
             message = (
@@ -620,8 +701,16 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         return locations
 
     def _create_share_from_snapshot(self, share, snapshot):
-        LOG.debug(f"Retrieving snapshot id of snapshot {snapshot['name']}")
-        snapshot_id = self.client.get_filesystem_id(snapshot['name'])
+        snap_name = snapshot.get('provider_location') or snapshot['name']
+        LOG.debug(f"Retrieving snapshot id of snapshot {snap_name}")
+        snapshot_id = self._get_snapshot_filesystem_id(snapshot)
+        if not snapshot_id:
+            message = (
+                _('Snapshot "%(snapshot)s" was not found on the '
+                  'PowerStore backend.') %
+                {'snapshot': snap_name})
+            LOG.error(message)
+            raise exception.ShareBackendException(msg=message)
         share_name = share['name']
         LOG.debug(
             f"Cloning filesystem {share_name} from snapshot {snapshot_id}"
