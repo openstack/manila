@@ -16,6 +16,8 @@
 """
 PowerStore specific NAS backend plugin.
 """
+import math
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
@@ -28,8 +30,9 @@ from manila.share.drivers.dell_emc.plugins.powerstore import client
 
 """Version history:
     1.0 - Initial version
+    1.1 - Add support for manage/unmanage share
 """
-VERSION = "1.0"
+VERSION = "1.1"
 
 CONF = cfg.CONF
 
@@ -81,6 +84,7 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         self.ipv6_implemented = True
         self.revert_to_snap_support = True
         self.shrink_share_support = True
+        self.manage_existing_support = True
 
         # props from super class
         self.driver_handles_share_servers = False
@@ -233,6 +237,65 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                  })
         return export_locations
 
+    @staticmethod
+    def _parse_share_name_from_path(path, protocol):
+        """Parse the backend share name from an export path string."""
+        if protocol == 'NFS' and ':/' in path:
+            return path.rsplit(':/', 1)[-1].strip('/')
+        elif protocol == 'CIFS' and '\\' in path:
+            return path.split('\\')[-1]
+        return ''
+
+    def _get_export_path(self, share):
+        """Extract the export path string from a share."""
+        export_locations = share.get('export_locations')
+        if export_locations:
+            el = export_locations[0]
+            if isinstance(el, dict):
+                return el.get('path', '')
+            elif hasattr(el, 'path'):
+                return el['path']
+            else:
+                return str(el)
+        return share.get('export_location', '')
+
+    def _get_backend_share_name(self, share):
+        """Get the backend resource name for a share."""
+        try:
+            path = self._get_export_path(share)
+            if path:
+                protocol = share.get('share_proto', '').upper()
+                name = self._parse_share_name_from_path(path, protocol)
+                if name:
+                    return name
+        except Exception:
+            LOG.debug("Failed to parse backend share name from export "
+                      "locations for share '%(name)s', falling back "
+                      "to share name.",
+                      {'name': share.get('name', '')})
+        return share.get('name', '')
+
+    def _get_filesystem_id(self, share):
+        """Resolve the PowerStore filesystem ID for a share."""
+        backend_name = self._get_backend_share_name(share)
+        protocol = share.get('share_proto', '').upper()
+
+        filesystem_id = self.client.get_filesystem_id(backend_name)
+        if filesystem_id:
+            return filesystem_id
+
+        LOG.debug("Filesystem not found by name '%(name)s', trying "
+                  "%(proto)s export/share lookup.",
+                  {'name': backend_name, 'proto': protocol})
+        if protocol == 'NFS':
+            filesystem_id = self.client.get_fsid_from_export_name(
+                backend_name)
+        elif protocol == 'CIFS':
+            filesystem_id = self.client.get_fsid_from_share_name(
+                backend_name)
+
+        return filesystem_id
+
     def delete_share(self, context, share, share_server):
         """Is called to delete a share."""
         LOG.debug(f'Deleting {share["share_proto"]} share.')
@@ -240,8 +303,9 @@ class PowerStoreStorageConnection(driver.StorageConnection):
 
     def _delete_share(self, share):
         """Deletes a filesystem and its associated export."""
-        LOG.debug(f"Retrieving filesystem ID for filesystem {share['name']}")
-        filesystem_id = self.client.get_filesystem_id(share['name'])
+        backend_name = self._get_backend_share_name(share)
+        LOG.debug(f"Retrieving filesystem ID for filesystem {backend_name}")
+        filesystem_id = self._get_filesystem_id(share)
         if not filesystem_id:
             LOG.warning(
                 f'Filesystem with share name {share["name"]} is not found.')
@@ -270,7 +334,12 @@ class PowerStoreStorageConnection(driver.StorageConnection):
 
         # Converts the size from GiB to Bytes
         new_size_in_bytes = new_size * units.Gi
-        filesystem_id = self.client.get_filesystem_id(share['name'])
+        filesystem_id = self._get_filesystem_id(share)
+        if not filesystem_id:
+            message = (_('Failed to find filesystem for share "%(share)s".') %
+                       {'share': share['name']})
+            LOG.error(message)
+            raise exception.ShareBackendException(msg=message)
         is_success, detail = self.client.resize_filesystem(filesystem_id,
                                                            new_size_in_bytes)
         if not is_success:
@@ -281,6 +350,76 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                 raise exception.ShareShrinkingPossibleDataLoss(
                     share_id=share['id'])
             raise exception.ShareBackendException(msg=message)
+
+    def manage_existing(self, share, driver_options):
+        """Brings an existing share under Manila management."""
+        export_path = self._get_export_path(share)
+        if not export_path:
+            raise exception.ManageInvalidShare(
+                reason=_("Export path is empty. Cannot manage share "
+                         "without an export path."))
+
+        protocol = share['share_proto'].upper()
+        LOG.info("Managing existing %(proto)s share with export path: "
+                 "%(path)s.",
+                 {'proto': protocol, 'path': export_path})
+
+        original_name = self._parse_share_name_from_path(
+            export_path, protocol)
+        if not original_name:
+            raise exception.ManageInvalidShare(
+                reason=(_("Unable to parse share name from export "
+                          "path '%(path)s'.") %
+                        {'path': export_path}))
+
+        if protocol == 'NFS':
+            export_id = self.client.get_nfs_export_id(original_name)
+            if not export_id:
+                raise exception.ManageInvalidShare(
+                    reason=(_("NFS export '%(name)s' was not found on "
+                              "the PowerStore backend.") %
+                            {'name': original_name}))
+            filesystem_id = self.client.get_fsid_from_export_name(
+                original_name)
+        elif protocol == 'CIFS':
+            smb_share_id = self.client.get_smb_share_id(original_name)
+            if not smb_share_id:
+                raise exception.ManageInvalidShare(
+                    reason=(_("SMB share '%(name)s' was not found on "
+                              "the PowerStore backend.") %
+                            {'name': original_name}))
+            filesystem_id = self.client.get_fsid_from_share_name(
+                original_name)
+        else:
+            raise exception.ManageInvalidShare(
+                reason=(_("Unsupported share protocol: %s.") % protocol))
+
+        if not filesystem_id:
+            raise exception.ManageInvalidShare(
+                reason=(_("Filesystem for export '%(name)s' was not "
+                          "found on the PowerStore backend.") %
+                        {'name': original_name}))
+
+        # Get filesystem size
+        size_bytes = self.client.get_filesystem_size(filesystem_id)
+        if not size_bytes:
+            raise exception.ManageInvalidShare(
+                reason=(_("Unable to determine the size of the filesystem "
+                          "for export '%(name)s'.") %
+                        {'name': original_name}))
+        size_gb = math.ceil(size_bytes / units.Gi)
+
+        nas_server_id = self.client.get_nas_server_id(self.nas_server)
+        file_interfaces = self.client.get_nas_server_interfaces(
+            nas_server_id)
+        if protocol == 'NFS':
+            locations = self._get_nfs_location(file_interfaces,
+                                               original_name)
+        else:
+            locations = self._get_cifs_location(file_interfaces,
+                                                original_name)
+
+        return {'size': size_gb, 'export_locations': locations}
 
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
@@ -322,7 +461,8 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                     nfs_ro_ips.add(rule['access_to'])
                 access_updates.update({rule['access_id']: {'state': 'active'}})
 
-        share_id = self.client.get_nfs_export_id(share['name'])
+        backend_name = self._get_backend_share_name(share)
+        share_id = self.client.get_nfs_export_id(backend_name)
         share_updated = self.client.set_export_access(share_id,
                                                       nfs_rw_ips,
                                                       nfs_ro_ips)
@@ -371,7 +511,8 @@ class PowerStoreStorageConnection(driver.StorageConnection):
                     cifs_ro_users.add(prefix + rule['access_to'])
                 access_updates.update({rule['access_id']: {'state': 'active'}})
 
-        share_id = self.client.get_smb_share_id(share['name'])
+        backend_name = self._get_backend_share_name(share)
+        share_id = self.client.get_smb_share_id(backend_name)
         share_updated = self.client.set_acl(share_id,
                                             cifs_rw_users,
                                             cifs_ro_users)
@@ -404,9 +545,13 @@ class PowerStoreStorageConnection(driver.StorageConnection):
 
     def create_snapshot(self, context, snapshot, share_server):
         """Is called to create snapshot."""
-        export_name = snapshot['share_name']
+        share = snapshot.get('share')
+        if not share:
+            share = {'name': snapshot['share_name'],
+                     'share_proto': ''}
+        export_name = self._get_backend_share_name(share)
         LOG.debug(f'Retrieving filesystem ID for share {export_name}')
-        filesystem_id = self.client.get_filesystem_id(export_name)
+        filesystem_id = self._get_filesystem_id(share)
         if not filesystem_id:
             message = (
                 _('Failed to get filesystem id for export "%(export)s".') %
@@ -509,4 +654,15 @@ class PowerStoreStorageConnection(driver.StorageConnection):
         """Is called to check for setup error."""
 
     def get_default_filter_function(self):
-        return 'share.size >= 3'
+        # NOTE(PowerStore): The Manila API layer hardcodes size=0 in the
+        # scheduler request_spec during manage operations (see
+        # manila/share/api.py, method manage(), ``size=0`` in the call to
+        # _get_request_spec_dict).  The scheduler's DriverFilter
+        # (manila/scheduler/filters/driver.py) evaluates this filter
+        # function against that zero-sized share *before*
+        # manage_existing() has a chance to discover the real size from
+        # the backend.  Because no request attribute distinguishes a
+        # manage call from an ordinary create at the filter stage, we
+        # must let size 0 through explicitly.  This is an OpenStack
+        # Manila framework constraint, not a PowerStore-specific issue.
+        return 'share.size >= 3 or share.size == 0'

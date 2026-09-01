@@ -394,6 +394,16 @@ class TestClient(test.TestCase):
         m.get(url, status_code=400)
 
     @requests_mock.mock()
+    def test_get_fsid_from_export_name_empty_response(self, m):
+        self.assertEqual(0, len(m.request_history))
+        url = "{0}/nfs_export?select=file_system_id&name=eq.{1}".format(
+            self._mock_url, self.NFS_EXPORT_NAME
+        )
+        m.get(url, status_code=200, json=[])
+        id = self.client.get_fsid_from_export_name(self.NFS_EXPORT_NAME)
+        self.assertIsNone(id)
+
+    @requests_mock.mock()
     def test_create_snapshot(self, m):
         self.assertEqual(0, len(m.request_history))
         self._add_create_snapshot_response(
@@ -594,6 +604,16 @@ class TestClient(test.TestCase):
         m.get(url, status_code=400)
 
     @requests_mock.mock()
+    def test_get_fsid_from_share_name_empty_response(self, m):
+        self.assertEqual(0, len(m.request_history))
+        url = "{0}/smb_share?select=file_system_id&name=eq.{1}".format(
+            self._mock_url, self.SMB_SHARE_NAME
+        )
+        m.get(url, status_code=200, json=[])
+        id = self.client.get_fsid_from_share_name(self.SMB_SHARE_NAME)
+        self.assertIsNone(id)
+
+    @requests_mock.mock()
     def test_get_smb_share_id(self, m):
         self.assertEqual(0, len(m.request_history))
         self._add_get_smb_share_id_response(
@@ -670,3 +690,33 @@ class TestClient(test.TestCase):
     def _add_set_acl_response(self, m, share_id):
         url = "{0}/smb_share/{1}/set_acl".format(self._mock_url, share_id)
         m.post(url, status_code=204)
+
+    @requests_mock.mock()
+    def test_get_filesystem_size(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_filesystem_size_response(
+            m, self.FILESYSTEM_ID, {"size_total": self.NFS_EXPORT_SIZE}
+        )
+        size = self.client.get_filesystem_size(self.FILESYSTEM_ID)
+        self.assertEqual(size, self.NFS_EXPORT_SIZE)
+
+    def _add_get_filesystem_size_response(self, m, filesystem_id, json_str):
+        url = "{0}/file_system/{1}?select=size_total".format(
+            self._mock_url, filesystem_id
+        )
+        m.get(url, status_code=200, json=json_str)
+
+    @requests_mock.mock()
+    def test_get_filesystem_size_failure(self, m):
+        self.assertEqual(0, len(m.request_history))
+        self._add_get_filesystem_size_response_failure(
+            m, self.FILESYSTEM_ID
+        )
+        size = self.client.get_filesystem_size(self.FILESYSTEM_ID)
+        self.assertIsNone(size)
+
+    def _add_get_filesystem_size_response_failure(self, m, filesystem_id):
+        url = "{0}/file_system/{1}?select=size_total".format(
+            self._mock_url, filesystem_id
+        )
+        m.get(url, status_code=400)

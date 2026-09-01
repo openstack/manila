@@ -104,7 +104,7 @@ class PowerStoreClient(object):
         """
         url = '/nas_server?name=eq.' + nas_server_name
         res, response = self._send_get_request(url)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok and response:
             return response[0]['id']
 
     def get_nas_server_interfaces(self, nas_server_id):
@@ -194,7 +194,7 @@ class PowerStoreClient(object):
         """
         url = '/nfs_export?select=id&name=eq.' + name
         res, response = self._send_get_request(url)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok and response:
             return response[0]['id']
 
     def get_filesystem_id(self, name):
@@ -205,7 +205,7 @@ class PowerStoreClient(object):
         """
         url = '/file_system?name=eq.' + name
         res, response = self._send_get_request(url)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok and response:
             return response[0]['id']
 
     def set_export_access(self, export_id, rw_hosts, ro_hosts):
@@ -249,7 +249,7 @@ class PowerStoreClient(object):
         """
         url = '/nfs_export?select=file_system_id&name=eq.' + name
         res, response = self._send_get_request(url)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok and response:
             return response[0]['file_system_id']
 
     def create_snapshot(self, filesystem_id, name):
@@ -350,7 +350,7 @@ class PowerStoreClient(object):
         """
         url = '/smb_share?select=file_system_id&name=eq.' + name
         res, response = self._send_get_request(url)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok and response:
             return response[0]['file_system_id']
 
     def get_smb_share_id(self, name):
@@ -361,7 +361,7 @@ class PowerStoreClient(object):
         """
         url = '/smb_share?select=id&name=eq.' + name
         res, response = self._send_get_request(url)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok and response:
             return response[0]['id']
 
     def get_nas_server_smb_netbios(self, nas_server_name):
@@ -377,6 +377,17 @@ class PowerStoreClient(object):
             smb_server = response[0]['smb_servers'][0]
             if smb_server["is_standalone"]:
                 return smb_server["netbios_name"]
+
+    def get_filesystem_size(self, filesystem_id):
+        """Retrieves the total size of a filesystem.
+
+        :param filesystem_id: ID of the filesystem
+        :return: size_total in bytes if success
+        """
+        url = '/file_system/' + filesystem_id + '?select=size_total'
+        res, response = self._send_get_request(url)
+        if res.status_code == requests.codes.ok:
+            return response['size_total']
 
     def set_acl(self, smb_share_id, cifs_rw_users, cifs_ro_users):
         """Set ACL for a SMB share.
