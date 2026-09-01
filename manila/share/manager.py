@@ -4197,7 +4197,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
             except Exception:
                 LOG.warning(
-                    "Error occured during quota usage update. Administrator "
+                    "Error occurred during quota usage update. Administrator "
                     "must rectify quotas.")
 
         if share_ref['mount_snapshot_support']:
