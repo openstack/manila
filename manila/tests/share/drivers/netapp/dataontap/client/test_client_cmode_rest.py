@@ -6498,6 +6498,23 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             '/network/ethernet/ports/', 'delete',
             query=query)
 
+    def test___delete_port_by_ipspace_and_broadcast_domain_with_node(self):
+        self.mock_object(self.client, 'send_request')
+        port = fake.NODE_NAME + ':' + fake.PORT
+        query = {
+            'broadcast_domain.ipspace.name': fake.IPSPACE_NAME,
+            'broadcast_domain.name': fake.BROADCAST_DOMAIN,
+            'name': fake.PORT,
+            'node.name': fake.NODE_NAME,
+        }
+        self.client._delete_port_by_ipspace_and_broadcast_domain(
+            port,
+            fake.BROADCAST_DOMAIN,
+            fake.IPSPACE_NAME)
+        self.client.send_request.assert_called_once_with(
+            '/network/ethernet/ports/', 'delete',
+            query=query)
+
     def test_get_broadcast_domain_for_port(self):
 
         self.mock_object(self.client, 'send_request', mock.Mock(
@@ -6611,6 +6628,40 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.get_vserver_ipspace,
                           fake.VSERVER_NAME)
+
+    def test_get_vserver_custom_ipspace_name(self):
+        self.mock_object(self.client, 'get_vserver_ipspace',
+                         mock.Mock(return_value=fake.IPSPACE_NAME))
+
+        result = self.client.get_vserver_custom_ipspace_name(
+            fake.VSERVER_NAME)
+
+        self.client.get_vserver_ipspace.assert_called_once_with(
+            fake.VSERVER_NAME)
+        self.assertEqual(fake.IPSPACE_NAME, result)
+
+    def test_get_vserver_custom_ipspace_name_no_ipspace(self):
+        self.mock_object(self.client, 'get_vserver_ipspace',
+                         mock.Mock(return_value=None))
+
+        result = self.client.get_vserver_custom_ipspace_name(
+            fake.VSERVER_NAME)
+
+        self.client.get_vserver_ipspace.assert_called_once_with(
+            fake.VSERVER_NAME)
+        self.assertIsNone(result)
+
+    @ddt.data(*client_cmode_rest.CLUSTER_IPSPACES)
+    def test_get_vserver_custom_ipspace_name_cluster_ipspace(self, ipspace):
+        self.mock_object(self.client, 'get_vserver_ipspace',
+                         mock.Mock(return_value=ipspace))
+
+        result = self.client.get_vserver_custom_ipspace_name(
+            fake.VSERVER_NAME)
+
+        self.client.get_vserver_ipspace.assert_called_once_with(
+            fake.VSERVER_NAME)
+        self.assertIsNone(result)
 
     def test_get_snapmirror_policies(self):
         api_response = fake.GET_SNAPMIRROR_POLICIES_REST
@@ -7268,7 +7319,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             '/network/ipspaces', 'delete', query=query)
 
     def test_get_ipspaces(self):
-        expected = copy.deepcopy(fake.GET_IPSPACES_RESPONSE)
+        expected = [copy.deepcopy(fake.GET_IPSPACES_RESPONSE)]
         sr_responses = [fake.IPSPACE_INFO,
                         fake.REST_SINGLE_PORT,
                         fake.SVMS_LIST_SIMPLE_RESPONSE_REST,
@@ -7286,6 +7337,54 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
         result = self.client.get_ipspaces(fake.IPSPACE_NAME)
         self.assertEqual([], result)
+
+    def test_get_ipspaces_port_without_node_name(self):
+        sr_responses = [fake.IPSPACE_INFO,
+                        fake.REST_SINGLE_PORT_NO_NODE,
+                        fake.SVMS_LIST_SIMPLE_RESPONSE_REST,
+                        fake.FAKE_GET_BROADCAST_DOMAIN]
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=sr_responses))
+        self.mock_object(self.client, '_has_records',
+                         mock.Mock(return_value=True))
+
+        result = self.client.get_ipspaces(fake.IPSPACE_NAME)
+
+        self.assertEqual([fake.PORT], result[0]['ports'])
+
+    def test_get_ipspaces_with_vserver_name_no_custom_ipspace(self):
+        self.mock_object(self.client, 'get_vserver_custom_ipspace_name',
+                         mock.Mock(return_value=None))
+        mock_send_request = self.mock_object(self.client, 'send_request')
+
+        result = self.client.get_ipspaces(vserver_name=fake.VSERVER_NAME)
+
+        self.client.get_vserver_custom_ipspace_name.assert_called_once_with(
+            fake.VSERVER_NAME)
+        self.assertFalse(mock_send_request.called)
+        self.assertEqual([], result)
+
+    def test_get_ipspaces_with_vserver_name(self):
+        self.mock_object(self.client, 'get_vserver_custom_ipspace_name',
+                         mock.Mock(return_value=fake.IPSPACE_NAME))
+        expected = [copy.deepcopy(fake.GET_IPSPACES_RESPONSE)]
+        sr_responses = [fake.IPSPACE_INFO,
+                        fake.REST_SINGLE_PORT,
+                        fake.SVMS_LIST_SIMPLE_RESPONSE_REST,
+                        fake.FAKE_GET_BROADCAST_DOMAIN]
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=sr_responses))
+        self.mock_object(self.client, '_has_records',
+                         mock.Mock(return_value=True))
+
+        result = self.client.get_ipspaces(vserver_name=fake.VSERVER_NAME)
+
+        self.client.get_vserver_custom_ipspace_name.assert_called_once_with(
+            fake.VSERVER_NAME)
+        query = {'name': fake.IPSPACE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('/network/ipspaces', 'get', query=query)])
+        self.assertEqual(expected, result)
 
     def test_delete_port_and_broadcast_domains_for_ipspace_not_found(self):
 
@@ -7305,7 +7404,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.mock_object(self.client,
                          'get_ipspaces',
-                         mock.Mock(return_value=fake.IPSPACES[0]))
+                         mock.Mock(return_value=[fake.IPSPACES[0]]))
         self.mock_object(self.client, '_delete_port_and_broadcast_domain')
 
         self.client._delete_port_and_broadcast_domains_for_ipspace(
