@@ -89,6 +89,11 @@ share_group_snapshot_policies = [
             {
                 'method': 'GET',
                 'path': '/share-group-snapshots/{share_group_snapshot_id}'
+            },
+            {
+                'method': 'GET',
+                'path': ('/share-group-snapshots/{share_group_snapshot_id}'
+                         '/members')
             }
         ],
         deprecated_rule=deprecated_group_snapshot_get

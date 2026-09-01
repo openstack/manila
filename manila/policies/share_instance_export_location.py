@@ -47,7 +47,7 @@ share_export_location_policies = [
         description='Return data about the requested export location.',
         operations=[
             {
-                'method': 'POST',
+                'method': 'GET',
                 'path': ('/share_instances/{share_instance_id}/'
                          'export_locations'),
             }

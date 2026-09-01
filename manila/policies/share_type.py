@@ -168,7 +168,11 @@ share_type_policies = [
         operations=[
             {
                 'method': 'GET',
-                'path': '/types/{share_type_id}',
+                'path': '/types/{share_type_id}/os-share-type-access',
+            },
+            {
+                'method': 'GET',
+                'path': '/types/{share_type_id}/share_type_access',
             }
         ],
         deprecated_rule=deprecated_share_type_list_project_access

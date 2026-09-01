@@ -81,11 +81,23 @@ quota_set_policies = [
         operations=[
             {
                 'method': 'GET',
+                'path': '/quota-sets/{project_id}'
+            },
+            {
+                'method': 'GET',
                 'path': '/quota-sets/{project_id}/defaults'
             },
             {
                 'method': 'GET',
+                'path': '/quota-sets/{project_id}/detail'
+            },
+            {
+                'method': 'GET',
                 'path': '/os-quota-sets/{project_id}/defaults'
+            },
+            {
+                'method': 'GET',
+                'path': '/os-quota-sets/{project_id}'
             }
         ],
         deprecated_rule=deprecated_quota_show

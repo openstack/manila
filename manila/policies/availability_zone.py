@@ -43,7 +43,7 @@ availability_zone_policies = [
             },
             {
                 'method': 'GET',
-                'path': '/availability-zone',
+                'path': '/availability-zones',
             },
         ],
         deprecated_rule=deprecated_get_availability_zone
