@@ -57,6 +57,8 @@ import manila.share.drivers.container.storage_helper
 import manila.share.drivers.dell_emc.driver
 import manila.share.drivers.dell_emc.plugins.powermax.connection
 import manila.share.drivers.dell_emc.plugins.powerscale.powerscale
+import manila.share.drivers.dell_emc.plugins.unity.connection
+import manila.share.drivers.dell_emc.plugins.vnx.connection
 import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
 import manila.share.drivers.glusterfs.common
@@ -146,10 +148,13 @@ _global_opt_lists = [
     manila.share.driver.ssh_opts,
     manila.share.drivers_private_data.private_data_opts,
     manila.share.drivers.cephfs.driver.cephfs_opts,
+    manila.share.drivers.cephfs.driver.cephfsnfs_opts,
     manila.share.drivers.container.driver.container_opts,
     manila.share.drivers.container.storage_helper.lv_opts,
     manila.share.drivers.dell_emc.driver.EMC_NAS_OPTS,
     manila.share.drivers.dell_emc.plugins.powermax.connection.POWERMAX_OPTS,
+    manila.share.drivers.dell_emc.plugins.unity.connection.UNITY_OPTS,
+    manila.share.drivers.dell_emc.plugins.vnx.connection.VNX_OPTS,
     manila.share.drivers.generic.share_opts,
     manila.share.drivers.glusterfs.common.glusterfs_common_opts,
     manila.share.drivers.glusterfs.GlusterfsManilaShare_opts,
@@ -182,6 +187,7 @@ _global_opt_lists = [
     manila.share.drivers.netapp.options.netapp_provisioning_opts,
     manila.share.drivers.netapp.options.netapp_data_motion_opts,
     manila.share.drivers.netapp.options.netapp_backup_opts,
+    manila.share.drivers.netapp.options.netapp_support_opts,
     manila.share.drivers.nexenta.options.nexenta_connection_opts,
     manila.share.drivers.nexenta.options.nexenta_dataset_opts,
     manila.share.drivers.nexenta.options.nexenta_nfs_opts,
