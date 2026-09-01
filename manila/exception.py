@@ -802,7 +802,7 @@ class ManilaBarbicanACLError(ManilaException):
 
 
 class ManilaBarbicanAppCredsError(ManilaException):
-    message = _("Error occured while dealing with barbican for App Creds.")
+    message = _("Error occurred while dealing with barbican for App Creds.")
 
 
 class ShareGroupTypeCreateFailed(ManilaException):
