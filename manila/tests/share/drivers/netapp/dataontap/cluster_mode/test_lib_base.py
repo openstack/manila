@@ -2956,6 +2956,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_revert_to_snapshot(self, use_snap_provider_location):
 
         vserver_client = mock.Mock()
+        vserver_client.list_snapmirror_snapshots.return_value = []
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
@@ -2976,8 +2977,34 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         snapshot_name = (self.library._get_backend_snapshot_name(
             fake_snapshot['id']) if not use_snap_provider_location
             else 'fake-provider-location')
+        vserver_client.list_snapmirror_snapshots.assert_called_once_with(
+            share_name)
         vserver_client.restore_snapshot.assert_called_once_with(share_name,
                                                                 snapshot_name)
+
+    def test_revert_to_snapshot_cleans_snapmirror_snapshots(self):
+        vserver_client = mock.Mock()
+        vserver_client.list_snapmirror_snapshots.return_value = [
+            'snapmirror_snap1', 'snapmirror_snap2']
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        fake_snapshot = copy.deepcopy(fake.SNAPSHOT)
+
+        self.library.revert_to_snapshot(
+            self.context, fake_snapshot, share_server=fake.SHARE_SERVER)
+
+        share_name = self.library._get_backend_share_name(
+            fake_snapshot['share_id'])
+        vserver_client.list_snapmirror_snapshots.assert_called_once_with(
+            share_name)
+        vserver_client.delete_snapshot.assert_any_call(
+            share_name, 'snapmirror_snap1', ignore_owners=True)
+        vserver_client.delete_snapshot.assert_any_call(
+            share_name, 'snapmirror_snap2', ignore_owners=True)
+        vserver_client.restore_snapshot.assert_called_once()
 
     def test_delete_snapshot(self):
 
@@ -5650,10 +5677,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_promote_replica(self, is_readable):
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         protocol_helper = mock.Mock()
         self.mock_object(self.library,
                          '_get_helper',
@@ -5728,10 +5756,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_promote_replica_cleanup_demoted_storage_error(self):
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         protocol_helper = mock.Mock()
         self.mock_object(self.library,
                          '_get_helper',
@@ -5815,10 +5844,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_replica_3 = copy.deepcopy(self.fake_replica_2)
         fake_replica_3['id'] = fake.SHARE_ID3
         fake_replica_3['replica_state'] = constants.REPLICA_STATE_OUT_OF_SYNC
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
         self.mock_object(self.library,
@@ -5876,10 +5906,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._handle_qos_on_replication_change.assert_called_once()
 
     def test_promote_replica_with_access_rules(self):
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library, '_unmount_orig_active_replica')
         self.mock_object(self.library, '_handle_qos_on_replication_change')
         mock_helper = mock.Mock()
@@ -6061,10 +6092,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         lib_base.LOG.info.assert_called_once()
 
     def test_convert_destination_replica_to_independent(self):
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock.Mock()))
@@ -6087,10 +6119,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          replica['replica_state'])
 
     def test_convert_destination_replica_to_independent_update_failed(self):
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=mock.Mock()))
@@ -6124,10 +6157,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             {'access_to': "10.10.10.10",
              'access_level': constants.ACCESS_LEVEL_RW},
         ]
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library, '_handle_qos_on_replication_change')
         self.mock_object(self.library,
                          '_get_helper',
@@ -6180,10 +6214,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             {'access_to': "10.10.10.10",
              'access_level': constants.ACCESS_LEVEL_RW},
         ]
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=fake_helper))
@@ -6216,10 +6251,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             {'access_to': "10.10.10.10",
              'access_level': constants.ACCESS_LEVEL_RW},
         ]
+        vserver_client = mock.Mock()
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
-                                                 mock.Mock())))
+                                                 vserver_client)))
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=fake_helper))

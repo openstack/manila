@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `NetApp Driver bug #2163507
+    <https://bugs.launchpad.net/manila/+bug/2163507>`_: Fixed ``revert_to_snapshot``
+    failing on formerly-replicated shares after DR replica promotion. ONTAP does
+    not remove SnapMirror snapshots automatically after a SnapMirror break,
+    leaving them on the promoted volume. When a user subsequently calls
+    ``revert_to_snapshot``, the residual SnapMirror snapshots are now cleaned up
+    before the restore is attempted, allowing the operation to succeed.
