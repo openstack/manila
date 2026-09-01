@@ -521,6 +521,14 @@ through the ``revert_to_snapshot_support`` share type.
    temporarily unexported on the backend array. They are exported again
    once the revert completes.
 
+.. note::
+
+   On device version 10.6.0, after reverting a share to a smaller snapshot,
+   the space usable by clients is limited to the snapshot size, while the
+   provisioned share size remains unchanged. This will be fixed in a future
+   device version, after which the usable space will be aligned with the
+   provisioned share size.
+
 Refer to :ref:`revert to snapshot <shared_file_systems_share_revert_to_snapshot>`.
 
 Manage and unmanage snapshot
