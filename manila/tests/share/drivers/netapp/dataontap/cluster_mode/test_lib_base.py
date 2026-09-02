@@ -2365,6 +2365,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test__check_snaplock_compatibility_true(self):
         self.library._have_cluster_creds = True
+        self.library._licenses = list(fake.LICENSES) + ['snaplock']
         self.library._is_snaplock_compliance_configured = True
         self.mock_object(self.client,
                          'list_cluster_nodes',
@@ -2374,7 +2375,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test__check_snaplock_compatibility_false(self):
         self.library._have_cluster_creds = True
+        self.library._licenses = list(fake.LICENSES) + ['snaplock']
         self.library._is_snaplock_compliance_configured = False
+        self.mock_object(self.client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=(["node1", "node2"])))
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_snaplock_compatibility)
+
+    def test__check_snaplock_compatibility_no_license(self):
+        self.library._have_cluster_creds = True
+        self.library._licenses = list(fake.LICENSES)
+        self.library._is_snaplock_compliance_configured = True
         self.mock_object(self.client,
                          'list_cluster_nodes',
                          mock.Mock(return_value=(["node1", "node2"])))
