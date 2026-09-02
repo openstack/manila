@@ -1258,6 +1258,11 @@ class ShareDriver(object):
         :param snapshot_access_rules: List of all access rules for the affected
             snapshot
         :param share_server: Optional -- Share server model or None
+        :returns: None for synchronous revert completion, or a dict with
+            ``{'status': 'reverting_to_snapshot'}`` to indicate the operation
+            is running asynchronously. When returning async status, the share
+            manager will poll the driver via ``get_share_status`` to track
+            completion.
         """
         raise NotImplementedError()
 

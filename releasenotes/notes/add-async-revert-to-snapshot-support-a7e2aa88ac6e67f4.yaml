@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added support for asynchronous revert-to-snapshot operations.
+
+    Drivers can now return ``STATUS_REVERTING_TO_SNAPSHOT`` from
+    ``revert_to_snapshot`` to indicate the operation is running
+    asynchronously. The share manager polls the driver via
+    ``get_share_status`` to track completion.

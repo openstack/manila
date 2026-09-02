@@ -602,6 +602,10 @@ class ShareManagerTestCase(test.TestCase):
                 share_type_id=share_type['id'],
                 status=constants.STATUS_CREATING_FROM_SNAPSHOT,
                 display_name='fake_name_7')),
+            _get_instance(db_utils.create_share(
+                id='fake_id_8', share_type_id=share_type['id'],
+                status=constants.STATUS_REVERTING_TO_SNAPSHOT,
+                display_name='fake_name_8')),
         ]
 
         instances[4]['access_rules_status'] = (
@@ -8475,6 +8479,135 @@ class ShareManagerTestCase(test.TestCase):
             {'status': constants.STATUS_AVAILABLE})
 
     @ddt.data(None, 'fake_reservations')
+    def test_revert_to_snapshot_driver_returns_status_dict(self, reservations):
+
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+        mock_driver = self.mock_object(self.share_manager, 'driver')
+
+        share_id = 'fake_share_id'
+        share = fakes.fake_share(
+            id=share_id, instance={'id': 'fake_instance_id',
+                                   'share_type_id': 'fake_share_type_id'},
+            project_id='fake_project', user_id='fake_user', size=3)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot',
+            share_instance=share['instance'])
+        snapshot = fakes.fake_snapshot(
+            id='fake_snapshot_id', share_id=share_id, share=share,
+            instance=snapshot_instance, project_id='fake_project',
+            user_id='fake_user', size=4)
+        share_access_rules = []
+        snapshot_access_rules = []
+
+        self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_get',
+            mock.Mock(return_value=snapshot_instance))
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+        mock_share_snapshot_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_update')
+
+        mock_driver.revert_to_snapshot.return_value = {
+            'status': constants.STATUS_REVERTING_TO_SNAPSHOT,
+        }
+
+        self.share_manager._revert_to_snapshot(self.context, share, snapshot,
+                                               reservations,
+                                               share_access_rules,
+                                               snapshot_access_rules)
+
+        mock_driver.revert_to_snapshot.assert_called_once_with(
+            mock.ANY,
+            self._get_snapshot_instance_dict(
+                snapshot_instance, share, snapshot=snapshot),
+            share_access_rules, snapshot_access_rules,
+            share_server=None)
+
+        if reservations:
+            mock_quotas_rollback.assert_called_once_with(
+                mock.ANY, reservations, project_id='fake_project',
+                user_id='fake_user',
+                share_type_id=snapshot_instance['share_instance'][
+                    'share_type_id'])
+        else:
+            self.assertFalse(mock_quotas_rollback.called)
+        self.assertFalse(mock_quotas_commit.called)
+
+        mock_share_update.assert_called_once_with(
+            mock.ANY, share_id,
+            {'status': constants.STATUS_REVERTING_TO_SNAPSHOT})
+        mock_share_snapshot_update.assert_not_called()
+
+    @ddt.data(None, 'fake_reservations')
+    def test_revert_to_snapshot_driver_returns_none(self, reservations):
+
+        mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(
+            self.share_manager, '_get_share_server',
+            mock.Mock(return_value=None))
+        mock_driver = self.mock_object(self.share_manager, 'driver')
+
+        share_id = 'fake_share_id'
+        share = fakes.fake_share(
+            id=share_id, instance={'id': 'fake_instance_id',
+                                   'share_type_id': 'fake_share_type_id'},
+            project_id='fake_project', user_id='fake_user', size=3)
+        snapshot_instance = fakes.fake_snapshot_instance(
+            share_id=share_id, share=share, name='fake_snapshot',
+            share_instance=share['instance'])
+        snapshot = fakes.fake_snapshot(
+            id='fake_snapshot_id', share_id=share_id, share=share,
+            instance=snapshot_instance, project_id='fake_project',
+            user_id='fake_user', size=4)
+        share_access_rules = []
+        snapshot_access_rules = []
+
+        self.mock_object(
+            self.share_manager.db, 'share_snapshot_instance_get',
+            mock.Mock(return_value=snapshot_instance))
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+        mock_share_snapshot_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_update')
+
+        mock_driver.revert_to_snapshot.return_value = None
+
+        self.share_manager._revert_to_snapshot(self.context, share, snapshot,
+                                               reservations,
+                                               share_access_rules,
+                                               snapshot_access_rules)
+
+        mock_driver.revert_to_snapshot.assert_called_once_with(
+            mock.ANY,
+            self._get_snapshot_instance_dict(
+                snapshot_instance, share, snapshot=snapshot),
+            share_access_rules, snapshot_access_rules,
+            share_server=None)
+
+        if reservations:
+            mock_quotas_commit.assert_called_once_with(
+                mock.ANY, reservations, project_id='fake_project',
+                user_id='fake_user',
+                share_type_id=snapshot_instance['share_instance'][
+                    'share_type_id'])
+        else:
+            self.assertFalse(mock_quotas_commit.called)
+        self.assertFalse(mock_quotas_rollback.called)
+
+        mock_share_update.assert_called_once_with(
+            mock.ANY, share_id,
+            {'status': constants.STATUS_AVAILABLE,
+             'size': snapshot['size']})
+        mock_share_snapshot_update.assert_called_once_with(
+            mock.ANY, 'fake_snapshot_id',
+            {'status': constants.STATUS_AVAILABLE})
+
+    @ddt.data(None, 'fake_reservations')
     def test__revert_to_snapshot_driver_exception(self, reservations):
 
         mock_quotas_rollback = self.mock_object(quota.QUOTAS, 'rollback')
@@ -9285,6 +9418,10 @@ class ShareManagerTestCase(test.TestCase):
             x for x in instances
             if x['status'] == constants.STATUS_CREATING_FROM_SNAPSHOT
         ]
+        instances_reverting_to_snap = [
+            x for x in instances
+            if x['status'] == constants.STATUS_REVERTING_TO_SNAPSHOT
+        ]
         metadata = {'key1': 'val1'}
         db.share_replica_metadata_update(
             self.context, instances_creating_from_snap[0]['id'],
@@ -9293,17 +9430,29 @@ class ShareManagerTestCase(test.TestCase):
             self.context, instances_creating_from_snap[0]['id'],
             with_share_data=True)
         self.mock_object(self.share_manager, 'driver')
-        self.mock_object(self.share_manager.db,
-                         'share_instance_get_all_by_host',
-                         mock.Mock(return_value=instances_creating_from_snap))
+        mock_get_all_instances_by_host = self.mock_object(
+            self.share_manager.db,
+            'share_instance_get_all_by_host',
+            mock.Mock(side_effect=[instances_creating_from_snap,
+                                   instances_reverting_to_snap]))
         mock_update_share_status = self.mock_object(
             self.share_manager, '_update_share_status')
+        all_instances = (instances_creating_from_snap +
+                         instances_reverting_to_snap)
         instances_dict = [
             self.share_manager._get_share_instance_dict(self.context, si)
-            for si in instances_creating_from_snap]
+            for si in all_instances]
         self.assertEqual(metadata, instances_dict[0]['metadata'])
 
         self.share_manager.periodic_share_status_update(self.context)
+        mock_get_all_instances_by_host.assert_has_calls([
+            mock.call(self.context, self.share_manager.host,
+                      with_share_data=True,
+                      status=constants.STATUS_CREATING_FROM_SNAPSHOT),
+            mock.call(self.context, self.share_manager.host,
+                      with_share_data=True,
+                      status=constants.STATUS_REVERTING_TO_SNAPSHOT),
+        ])
         mock_update_share_status.assert_has_calls([
             mock.call(self.context, share_instance)
             for share_instance in instances_dict
@@ -9341,6 +9490,76 @@ class ShareManagerTestCase(test.TestCase):
         db_el_update.assert_called_once_with(self.context, instance['id'],
                                              fake_export_locations)
 
+    def test__update_reverting_share_status(self):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        instance_model_update = {
+            'status': constants.STATUS_REVERTING_TO_SNAPSHOT,
+        }
+        expected_si_update_info = {
+            'status': constants.STATUS_REVERTING_TO_SNAPSHOT,
+        }
+        driver_get_status = self.mock_object(
+            self.share_manager.driver,
+            'get_share_status',
+            mock.Mock(return_value=instance_model_update),
+        )
+        db_si_update = self.mock_object(
+            self.share_manager.db,
+            'share_instance_update',
+        )
+        reverting_to_instances = [
+            x for x in instances
+            if x['status'] == constants.STATUS_REVERTING_TO_SNAPSHOT]
+        instance = self.share_manager.db.share_instance_get(
+            self.context,
+            reverting_to_instances[0]['id'],
+            with_share_data=True,
+        )
+        self.share_manager._update_share_status(self.context, instance,)
+        driver_get_status.assert_called_once_with(instance, None)
+        db_si_update.assert_called_once_with(self.context, instance['id'],
+                                             expected_si_update_info,)
+
+    def test__update_reverting_share_status_to_available(self):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        instance_model_update = {
+            'status': constants.STATUS_AVAILABLE,
+        }
+        expected_si_update_info = {
+            'status': constants.STATUS_AVAILABLE,
+            'progress': '100%',
+        }
+        driver_get_status = self.mock_object(
+            self.share_manager.driver,
+            'get_share_status',
+            mock.Mock(return_value=instance_model_update),
+        )
+        db_si_update = self.mock_object(
+            self.share_manager.db,
+            'share_instance_update',
+        )
+        mock_finalize_revert = self.mock_object(
+            self.share_manager, '_finalize_async_revert')
+        mock_restore_snapshot = self.mock_object(
+            self.share_manager, '_restore_snapshot_after_revert')
+        reverting_to_instances = [
+            x for x in instances
+            if x['status'] == constants.STATUS_REVERTING_TO_SNAPSHOT
+        ]
+        instance = self.share_manager.db.share_instance_get(
+            self.context,
+            reverting_to_instances[0]['id'],
+            with_share_data=True,
+        )
+        self.share_manager._update_share_status(self.context, instance,)
+        driver_get_status.assert_called_once_with(instance, None)
+        db_si_update.assert_called_once_with(self.context, instance['id'],
+                                             expected_si_update_info,)
+        mock_finalize_revert.assert_called_once_with(
+            self.context, instance)
+        mock_restore_snapshot.assert_called_once_with(
+            self.context, instance)
+
     @ddt.data(mock.Mock(return_value={'status': constants.STATUS_ERROR}),
               mock.Mock(side_effect=exception.ShareBackendException(
                   msg='fake_msg')))
@@ -9373,6 +9592,200 @@ class ShareManagerTestCase(test.TestCase):
             resource_type=message_field.Resource.SHARE,
             resource_id=instance['share_id'],
             detail=message_field.Detail.DRIVER_FAILED_CREATING_FROM_SNAP)
+
+    def test__update_share_status_share_with_reverting_error(self):
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        expected_si_update_info = {
+            'status': constants.STATUS_REVERTING_ERROR,
+            'progress': None,
+        }
+        driver_get_status = self.mock_object(
+            self.share_manager.driver, 'get_share_status',
+            mock.Mock(return_value={
+                'status': constants.STATUS_REVERTING_ERROR,
+            }))
+        db_si_update = self.mock_object(self.share_manager.db,
+                                        'share_instance_update')
+        mock_restore_snapshot = self.mock_object(
+            self.share_manager, '_restore_snapshot_after_revert')
+
+        reverting_instances = [x for x in instances
+                               if x['status'] ==
+                               constants.STATUS_REVERTING_TO_SNAPSHOT]
+        instance = self.share_manager.db.share_instance_get(
+            self.context, reverting_instances[0]['id'], with_share_data=True)
+
+        self.share_manager._update_share_status(self.context, instance)
+
+        driver_get_status.assert_called_once_with(instance, None)
+        db_si_update.assert_called_once_with(self.context, instance['id'],
+                                             expected_si_update_info)
+        self.share_manager.message_api.create.assert_called_once_with(
+            self.context,
+            message_field.Action.UPDATE,
+            instance['project_id'],
+            resource_type=message_field.Resource.SHARE,
+            resource_id=instance['share_id'],
+            detail=message_field.Detail.DRIVER_FAILED_REVERTING_TO_SNAPSHOT)
+        mock_restore_snapshot.assert_called_once_with(
+            self.context, instance)
+
+    def test__update_share_status_reverting_exception_sets_reverting_error(
+            self):
+        """Test that exception during reverting sets reverting_error status."""
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        expected_si_update_info = {
+            'status': constants.STATUS_REVERTING_ERROR,
+            'progress': None,
+        }
+        driver_get_status = self.mock_object(
+            self.share_manager.driver, 'get_share_status',
+            mock.Mock(side_effect=exception.ShareBackendException(
+                msg='fake_msg')))
+        db_si_update = self.mock_object(self.share_manager.db,
+                                        'share_instance_update')
+        mock_restore_snapshot = self.mock_object(
+            self.share_manager, '_restore_snapshot_after_revert')
+
+        reverting_instances = [x for x in instances
+                               if x['status'] ==
+                               constants.STATUS_REVERTING_TO_SNAPSHOT]
+        instance = self.share_manager.db.share_instance_get(
+            self.context, reverting_instances[0]['id'], with_share_data=True)
+
+        self.share_manager._update_share_status(self.context, instance)
+
+        driver_get_status.assert_called_once_with(instance, None)
+        db_si_update.assert_called_once_with(self.context, instance['id'],
+                                             expected_si_update_info)
+        self.share_manager.message_api.create.assert_called_once_with(
+            self.context,
+            message_field.Action.UPDATE,
+            instance['project_id'],
+            resource_type=message_field.Resource.SHARE,
+            resource_id=instance['share_id'],
+            detail=message_field.Detail.DRIVER_FAILED_REVERTING_TO_SNAPSHOT)
+        mock_restore_snapshot.assert_called_once_with(
+            self.context, instance)
+
+    @ddt.data(True, False)
+    def test__finalize_async_revert(self, size_changed):
+        """Test quota commit and size/status update after async revert."""
+        share_id = 'fake_share_id'
+        # size_changed=True: share was 3GB, snapshot is 4GB (delta=+1)
+        # size_changed=False: share was 4GB, snapshot is 4GB (delta=0)
+        share_size = 3 if size_changed else 4
+        share = fakes.fake_share(
+            id=share_id, project_id='fake_project', user_id='fake_user',
+            size=share_size,
+            instance={'id': 'fake_instance_id',
+                      'share_type_id': 'fake_share_type_id'})
+        share_instance = {
+            'share_id': share_id,
+            'share_type_id': 'fake_share_type_id',
+        }
+        fake_snapshot = {'id': 'fake_snap_id', 'size': 4}
+
+        self.mock_object(
+            self.share_manager.db, 'share_get',
+            mock.Mock(return_value=share))
+        mock_snap_get_all = self.mock_object(
+            self.share_manager.db, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=[fake_snapshot]))
+        mock_quotas_reserve = self.mock_object(
+            quota.QUOTAS, 'reserve',
+            mock.Mock(return_value='fake_reservations'))
+        mock_quotas_commit = self.mock_object(quota.QUOTAS, 'commit')
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+
+        self.share_manager._finalize_async_revert(
+            self.context, share_instance)
+
+        mock_snap_get_all.assert_called_once_with(
+            self.context, share_id,
+            filters={'status': constants.STATUS_RESTORING})
+        if size_changed:
+            mock_quotas_reserve.assert_called_once_with(
+                self.context,
+                project_id='fake_project',
+                gigabytes=1,
+                user_id='fake_user',
+                share_type_id='fake_share_type_id',
+                overquota_allowed=True)
+            mock_quotas_commit.assert_called_once_with(
+                self.context, 'fake_reservations',
+                project_id='fake_project',
+                user_id='fake_user',
+                share_type_id='fake_share_type_id')
+        else:
+            self.assertFalse(mock_quotas_reserve.called)
+            self.assertFalse(mock_quotas_commit.called)
+        # share_update is always called to set status=available and size
+        mock_share_update.assert_called_once_with(
+            self.context, share_id,
+            {'status': constants.STATUS_AVAILABLE, 'size': 4})
+
+    def test__finalize_async_revert_no_restoring_snapshot(self):
+        """Test finalize when no snapshot in restoring status is found."""
+        share_id = 'fake_share_id'
+        share = fakes.fake_share(
+            id=share_id, project_id='fake_project', user_id='fake_user',
+            size=3,
+            instance={'id': 'fake_instance_id',
+                      'share_type_id': 'fake_share_type_id'})
+        share_instance = {
+            'share_id': share_id,
+            'share_type_id': 'fake_share_type_id',
+        }
+
+        self.mock_object(
+            self.share_manager.db, 'share_get',
+            mock.Mock(return_value=share))
+        mock_snap_get_all = self.mock_object(
+            self.share_manager.db, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=[]))
+        mock_quotas_reserve = self.mock_object(quota.QUOTAS, 'reserve')
+        mock_share_update = self.mock_object(
+            self.share_manager.db, 'share_update')
+
+        self.share_manager._finalize_async_revert(
+            self.context, share_instance)
+
+        mock_snap_get_all.assert_called_once_with(
+            self.context, share_id,
+            filters={'status': constants.STATUS_RESTORING})
+        self.assertFalse(mock_quotas_reserve.called)
+        self.assertFalse(mock_share_update.called)
+
+    def test__restore_snapshot_after_revert(self):
+        """Test snapshot restoration from restoring to available."""
+        instances = self._setup_init_mocks(setup_access_rules=False)
+        reverting_instances = [x for x in instances
+                               if x['status'] ==
+                               constants.STATUS_REVERTING_TO_SNAPSHOT]
+        instance = self.share_manager.db.share_instance_get(
+            self.context, reverting_instances[0]['id'], with_share_data=True)
+        fake_snapshots = [{'id': 'fake_snap_id_1'}, {'id': 'fake_snap_id_2'}]
+        mock_snap_get_all = self.mock_object(
+            self.share_manager.db,
+            'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=fake_snapshots))
+        mock_snap_update = self.mock_object(
+            self.share_manager.db, 'share_snapshot_update')
+
+        self.share_manager._restore_snapshot_after_revert(
+            self.context, instance)
+
+        mock_snap_get_all.assert_called_once_with(
+            self.context, instance['share_id'],
+            filters={'status': constants.STATUS_RESTORING})
+        mock_snap_update.assert_has_calls([
+            mock.call(self.context, 'fake_snap_id_1',
+                      {'status': constants.STATUS_AVAILABLE}),
+            mock.call(self.context, 'fake_snap_id_2',
+                      {'status': constants.STATUS_AVAILABLE}),
+        ])
 
     def test__build_server_metadata(self):
         share = {'host': 'host', 'share_type_id': 'id'}
