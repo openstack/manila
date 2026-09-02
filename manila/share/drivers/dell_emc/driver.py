@@ -88,7 +88,8 @@ class EMCShareDriver(driver.ShareDriver):
                         'to be removed in a future release.')
         self.plugin = self.plugin_manager.load_plugin(
             self.backend_name,
-            configuration=self.configuration)
+            configuration=self.configuration,
+            private_storage=kwargs.get('private_storage'))
         LOG.info(f"PLUGIN HAS: {self.plugin.__dict__}")
         super(EMCShareDriver, self).__init__(
             self.plugin.driver_handles_share_servers, *args, **kwargs)
@@ -323,4 +324,10 @@ class EMCShareDriver(driver.ShareDriver):
                 delete_rules=delete_rules,
                 share_server=share_server,
             )
+        raise NotImplementedError()
+
+    def get_share_status(self, shares, share_server):
+        """Invoked to get share status."""
+        if hasattr(self.plugin, 'get_share_status'):
+            return self.plugin.get_share_status(shares, share_server)
         raise NotImplementedError()

@@ -61,6 +61,8 @@ The following operations are supported:
 
 - Schedule Dedupe job for a share
 
+- Revert to a snapshot.
+
 Pre-configurations for Compression on PowerScale
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -135,6 +137,11 @@ documentation:
 Notes and behavior
 ------------------
 * Unmanage does not delete the export; clients remain connected.
+* When importing a share associated with a share type that has
+  revert_to_snapshot_support enabled, the domain mark job must be
+  executed on the share manually on the PowerScale backend before
+  performing the manage operation. Otherwise, revert-to-snapshot
+  operations will fail.
 
 Mount Snapshot
 ~~~~~~~~~~~~~~
@@ -280,6 +287,49 @@ provide extra spec while creating share type.
 Managing a share : If you are trying to manage a share which is dedupe enabled,
 then, please associate it with openstack share type with dedupe enabled and vice-versa
 otherwise manage will result in error.
+
+Revert to a snapshot
+~~~~~~~~~~~~~~~~~~~~
+
+To enable revert-to-snapshot support, configure the corresponding extra
+spec on the share type used to create the share.
+
+.. code-block:: console
+
+   openstack share type set <share_type_name> \
+       --extra-specs revert_to_snapshot_support=True
+
+When ``revert_to_snapshot_support=True`` is set, the PowerScale driver
+creates a Domain Mark job during share creation. This job is required to
+prepare the share for subsequent revert-to-snapshot operations.
+
+The Domain Mark job runs asynchronously on PowerScale (OneFS). The driver
+monitors the job status using the following configuration parameters:
+
+.. code-block:: ini
+
+   powerscale_job_retries = 5
+   powerscale_job_interval = 2
+
+Where:
+
+* ``powerscale_job_retries`` defines the maximum number of polling
+  attempts.
+* ``powerscale_job_interval`` defines the polling interval, in seconds,
+  between attempts.
+
+These parameters control how the driver waits for asynchronous backend
+jobs to complete.
+
+When a revert-to-snapshot operation is requested, the driver initiates a
+revert job on the backend and returns the share status as
+``reverting_to_snapshot`` to the Manila service. Since the operation is
+asynchronous, the driver monitors the backend job status periodically.
+
+Once the backend revert job completes successfully, the share status is
+updated automatically from ``reverting_to_snapshot`` to ``available``.
+If the job fails, the share status is updated to ``error``.
+
 
 Driver options
 ~~~~~~~~~~~~~~

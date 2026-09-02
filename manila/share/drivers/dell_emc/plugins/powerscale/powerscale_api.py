@@ -23,6 +23,8 @@ from urllib.parse import quote
 
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_utils
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
@@ -34,7 +36,9 @@ class PowerScaleApi(object):
                  ssl_cert_path=None,
                  dir_permission=None,
                  threshold_limit=0,
-                 dedupe_schedule=None):
+                 dedupe_schedule=None,
+                 job_retries=0,
+                 job_interval=0):
         self.host_url = api_url
         self.session = requests.session()
         self.username = username
@@ -44,6 +48,8 @@ class PowerScaleApi(object):
         self.dir_permission = dir_permission
         self.threshold_limit = threshold_limit
         self.dedupe_schedule = dedupe_schedule
+        self.job_retries = job_retries
+        self.job_interval = job_interval
 
         # Create session
         self.session_token = None
@@ -597,6 +603,92 @@ class PowerScaleApi(object):
             return r.json()
         else:
             r.raise_for_status()
+
+    def create_job(self, operation, params, wait_call):
+        """Create and monitor async job for PowerScale Manila driver."""
+        url = (f"{self.host_url}/platform/"
+               f"{powerscale_utils.POWERSCALE_API_VERSION_12}/job/jobs")
+        response = self.send_post_request(url, data=params)
+        if response.status_code != 201:
+            message = (_("Failed to create job for operation %(operation)s "
+                         "with params %(params)s. Response: %(resp)s") %
+                       {'operation': operation, 'params': str(params),
+                        'resp': response.text})
+            LOG.error(message)
+            raise exception.ShareBackendException(message=message)
+        job_id = response.json()['id']
+        LOG.debug("Created job %(job_id)s for operation %(operation)s "
+                  "with params %(params)s.",
+                  {'job_id': job_id, 'operation': operation,
+                   'params': str(params)})
+        if not wait_call:
+            return job_id
+
+        # This is retained for domain marking.
+        # We are not monitoring the domain mark job via a periodic task,
+        # as it completes within a few seconds.
+        @utils.retry(
+            retry_param=exception.ShareBackendException,
+            interval=self.job_interval,
+            retries=self.job_retries,
+            backoff_rate=2)
+        def wait_for_job_complete():
+            complete, current_status = self.get_job_status(job_id)
+            if complete:
+                LOG.info("Job %(job_id)s completed with status: %(status)s.",
+                         {'job_id': job_id, 'status': current_status})
+                return current_status
+            msg = (_("Job %(job_id)s for operation %(operation)s "
+                     "is not complete yet. Retrying...") %
+                   {'job_id': job_id, 'operation': operation})
+            LOG.warning(msg)
+            raise exception.ShareBackendException(message=msg)
+        try:
+            status = wait_for_job_complete()
+            if status.lower() == "failed":
+                message = (_("Job %(job_id)s failed for operation "
+                             "%(operation)s with params %(params)s. "
+                             "For more information, please refer to "
+                             "the job reports.") %
+                           {'job_id': job_id, 'operation': operation,
+                            'params': str(params)})
+                LOG.error(message)
+                raise exception.ShareBackendException(message=message)
+        except exception.ShareBackendException:
+            self._cancel_job(job_id)
+            message = (_("Job %(job_id)s failed for operation %(operation)s "
+                         "with params %(params)s.") %
+                       {'job_id': job_id, 'operation': operation,
+                        'params': str(params)})
+            LOG.error(message)
+            raise exception.ShareBackendException(message=message)
+
+    def get_job_status(self, job_id):
+        url = (
+            f"{self.host_url}/platform/"
+            f"{powerscale_utils.POWERSCALE_API_VERSION_12}/"
+            f"job/jobs/{job_id}"
+        )
+        response = self.send_get_request(url)
+        if response.status_code == 200:
+            status = response.json()['jobs'][0]['state']
+            if status.lower() in ('failed', 'succeeded'):
+                return True, status
+            return False, status
+        return True, 'failed'
+
+    def _cancel_job(self, job_id):
+        data = {
+            'priority': 10,
+            'state': 'cancel'
+        }
+        url = (
+            f"{self.host_url}/platform/"
+            f"{powerscale_utils.POWERSCALE_API_VERSION_12}/"
+            f"job/jobs/{job_id}"
+        )
+        r = self.send_put_request(url, data=data)
+        return r.status_code == 204
 
 
 class SmbPermission(enum.Enum):

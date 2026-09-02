@@ -88,6 +88,9 @@ class FakeConnection(base.StorageConnection):
                                add_rules, delete_rules, share_server=None):
         """Update snapshot access"""
 
+    def get_share_status(self, shares, share_server):
+        """Get share status"""
+
 
 class FakeConnection_powermax(FakeConnection):
     def __init__(self, *args, **kwargs):
@@ -263,6 +266,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.driver.snapshot_update_access(context, snapshot,
                                            snap_access_rules,
                                            None, None, None)
+        self.driver.get_share_status(share, share_server)
 
     def test_not_support_manage(self):
         share = mock.Mock()
