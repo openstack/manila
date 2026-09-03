@@ -140,10 +140,9 @@ Notes and behavior
 ------------------
 * Unmanage does not delete the export; clients remain connected.
 * When importing a share associated with a share type that has
-  revert_to_snapshot_support enabled, the domain mark job must be
-  executed on the share manually on the PowerScale backend before
-  performing the manage operation. Otherwise, revert-to-snapshot
-  operations will fail.
+  ``revert_to_snapshot_support`` enabled, the driver automatically
+  creates a Domain Mark job on the backend during the manage
+  operation. No manual intervention is required.
 
 Mount Snapshot
 ~~~~~~~~~~~~~~
@@ -302,8 +301,9 @@ spec on the share type used to create the share.
        --extra-specs revert_to_snapshot_support=True
 
 When ``revert_to_snapshot_support=True`` is set, the PowerScale driver
-creates a Domain Mark job during share creation. This job is required to
-prepare the share for subsequent revert-to-snapshot operations.
+creates a Domain Mark job during share creation and during
+``manage_existing``. This job is required to prepare the share for
+subsequent revert-to-snapshot operations.
 
 The Domain Mark job runs asynchronously on PowerScale (OneFS). The driver
 monitors the job status using the following configuration parameters:
