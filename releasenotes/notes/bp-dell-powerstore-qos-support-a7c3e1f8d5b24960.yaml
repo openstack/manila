@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Dell PowerStore driver now supports QoS (Quality of Service) for
+    file shares using Manila's QoS type framework. Administrators can
+    create a QoS type with a ``max_bw`` spec (maximum bandwidth in MB/s,
+    range 1-1000000) and associate it with a share type via the
+    ``default_qos_type`` extra-spec. The driver will automatically
+    create a file I/O limit rule and performance policy on the
+    PowerStore array and apply it to the filesystem when a share is
+    created. QoS policies are cleaned up when all associated shares
+    are deleted. This feature requires PowerStore API version 4.1.0.0
+    or later.

@@ -402,6 +402,125 @@ class PowerStoreClient(object):
             return response[0]
         return None
 
+    # QoS methods
+
+    def create_file_io_limit_rule(self, name, max_bw):
+        """Creates a file I/O limit rule.
+
+        :param name: name of the file I/O limit rule
+        :param max_bw: maximum bandwidth in MB/s (1-1000000)
+        :return: ID of the rule if created successfully
+        """
+        payload = {
+            "name": name,
+            "max_bw": max_bw
+        }
+        url = '/file_io_limit_rule'
+        res, response = self._send_post_request(url, payload)
+        if res.status_code == requests.codes.created:
+            return response["id"]
+
+    def get_file_io_limit_rule_by_name(self, name):
+        """Retrieves a file I/O limit rule by name.
+
+        :param name: name of the file I/O limit rule
+        :return: dict with rule details (id, name, max_bw) or None
+        """
+        url = '/file_io_limit_rule?name=eq.' + name + '&select=id,name,max_bw'
+        res, response = self._send_get_request(url)
+        if res.status_code == requests.codes.ok and response:
+            return response[0]
+        return None
+
+    def modify_file_io_limit_rule(self, rule_id, max_bw):
+        """Modifies a file I/O limit rule.
+
+        :param rule_id: ID of the file I/O limit rule
+        :param max_bw: new maximum bandwidth in MB/s
+        :return: True if modified successfully
+        """
+        payload = {
+            "max_bw": max_bw
+        }
+        url = '/file_io_limit_rule/' + rule_id
+        res, _ = self._send_patch_request(url, payload)
+        return res.status_code == requests.codes.no_content
+
+    def delete_file_io_limit_rule(self, rule_id):
+        """Deletes a file I/O limit rule.
+
+        :param rule_id: ID of the file I/O limit rule
+        :return: True if deleted successfully
+        """
+        url = '/file_io_limit_rule/' + rule_id
+        res, _ = self._send_delete_request(url)
+        return res.status_code == requests.codes.no_content
+
+    def create_file_performance_policy(self, name, file_io_limit_rule_id):
+        """Creates a File_Performance type policy.
+
+        :param name: name of the policy
+        :param file_io_limit_rule_id: ID of the file I/O limit rule
+        :return: ID of the policy if created successfully
+        """
+        payload = {
+            "name": name,
+            "file_io_limit_rule_id": file_io_limit_rule_id
+        }
+        url = '/policy'
+        res, response = self._send_post_request(url, payload)
+        if res.status_code == requests.codes.created:
+            return response["id"]
+
+    def get_policy_by_name(self, name):
+        """Retrieves a policy by name.
+
+        :param name: name of the policy
+        :return: dict with policy details or None
+        """
+        url = '/policy?name=eq.' + name
+        res, response = self._send_get_request(url)
+        if res.status_code == requests.codes.ok and response:
+            return response[0]
+        return None
+
+    def get_policy_filesystems(self, policy_id):
+        """Retrieves file systems associated with a policy.
+
+        :param policy_id: ID of the policy
+        :return: list of file system dicts or empty list
+        """
+        url = ('/policy/' + policy_id +
+               '?select=file_systems_with_qos(id)')
+        res, response = self._send_get_request(url)
+        if res.status_code == requests.codes.ok:
+            return response.get('file_systems_with_qos', [])
+        return []
+
+    def delete_policy(self, policy_id):
+        """Deletes a policy.
+
+        :param policy_id: ID of the policy
+        :return: True if deleted successfully
+        """
+        url = '/policy/' + policy_id
+        res, _ = self._send_delete_request(url)
+        return res.status_code == requests.codes.no_content
+
+    def set_filesystem_performance_policy(self, filesystem_id, policy_id):
+        """Associates a File_Performance policy with a filesystem.
+
+        :param filesystem_id: ID of the filesystem
+        :param policy_id: ID of the policy (or empty string to remove)
+        :return: True if operation succeeded
+        """
+        payload = {
+            "performance_policy_id": policy_id
+        }
+        url = '/file_system/' + filesystem_id
+        res, _ = self._send_patch_request(url, payload)
+        return res.status_code == requests.codes.no_content
+
     def set_acl(self, smb_share_id, cifs_rw_users, cifs_ro_users):
         """Set ACL for a SMB share.
 
