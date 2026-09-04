@@ -534,7 +534,6 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 )
             )
         size_gb = size_bytes // units.Gi
-        self._process_dedupe(share, backend_quota_path, False)
         specs = self._get_qos_specs(share)
         qos_req, qos_limit = self._check_qos_requested_and_get_limit(
             share, specs=specs)
@@ -587,6 +586,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                     )
                     LOG.error(reason)
                     raise exception.ManageInvalidShare(reason=reason)
+        self._process_dedupe(share, backend_quota_path, False)
         self._check_domain_mark(share, backend_quota_path)
         return {
             'size': size_gb,

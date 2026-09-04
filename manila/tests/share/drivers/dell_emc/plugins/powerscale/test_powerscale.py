@@ -3575,6 +3575,42 @@ class PowerScaleTest(test.TestCase):
             {},
         )
 
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '500',
+                                     'dataset_id': '1'})
+    def test_manage_existing_qos_failure_skips_dedupe(self, _mock_specs):
+        """QoS validation failure must not reach _process_dedupe."""
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 1 * units.Gi},
+        }
+        self.storage_connection._check_qos_backend_enabled_for_path = (
+            mock.Mock(return_value='absent')
+        )
+        mock_dedupe = self.mock_object(
+            self.storage_connection, '_process_dedupe'
+        )
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+        mock_dedupe.assert_not_called()
+
     def test__qos_backend_enabled_zero_limit_skipped_returns_absent(self):
         resp = mock.Mock()
         resp.json = mock.Mock(return_value={
