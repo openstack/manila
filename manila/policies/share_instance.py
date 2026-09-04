@@ -62,6 +62,10 @@ shares_policies = [
             {
                 'method': 'GET',
                 'path': '/share_instances?{query}',
+            },
+            {
+                'method': 'GET',
+                'path': '/shares/{share_id}/instances'
             }
         ],
         deprecated_rule=deprecated_share_instances_index

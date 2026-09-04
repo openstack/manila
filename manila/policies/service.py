@@ -93,7 +93,7 @@ service_policies = [
         operations=[
             {
                 'method': 'POST',
-                'path': '/services/ensure',
+                'path': '/services/ensure-shares',
             }
         ],
         deprecated_rule=deprecated_service_ensure

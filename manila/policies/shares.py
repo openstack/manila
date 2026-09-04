@@ -449,7 +449,7 @@ shares_policies = [
                      "version 2.45)."),
         operations=[
             {
-                'method': 'GET',
+                'method': 'POST',
                 'path': '/shares/{share_id}/action',
             }
         ],
@@ -751,7 +751,7 @@ base_snapshot_policies = [
         operations=[
             {
                 'method': 'PUT',
-                'path': '/snapshots/{snapshot_id}/action',
+                'path': '/snapshots/{snapshot_id}',
             }
         ],
         deprecated_rule=deprecated_share_snapshot_update

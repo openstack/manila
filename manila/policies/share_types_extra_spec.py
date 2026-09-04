@@ -102,7 +102,7 @@ share_types_extra_spec_policies = [
         operations=[
             {
                 'method': 'PUT',
-                'path': '/types/{share_type_id}/extra_specs',
+                'path': '/types/{share_type_id}/extra_specs/{key}',
             }
         ],
         deprecated_rule=deprecated_extra_spec_update
