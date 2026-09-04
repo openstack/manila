@@ -702,6 +702,27 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual('share-%s' % instance['id'], instance['name'])
 
+    def test_share_instance_get_all_by_share_group_no_instance(self):
+        group = db_utils.create_share_group()
+        db_utils.create_share_without_instance(share_group_id=group['id'])
+
+        instances = db_api.share_instance_get_all_by_share_group_id(
+            self.ctxt, group['id'])
+
+        self.assertEqual(0, len(instances))
+
+    def test_share_instance_get_all_by_share_group_skips_orphaned_share(self):
+        group = db_utils.create_share_group()
+        expected = db_utils.create_share(share_group_id=group['id'])
+        db_utils.create_share_without_instance(share_group_id=group['id'])
+
+        instances = db_api.share_instance_get_all_by_share_group_id(
+            self.ctxt, group['id'])
+
+        self.assertEqual(1, len(instances))
+        self.assertEqual(expected.instance['id'], instances[0]['id'])
+        self.assertEqual('share-%s' % instances[0]['id'], instances[0]['name'])
+
     @ddt.data('id', 'path')
     def test_share_instance_get_all_by_export_location(self, type):
         share = db_utils.create_share()

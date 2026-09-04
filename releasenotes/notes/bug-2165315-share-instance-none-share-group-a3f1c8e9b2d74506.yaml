@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed an ``AttributeError`` crash in
+    ``share_instance_get_all_by_share_group_id`` that occurred when a share
+    record existed without a corresponding share instance (for example, during
+    concurrent deletion or after a failed share creation). The function now
+    skips orphaned share records instead of raising
+    ``AttributeError: 'NoneType' object has no attribute 'set_share_data'``.
+    `Bug #2165315 <https://bugs.launchpad.net/manila/+bug/2165315>`_
