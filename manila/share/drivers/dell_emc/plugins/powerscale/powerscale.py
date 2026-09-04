@@ -27,6 +27,7 @@ from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins import base
 from manila.share.drivers.dell_emc.plugins.powerscale import powerscale_api
+from manila.share import qos_types
 from manila.share import share_types
 
 """Version history:
@@ -42,8 +43,9 @@ from manila.share import share_types
     1.0.8 - Add support of mount point name
     1.0.9 - Add support to schedule Dedupe job for a share
     1.0.10 - Add support for revert to snapshot
+    1.0.11 - Add QoS support
 """
-VERSION = "1.0.10"
+VERSION = "1.0.11"
 
 CONF = cfg.CONF
 
@@ -160,6 +162,22 @@ class PowerScaleStorageConnection(base.StorageConnection):
         self._powerscale_api.quota_create(
             self._get_container_path(share), 'directory', max_share_size)
         self._check_domain_mark(share)
+        # QoS: ensure workload limits if specified in qos type specs
+        specs = self._get_qos_specs(share)
+        qos_req, limit = self._check_qos_requested_and_get_limit(
+            share, specs=specs)
+        if qos_req:
+            dataset_id = self._ensure_dataset_for_qos(share, specs=specs)
+            if not dataset_id:
+                msg = _(
+                    "QoS share requested but dataset could not be ensured."
+                )
+                LOG.error(msg)
+                raise exception.ShareBackendException(msg=msg)
+            export_path = self._get_container_path(share, check_path=True)
+            protos = self._get_qos_protocols_for_share(share, specs=specs)
+            self._ensure_qos_workloads(dataset_id, export_path, protos, limit)
+
         return location
 
     def _check_domain_mark(self, share):
@@ -323,6 +341,18 @@ class PowerScaleStorageConnection(base.StorageConnection):
     def delete_share(self, context, share, share_server):
         """Is called to remove share."""
         LOG.debug(f'Deleting {share["share_proto"]} share.')
+        # QoS: remove workloads for this path (best-effort)
+        try:
+            specs = self._get_qos_specs(share)
+            dataset_id = self._ensure_dataset_for_qos(share, specs=specs)
+            export_path = self._get_container_path(share, check_path=True)
+            protos = self._get_qos_protocols_for_share(share, specs=specs)
+            self._clear_qos_for_path(dataset_id, export_path, protos)
+        except Exception:
+            LOG.warning(
+                'QoS: best-effort cleanup failed for share %s; '
+                'proceeding with deletion.', share.get('id')
+            )
         if share['share_proto'] == 'NFS':
             self._delete_nfs_share(share)
         elif share['share_proto'] == 'CIFS':
@@ -503,6 +533,58 @@ class PowerScaleStorageConnection(base.StorageConnection):
             )
         size_gb = size_bytes // units.Gi
         self._process_dedupe(share, backend_quota_path, False)
+        specs = self._get_qos_specs(share)
+        qos_req, qos_limit = self._check_qos_requested_and_get_limit(
+            share, specs=specs)
+        protos = self._get_qos_protocols_for_share(share, specs=specs)
+        if qos_req:
+            dataset_id = self._ensure_dataset_for_qos(share, specs=specs)
+            if not dataset_id:
+                reason = (
+                    'QoS requested via share type but dataset could not be '
+                    'resolved (not found or invalid metrics).'
+                )
+                LOG.error(reason)
+                raise exception.ManageInvalidShare(reason=reason)
+            status = self._check_qos_backend_enabled_for_path(
+                dataset_id,
+                backend_quota_path,
+                protos,
+                expected_limit=qos_limit
+            )
+            if status == 'match':
+                pass
+            elif status == 'absent':
+                reason = (
+                    'QoS requested via qos type '
+                    f'(protocol_ops={int(qos_limit)}) but '
+                    f'backend path {backend_quota_path} has no SmartQoS '
+                    'workload.'
+                )
+                LOG.error(reason)
+                raise exception.ManageInvalidShare(reason=reason)
+            else:
+                reason = (
+                    'QoS limit mismatch on backend path '
+                    f'{backend_quota_path}: qos_type={int(qos_limit)} '
+                    'but backend has a different protocol_ops limit.'
+                )
+                LOG.error(reason)
+                raise exception.ManageInvalidShare(reason=reason)
+        else:
+            dataset_id = self._ensure_dataset_for_qos(share, specs=specs)
+            if dataset_id:
+                if self._check_qos_backend_enabled_for_path(
+                    dataset_id,
+                    backend_quota_path,
+                    protos
+                ) == 'enabled':
+                    reason = (
+                        'QoS type not set but backend path '
+                        f'{backend_quota_path} has SmartQoS enabled.'
+                    )
+                    LOG.error(reason)
+                    raise exception.ManageInvalidShare(reason=reason)
         return {
             'size': size_gb,
             'export_locations': [export_location],
@@ -616,12 +698,14 @@ class PowerScaleStorageConnection(base.StorageConnection):
         """Retrieve stats info from share."""
         stats_dict['driver_version'] = VERSION
         stats_dict['storage_protocol'] = 'NFS_CIFS'
+        stats_dict['qos_type_support'] = True
         # PowerScale does not support pools.
         # To align with manila scheduler 'pool-aware' strategic,
         # report with one pool structure.
         pool_stat = {
             'pool_name': stats_dict['share_backend_name'],
-            'qos': False,
+            'qos': True,
+            'qos_type_support': True,
             'reserved_percentage': self.reserved_percentage,
             'reserved_snapshot_percentage':
                 self.reserved_snapshot_percentage,
@@ -1176,3 +1260,165 @@ class PowerScaleStorageConnection(base.StorageConnection):
                        revert_share_size))
             return {"status": const.STATUS_AVAILABLE}
         return {"status": const.STATUS_REVERTING_TO_SNAPSHOT}
+
+    def _get_qos_protocols_for_share(self, share, specs=None):
+        """Return list of protocols to apply QoS for this share."""
+        proto = (share.get('share_proto') or '').upper()
+        if proto == 'NFS':
+            base = ['nfs3', 'nfs4']
+        elif proto == 'CIFS':
+            base = ['smb1', 'smb2']
+        else:
+            return []
+        if specs is None:
+            specs = self._get_qos_specs(share)
+        raw = (specs.get('protocols') or '').strip()
+        if not raw:
+            return base
+        requested = [p.strip().lower() for p in raw.split(',') if p.strip()]
+        filtered = [p for p in base if p in requested]
+        return filtered or base
+
+    def _find_qos_workload(self, dataset_id, path_val, proto_val):
+        """Find workload by path and protocol."""
+        wresp = self._powerscale_api.list_workloads(dataset_id)
+        workloads = wresp.json().get('workloads', [])
+        for w in workloads:
+            mv = w.get('metric_values', {})
+            if mv.get('path') == path_val and mv.get('protocol') == proto_val:
+                wid = w.get('id') or w.get('workload_id')
+                cur = (w.get('limits') or {}).get('protocol_ops')
+                return wid, cur
+        return None, None
+
+    def _ensure_qos_workloads(self, dataset_id, path_val, protos, limit):
+        """Create or update workloads for (path, each protocol)."""
+        for p in protos:
+            wid, cur = self._find_qos_workload(dataset_id, path_val, p)
+            mv = {'path': path_val, 'protocol': p}
+            if wid is None:
+                self._powerscale_api.create_workload(dataset_id, mv, limit)
+            else:
+                if int(cur or 0) != int(limit):
+                    self._powerscale_api.update_workload_limit(
+                        dataset_id, wid, limit
+                    )
+
+    def _clear_qos_for_path(self, dataset_id, path_val, protos):
+        """Delete workloads for (path, each protocol) if present."""
+        if not dataset_id:
+            return
+        for p in protos:
+            wid, _ = self._find_qos_workload(dataset_id, path_val, p)
+            if wid is not None:
+                try:
+                    self._powerscale_api.delete_workload(
+                        dataset_id,
+                        wid
+                    )
+                except Exception:
+                    LOG.warning('QoS: failed to delete workload %s', wid)
+
+    def _get_qos_specs(self, share):
+        """Return qos type specs for this share via qos_types module."""
+        return qos_types.get_specs_from_share(share)
+
+    def _check_qos_requested_and_get_limit(self, share, specs=None):
+        """Return (True, limit) if QoS requested and limit is > 0."""
+        if specs is None:
+            specs = self._get_qos_specs(share)
+        if 'protocol_ops' not in specs:
+            return False, None
+        val = specs.get('protocol_ops')
+        try:
+            limit = int(val)
+        except (TypeError, ValueError):
+            msg = _(
+                "Invalid protocol_ops=%(val)r in qos type. "
+                "Must be an integer."
+            ) % {'val': val}
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        if limit <= 0:
+            msg = _(
+                "Invalid protocol_ops=%(val)s in qos type. "
+                "Must be > 0."
+            ) % {'val': limit}
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return True, limit
+
+    def _ensure_dataset_for_qos(self, share=None, specs=None):
+        """Resolve dataset id from qos type specs."""
+        if specs is None:
+            specs = self._get_qos_specs(share or {})
+        ds_id = specs.get('dataset_id')
+        if ds_id is not None:
+            try:
+                return int(ds_id)
+            except (TypeError, ValueError):
+                LOG.error(
+                    'Invalid dataset_id=%r in qos type; must be int.', ds_id
+                )
+                return None
+        ds_name = specs.get('dataset')
+        if not ds_name:
+            return None
+        try:
+            dresp = self._powerscale_api.list_datasets()
+            datasets = dresp.json().get('datasets', [])
+        except Exception:
+            LOG.error('QoS: failed to list datasets on OneFS.')
+            return None
+        wanted_metrics = ['path', 'protocol']
+        for d in datasets:
+            if d.get('name') == ds_name:
+                metrics = d.get('metrics') or []
+                if sorted(metrics) != sorted(wanted_metrics):
+                    LOG.error(
+                        'QoS dataset %s exists but metrics=%s; expected %s.',
+                        ds_name, metrics, wanted_metrics
+                    )
+                    return None
+                return d.get('id')
+        LOG.error('QoS dataset %s not found on OneFS.', ds_name)
+        return None
+
+    def _check_qos_backend_enabled_for_path(self, dataset_id, path_val, protos,
+                                            expected_limit=None):
+        try:
+            wresp = self._powerscale_api.list_workloads(dataset_id)
+            workloads = wresp.json().get('workloads', [])
+        except Exception:
+            LOG.warning(
+                'QoS detect: list_workloads failed for dataset %s; '
+                'treating path %s as QoS disabled/absent.',
+                dataset_id, path_val
+            )
+            return 'disabled' if expected_limit is None else 'absent'
+
+        for w in workloads:
+            mv = w.get('metric_values', {})
+            if mv.get('path') != path_val:
+                continue
+            proto = mv.get('protocol')
+            if proto not in protos:
+                continue
+            lim = (w.get('limits') or {}).get('protocol_ops')
+            try:
+                lim_int = int(lim)
+            except Exception:
+                continue
+            if lim_int <= 0:
+                continue
+
+            if expected_limit is None:
+                return 'enabled'
+            try:
+                if lim_int == int(expected_limit):
+                    return 'match'
+                return 'mismatch'
+            except Exception:
+                return 'mismatch'
+
+        return 'disabled' if expected_limit is None else 'absent'

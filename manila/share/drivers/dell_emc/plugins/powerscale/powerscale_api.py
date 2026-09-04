@@ -28,6 +28,12 @@ from manila import utils
 
 LOG = log.getLogger(__name__)
 
+PAPI_VERSION_DEFAULT = '1'
+PAPI_VERSION_NFS = '12'
+PAPI_VERSION_SNAPSHOT_NFS_EXPORT = '22'
+PAPI_VERSION_CLUSTER = '12'
+PAPI_VERSION_QOS = '19'
+
 
 class PowerScaleApi(object):
 
@@ -689,6 +695,82 @@ class PowerScaleApi(object):
         )
         r = self.send_put_request(url, data=data)
         return r.status_code == 204
+
+    def list_datasets(self):
+        """List SmartQoS performance datasets."""
+        url = '{0}/platform/{1}/performance/datasets'.format(
+            self.host_url, PAPI_VERSION_QOS)
+        resp = self.send_get_request(url)
+        if resp.status_code != 200:
+            msg = _(
+                'GET performance datasets failed. status={0} body={1}'
+            ).format(resp.status_code, getattr(resp, 'text', ''))
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return resp
+
+    def list_workloads(self, dataset_id):
+        """List workloads for a dataset."""
+        url = '{0}/platform/{1}/performance/datasets/{2}/workloads'.format(
+            self.host_url, PAPI_VERSION_QOS, dataset_id
+        )
+        resp = self.send_get_request(url)
+        if resp.status_code != 200:
+            msg = _(
+                'GET dataset workloads failed. status={0} body={1}'
+            ).format(resp.status_code, getattr(resp, 'text', ''))
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return resp
+
+    def create_workload(self, dataset_id, metric_values, protocol_ops):
+        """Pin a workload and set protocol_ops limit."""
+        url = '{0}/platform/{1}/performance/datasets/{2}/workloads'.format(
+            self.host_url, PAPI_VERSION_QOS, dataset_id
+        )
+        payload = {
+            'metric_values': metric_values,
+            'limits': {'protocol_ops': int(protocol_ops)},
+        }
+        resp = self.send_post_request(url, data=payload)
+        if resp.status_code not in (200, 201):
+            msg = _(
+                'POST dataset workload failed. status={0} body={1}'
+            ).format(resp.status_code, getattr(resp, 'text', ''))
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return resp
+
+    def update_workload_limit(self, dataset_id, workload_id, protocol_ops):
+        """Update protocol_ops limit for a workload."""
+        url = (
+            '{0}/platform/{1}/performance/datasets/{2}/workloads/{3}'
+            .format(self.host_url, PAPI_VERSION_QOS, dataset_id, workload_id)
+        )
+        payload = {'limits': {'protocol_ops': int(protocol_ops)}}
+        resp = self.send_put_request(url, data=payload)
+        if resp.status_code not in (200, 204):
+            msg = _(
+                'PUT workload limit failed. status={0} body={1}'
+            ).format(resp.status_code, getattr(resp, 'text', ''))
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return resp
+
+    def delete_workload(self, dataset_id, workload_id):
+        """Unpin/delete a workload."""
+        url = (
+            '{0}/platform/{1}/performance/datasets/{2}/workloads/{3}'
+            .format(self.host_url, PAPI_VERSION_QOS, dataset_id, workload_id)
+        )
+        resp = self.send_delete_request(url)
+        if resp.status_code not in (200, 204):
+            msg = _(
+                'DELETE workload failed. status={0} body={1}'
+            ).format(resp.status_code, getattr(resp, 'text', ''))
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+        return resp
 
 
 class SmbPermission(enum.Enum):

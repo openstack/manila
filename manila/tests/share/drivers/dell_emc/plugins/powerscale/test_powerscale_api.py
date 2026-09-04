@@ -1675,3 +1675,119 @@ class PowerScaleApiTest(test.TestCase):
             mock.MagicMock(return_value=mock_response))
         result = self.powerscale_api_revert_to_snap._cancel_job('123')
         self.assertFalse(result)
+
+    def test_list_datasets_success(self):
+        resp = mock.Mock()
+        resp.status_code = 200
+        self.powerscale_api.send_get_request = mock.MagicMock(
+            return_value=resp
+        )
+        result = self.powerscale_api.list_datasets()
+        self.assertEqual(resp, result)
+
+    def test_list_datasets_failure_raises(self):
+        resp = mock.Mock()
+        resp.status_code = 500
+        resp.text = "boom"
+        self.powerscale_api.send_get_request = mock.MagicMock(
+            return_value=resp
+        )
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.powerscale_api.list_datasets,
+        )
+
+    def test_list_workloads_success(self):
+        resp = mock.Mock()
+        resp.status_code = 200
+        self.powerscale_api.send_get_request = mock.MagicMock(
+            return_value=resp
+        )
+        result = self.powerscale_api.list_workloads(1)
+        self.assertEqual(resp, result)
+
+    def test_list_workloads_failure_raises(self):
+        resp = mock.Mock()
+        resp.status_code = 404
+        resp.text = "nope"
+        self.powerscale_api.send_get_request = mock.MagicMock(
+            return_value=resp
+        )
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.powerscale_api.list_workloads,
+            1,
+        )
+
+    def test_create_workload_success(self):
+        resp = mock.Mock()
+        resp.status_code = 201
+        self.powerscale_api.send_post_request = mock.MagicMock(
+            return_value=resp
+        )
+        result = self.powerscale_api.create_workload(
+            1, {"path": "/ifs/x", "protocol": "nfs3"}, 500
+        )
+        self.assertEqual(resp, result)
+
+    def test_create_workload_failure_raises(self):
+        resp = mock.Mock()
+        resp.status_code = 500
+        resp.text = "err"
+        self.powerscale_api.send_post_request = mock.MagicMock(
+            return_value=resp
+        )
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.powerscale_api.create_workload,
+            1,
+            {"path": "/ifs/x", "protocol": "nfs3"},
+            500,
+        )
+
+    def test_update_workload_limit_success(self):
+        resp = mock.Mock()
+        resp.status_code = 204
+        self.powerscale_api.send_put_request = mock.MagicMock(
+            return_value=resp
+        )
+        result = self.powerscale_api.update_workload_limit(1, 100, 500)
+        self.assertEqual(resp, result)
+
+    def test_update_workload_limit_failure_raises(self):
+        resp = mock.Mock()
+        resp.status_code = 400
+        resp.text = "bad"
+        self.powerscale_api.send_put_request = mock.MagicMock(
+            return_value=resp
+        )
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.powerscale_api.update_workload_limit,
+            1,
+            100,
+            500,
+        )
+
+    def test_delete_workload_success(self):
+        resp = mock.Mock()
+        resp.status_code = 204
+        self.powerscale_api.send_delete_request = mock.MagicMock(
+            return_value=resp
+        )
+        result = self.powerscale_api.delete_workload(1, 100)
+        self.assertEqual(resp, result)
+
+    def test_delete_workload_failure_raises(self):
+        resp = mock.Mock()
+        resp.status_code = 500
+        resp.text = "boom"
+        self.powerscale_api.send_delete_request = mock.MagicMock(
+            return_value=resp
+        )
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.powerscale_api.delete_workload,
+            1,
+            100,
+        )

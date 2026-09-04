@@ -63,6 +63,8 @@ The following operations are supported:
 
 - Revert to a snapshot.
 
+- Add QoS support.
+
 Pre-configurations for Compression on PowerScale
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -330,6 +332,92 @@ Once the backend revert job completes successfully, the share status is
 updated automatically from ``reverting_to_snapshot`` to ``available``.
 If the job fails, the share status is updated to ``error``.
 
+
+QoS Support
+~~~~~~~~~~~
+
+The Dell PowerScale Manila driver can enforce OneFS SmartQoS protocol
+operations limits (``protocol_ops``) per share. QoS is driven by
+Manila QoS types and validated against a pre-existing SmartQoS
+dataset on OneFS. The driver does not create datasets.
+
+The driver reports the ``qos_type_support`` capability so the scheduler
+can filter backends that support QoS types.
+
+Requirements
+------------
+
+- OneFS **9.5 or higher**, with SmartQoS introduced.
+- A **SmartQoS dataset already exists** on the cluster with metrics
+  exactly ``['path', 'protocol']``.
+- The driver reads the dataset name from QoS type specs.
+
+  .. note::
+
+     The driver does **not** auto-create the dataset. If the dataset is
+     missing or misconfigured (wrong metrics), QoS operations will fail.
+
+Configure QoS using QoS types
+------------------------------
+
+1. Create a QoS type with the required specs:
+
+.. code-block:: console
+
+   # Create a QoS type with protocol_ops limit and dataset reference
+   openstack share qos type create PowerScale-QoS \
+    --spec protocol_ops=<protocol_ops_limit> \
+    --spec dataset=<dataset_name>
+
+   # Alternatively, reference the dataset by numeric ID
+   openstack share qos type create PowerScale-QoS \
+    --spec protocol_ops=<protocol_ops_limit> \
+    --spec dataset_id=<dataset_id>
+
+2. Create a share type and associate the QoS type:
+
+.. code-block:: console
+
+   # Create a share type
+   openstack share type create <share-type-name> False
+
+   # Link the QoS type to the share type via default_qos_type extra spec
+   openstack share type set <share-type-name> --extra-specs \
+    default_qos_type=PowerScale-QoS
+
+3. Create a share using the share type:
+
+.. code-block:: console
+
+   openstack share create NFS 1 --share-type <share-type-name>
+
+Optional: Restrict QoS to specific protocol versions by adding the
+``protocols`` spec to the QoS type:
+
+- For NFS: ``nfs3``, ``nfs4`` (or both as a comma-separated list)
+- For SMB: ``smb1``, ``smb2`` (or both)
+
+.. code-block:: console
+
+   openstack share qos type set PowerScale-QoS --spec protocols=nfs4
+
+QoS type spec reference
+-----------------------
+
++------------------+----------+---------------------------------------------+
+| Spec key         | Required | Description                                 |
++==================+==========+=============================================+
+| protocol_ops     | Yes      | SmartQoS protocol operations limit (int>0). |
++------------------+----------+---------------------------------------------+
+| dataset          | Yes*     | SmartQoS dataset name on OneFS.             |
++------------------+----------+---------------------------------------------+
+| dataset_id       | Yes*     | SmartQoS dataset numeric ID on OneFS.       |
++------------------+----------+---------------------------------------------+
+| protocols        | No       | Comma-separated protocol filter             |
+|                  |          | (e.g. ``nfs3,nfs4``, ``smb1,smb2``).        |
++------------------+----------+---------------------------------------------+
+
+\*Either ``dataset`` or ``dataset_id`` must be provided.
 
 Driver options
 ~~~~~~~~~~~~~~

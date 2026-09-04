@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Added support for QoS metrics for Dell PowerScale manila driver.
+
+    The driver can enforce OneFS SmartQoS protocol operations limits
+    (protocol_ops) per share using Manila QoS types. QoS is validated
+    against a pre-existing SmartQoS dataset on OneFS.
+
+    Requirements:
+
+    - OneFS 9.5 or higher with SmartQoS support
+    - A SmartQoS dataset must already exist on the cluster with metrics
+      exactly ['path', 'protocol']
+    - The driver reads the dataset name or ID from QoS type specs

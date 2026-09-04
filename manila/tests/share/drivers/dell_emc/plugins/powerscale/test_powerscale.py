@@ -23,6 +23,7 @@ from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.share.drivers.dell_emc.plugins.powerscale import powerscale
+from manila.share import qos_types
 from manila.share import share_types
 from manila import test
 
@@ -664,7 +665,8 @@ class PowerScaleTest(test.TestCase):
             'total_capacity_gb': 1000,
             'free_capacity_gb': 100,
             'allocated_capacity_gb': 2110.0,
-            'qos': False,
+            'qos': True,
+            'qos_type_support': True,
             'mount_snapshot_support': True,
             'mount_point_name_support': True,
             'dedupe': True,
@@ -674,6 +676,7 @@ class PowerScaleTest(test.TestCase):
             'share_backend_name': 'PowerScale_backend',
             'driver_version': powerscale.VERSION,
             'storage_protocol': 'NFS_CIFS',
+            'qos_type_support': True,
             'pools': [expected_pool_stats]
         }
         self.assertEqual(expected_stats, stats_dict)
@@ -2691,3 +2694,802 @@ class PowerScaleTest(test.TestCase):
             exception.ShareBackendException,
             self.storage_connection.create_snapshot,
             self.mock_context, snapshot, None)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_qos_protocols_default_nfs(self, _mock_specs):
+        share = {'share_proto': 'NFS'}
+        got = self.storage_connection._get_qos_protocols_for_share(share)
+        self.assertEqual(['nfs3', 'nfs4'], got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_qos_protocols_default_cifs(self, _mock_specs):
+        share = {'share_proto': 'CIFS'}
+        got = self.storage_connection._get_qos_protocols_for_share(share)
+        self.assertEqual(['smb1', 'smb2'], got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocols': 'nfs4'})
+    def test_qos_protocols_override_subset(self, _mock_specs):
+        share = {'share_proto': 'NFS'}
+        got = self.storage_connection._get_qos_protocols_for_share(share)
+        self.assertEqual(['nfs4'], got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_qos_protocols_unknown_proto(self, _mock_specs):
+        share = {'share_proto': 'FOO'}
+        got = self.storage_connection._get_qos_protocols_for_share(share)
+        self.assertEqual([], got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_check_qos_requested_and_get_limit_missing(self, _mock_specs):
+        share = {}
+        want = (False, None)
+        got = self.storage_connection._check_qos_requested_and_get_limit(share)
+        self.assertEqual(want, got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '500'})
+    def test_check_qos_requested_and_get_limit_valid(self, _mock_specs):
+        share = {}
+        want = (True, 500)
+        got = self.storage_connection._check_qos_requested_and_get_limit(share)
+        self.assertEqual(want, got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': 'x'})
+    def test_check_qos_requested_and_get_limit_invalid_nonint_raises(
+            self, _mock_specs):
+        share = {}
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._check_qos_requested_and_get_limit,
+            share,
+        )
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '0'})
+    def test_check_qos_requested_and_get_limit_invalid_le_zero_raises(
+            self, _mock_specs):
+        share = {}
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection._check_qos_requested_and_get_limit,
+            share,
+        )
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'k': 'v'})
+    def test_get_qos_specs_with_qos_type_id(self, mock_specs):
+        share = {'qos_type_id': 'qt-id'}
+        got = self.storage_connection._get_qos_specs(share)
+        self.assertEqual({'k': 'v'}, got)
+        mock_specs.assert_called_once_with(share)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_get_qos_specs_no_qos_type(self, mock_specs):
+        share = {}
+        got = self.storage_connection._get_qos_specs(share)
+        self.assertEqual({}, got)
+        mock_specs.assert_called_once_with(share)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'dataset_id': '9'})
+    def test_ensure_dataset_for_qos_from_id_valid(self, _mock_specs):
+        share = {}
+        got = self.storage_connection._ensure_dataset_for_qos(share)
+        self.assertEqual(9, got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'dataset_id': 'x'})
+    def test_ensure_dataset_for_qos_from_id_invalid(self, _mock_specs):
+        share = {}
+        got = self.storage_connection._ensure_dataset_for_qos(share)
+        self.assertIsNone(got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'dataset': 'ds1'})
+    def test_ensure_dataset_for_qos_from_name_success(self, _mock_specs):
+        share = {}
+        resp = mock.Mock()
+        resp.json = mock.Mock(
+            return_value={
+                'datasets': [{
+                    'id': 3,
+                    'name': 'ds1',
+                    'metrics': ['protocol', 'path']
+                }]
+            }
+        )
+        self._mock_powerscale_api.list_datasets.return_value = resp
+        got = self.storage_connection._ensure_dataset_for_qos(share)
+        self.assertEqual(3, got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'dataset': 'ds1'})
+    def test_ensure_dataset_for_qos_metrics_mismatch(self, _mock_specs):
+        share = {}
+        resp = mock.Mock()
+        resp.json = mock.Mock(
+            return_value={
+                'datasets': [{
+                    'id': 3,
+                    'name': 'ds1',
+                    'metrics': ['something', 'else']
+                }]
+            }
+        )
+        self._mock_powerscale_api.list_datasets.return_value = resp
+        got = self.storage_connection._ensure_dataset_for_qos(share)
+        self.assertIsNone(got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'dataset': 'nope'})
+    def test_ensure_dataset_for_qos_not_found(self, _mock_specs):
+        share = {}
+        resp = mock.Mock()
+        resp.json = mock.Mock(
+            return_value={
+                'datasets': [{
+                    'id': 1,
+                    'name': 'other',
+                    'metrics': ['path', 'protocol']
+                }]
+            }
+        )
+        self._mock_powerscale_api.list_datasets.return_value = resp
+        got = self.storage_connection._ensure_dataset_for_qos(share)
+        self.assertIsNone(got)
+
+    def test_find_qos_workload_found(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'id': 5,
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 400},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        wid, cur = self.storage_connection._find_qos_workload(
+            1, '/ifs/x', 'nfs3')
+        self.assertEqual(5, wid)
+        self.assertEqual(400, cur)
+
+    def test_find_qos_workload_not_found(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={'workloads': []})
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        wid, cur = self.storage_connection._find_qos_workload(
+            1, '/ifs/x', 'nfs3')
+        self.assertIsNone(wid)
+        self.assertIsNone(cur)
+
+    @mock.patch.object(
+        powerscale.PowerScaleStorageConnection, '_find_qos_workload',
+        side_effect=[(None, None), (9, 100)],
+    )
+    def test_ensure_qos_workloads_create_and_update(self, mock_find):
+        self.storage_connection._ensure_qos_workloads(
+            dataset_id=1,
+            path_val='/ifs/x',
+            protos=['nfs3', 'nfs4'],
+            limit=500,
+        )
+        self._mock_powerscale_api.create_workload.assert_called_once_with(
+            1, {'path': '/ifs/x', 'protocol': 'nfs3'}, 500)
+        self._mock_powerscale_api.update_workload_limit.\
+            assert_called_once_with(1, 9, 500)
+
+    def test_clear_qos_for_path_no_dataset_bails(self):
+        self.storage_connection._clear_qos_for_path(None, '/ifs/x', ['nfs3'])
+        self._mock_powerscale_api.delete_workload.assert_not_called()
+
+    @mock.patch.object(
+        powerscale.PowerScaleStorageConnection, '_find_qos_workload',
+        return_value=(11, 300),
+    )
+    def test_clear_qos_for_path_deletes_and_ignores_exceptions(self, _mf):
+        self._mock_powerscale_api.delete_workload.side_effect = Exception('x')
+        self.storage_connection._clear_qos_for_path(2, '/ifs/x', ['nfs3'])
+        self._mock_powerscale_api.delete_workload.assert_called_once_with(
+            2, 11
+        )
+
+    def test_check_qos_backend_enabled_for_path_enabled_no_expected(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs4'},
+                'limits': {'protocol_ops': 200},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3', 'nfs4'])
+        self.assertEqual('enabled', got)
+
+    def test_check_qos_backend_enabled_for_path_match_and_mismatch(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs4'},
+                'limits': {'protocol_ops': 300},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs4'], expected_limit=300)
+        self.assertEqual('match', got)
+        got2 = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs4'], expected_limit=500)
+        self.assertEqual('mismatch', got2)
+
+    def test_check_qos_backend_enabled_for_path_list_failure(self):
+        self._mock_powerscale_api.list_workloads.side_effect = Exception(
+            'boom'
+        )
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3'])
+        self.assertEqual('disabled', got)
+        got2 = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3'], expected_limit=400)
+        self.assertEqual('absent', got2)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '500',
+                                     'dataset_id': '1'})
+    def test_create_share_nfs_with_qos_success(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type()),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'size': 1,
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.create_nfs_export.return_value = True
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=self.SHARE_DIR
+        )
+        with mock.patch.object(
+            self.storage_connection,
+            '_ensure_qos_workloads',
+            wraps=self.storage_connection._ensure_qos_workloads,
+        ) as spy_q:
+            loc = self.storage_connection.create_share(
+                self.mock_context, share, None
+            )
+            self.assertTrue(loc)
+            spy_q.assert_called_once()
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '500'})
+    def test_create_share_with_qos_dataset_missing_raises(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type()),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'size': 1,
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.create_nfs_export.return_value = True
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=self.SHARE_DIR
+        )
+        self.storage_connection._ensure_dataset_for_qos = mock.Mock(
+            return_value=None
+        )
+        self.assertRaises(
+            exception.ShareBackendException,
+            self.storage_connection.create_share,
+            self.mock_context,
+            share,
+            None,
+        )
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_delete_share_calls_qos_clear(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type()),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'share_type_id': 'fake-st-id',
+        }
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=self.SHARE_DIR
+        )
+        with mock.patch.object(
+            self.storage_connection, '_clear_qos_for_path'
+        ) as spy_clear:
+            self.storage_connection.delete_share(
+                self.mock_context, share, None
+            )
+            spy_clear.assert_called_once()
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_delete_share_qos_cleanup_failure_proceeds(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type()),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'share_type_id': 'fake-st-id',
+        }
+        self.storage_connection._get_container_path = mock.Mock(
+            return_value=self.SHARE_DIR
+        )
+        self.storage_connection._clear_qos_for_path = mock.Mock(
+            side_effect=Exception('QoS PAPI error')
+        )
+        fake_share_num = 42
+        self._mock_powerscale_api.lookup_nfs_export.return_value = (
+            fake_share_num)
+        self.storage_connection.delete_share(
+            self.mock_context, share, None
+        )
+        self._mock_powerscale_api.delete_nfs_share.assert_called_with(
+            fake_share_num)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '400',
+                                     'dataset_id': '1'})
+    def test_manage_existing_qos_requested_status_match_pass(self,
+                                                             _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 5 * units.Gi},
+        }
+        self.storage_connection._check_qos_backend_enabled_for_path = (
+            mock.Mock(
+                return_value='match'
+            )
+        )
+        res = self.storage_connection.manage_existing(share, {})
+        self.assertEqual(5, res['size'])
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '400',
+                                     'dataset_id': '1'})
+    def test_manage_existing_qos_requested_absent_raises(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 1 * units.Gi},
+        }
+        self.storage_connection._check_qos_backend_enabled_for_path = (
+            mock.Mock(
+                return_value='absent'
+            )
+        )
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '400',
+                                     'dataset_id': '1'})
+    def test_manage_existing_qos_requested_mismatch_raises(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 1 * units.Gi},
+        }
+        self.storage_connection._check_qos_backend_enabled_for_path = (
+            mock.Mock(
+                return_value='mismatch'
+            )
+        )
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_manage_existing_qos_not_requested_but_backend_enabled(
+            self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'CIFS',
+            'export_location': r'\\10.0.0.1\share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'path': self.SHARE_DIR
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 2 * units.Gi},
+        }
+        self.storage_connection._ensure_dataset_for_qos = mock.Mock(
+            return_value=1
+        )
+        self.storage_connection._check_qos_backend_enabled_for_path = (
+            mock.Mock(
+                return_value='enabled'
+            )
+        )
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+
+    @mock.patch.object(qos_types, 'get_specs_from_share', return_value={})
+    def test_manage_existing_qos_not_requested_backend_disabled_ok(
+            self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'CIFS',
+            'export_location': r'\\10.0.0.1\share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'path': self.SHARE_DIR
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 2 * units.Gi},
+        }
+        self.storage_connection._ensure_dataset_for_qos = mock.Mock(
+            return_value=1
+        )
+        self.storage_connection._check_qos_backend_enabled_for_path = (
+            mock.Mock(
+                return_value='disabled'
+            )
+        )
+        res = self.storage_connection.manage_existing(share, {})
+        self.assertEqual(2, res['size'])
+
+    @mock.patch(
+        'manila.share.drivers.dell_emc.plugins.powerscale.powerscale.'
+        'powerscale_api.PowerScaleApi', autospec=True)
+    def test_connect_with_ssl_verify_sets_cert_path(self, mock_api_cls):
+        class SSLConfig(object):
+            def safe_get(self, key):
+                mapping = {
+                    'emc_nas_server': '10.0.0.1',
+                    'emc_nas_server_port': '8080',
+                    'emc_nas_login': 'admin',
+                    'emc_nas_password': 'a',
+                    'emc_nas_root_dir': '/ifs/manila-test',
+                    'powerscale_dir_permission': '0777',
+                    'emc_ssl_cert_verify': True,
+                    'emc_ssl_cert_path': '/etc/ssl/certs/isilon.pem',
+                }
+                return mapping.get(key)
+
+        storage = powerscale.PowerScaleStorageConnection(LOG)
+        drv = mock.Mock('EmcDriver')
+        drv.attach_mock(SSLConfig(), 'configuration')
+        storage.connect(drv, self.mock_context)
+        self.assertTrue(storage._verify_ssl_cert)
+        self.assertEqual('/etc/ssl/certs/isilon.pem', storage._ssl_cert_path)
+        mock_api_cls.assert_called()
+
+    def test_manage_existing_cifs_path_mismatch_raises(self):
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'CIFS',
+            'export_location': r'\\10.0.0.1\other',
+            'share_type_id': 'fake-st-id',
+        }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'path': f'{self.ROOT_DIR}/other'
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 1 * units.Gi},
+        }
+        self._mock_powerscale_api.is_path_existent.return_value = True
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+
+    def test_manage_existing_nfs_path_mismatch_raises(self):
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/other',
+            'share_type_id': 'fake-st-id',
+        }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 1
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 1 * units.Gi},
+        }
+        self._mock_powerscale_api.is_path_existent.return_value = True
+
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+
+    def test_shrink_share_with_no_quota_json(self):
+        # When quota_get returns None, used_bytes defaults to 0 and we proceed.
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS"}
+        self._mock_powerscale_api.quota_get.return_value = None
+        path = f"{self.ROOT_DIR}/{self.SHARE_NAME}"
+        self.storage_connection.shrink_share(share, new_size=3)
+        self._mock_powerscale_api.quota_set.assert_called_once_with(
+            path, 'directory', 3 * units.Gi
+        )
+
+    def test_deregister_dedupe_settings_removes_paths(self):
+        share = {"name": self.SHARE_NAME, "share_proto": "NFS"}
+        share_path = f"{self.ROOT_DIR}/{self.SHARE_NAME}"
+        self._mock_powerscale_api.get_dedupe_settings.return_value = {
+            "settings": {
+                "paths": [share_path, "/ifs/data/keep1"],
+                "assess_paths": [share_path, "/ifs/data/keep1"],
+            }
+        }
+        self.storage_connection.deregister_dedupe_settings(share)
+        self._mock_powerscale_api.modify_dedupe_settings.\
+            assert_called_once_with(
+
+                ["/ifs/data/keep1"],
+                ["/ifs/data/keep1"],
+            )
+
+    def test__format_nfs_mount_point_name(self):
+        got = self.storage_connection._format_nfs_mount_point_name('alias')
+        self.assertEqual('/alias', got)
+
+    def test__get_location_marks_preferred(self):
+        locs = self.storage_connection._get_location({'A': True, 'B': False})
+        self.assertEqual(2, len(locs))
+        pref = {item['path']: item['metadata']['preferred'] for item in locs}
+        self.assertTrue(pref['A'])
+        self.assertFalse(pref['B'])
+
+    def test__get_container_path_when_exists_returns_container(self):
+        self._mock_powerscale_api.is_path_existent.return_value = True
+        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
+        got = self.storage_connection._get_container_path(share, True)
+        self.assertEqual(self.SHARE_DIR, got)
+
+    def test__qos_backend_enabled_path_mismatch_returns_disabled(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/other', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 200},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3']
+        )
+        self.assertEqual('disabled', got)
+
+    def test__qos_backend_enabled_path_mismatch_with_expected_absent(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/else', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 300},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3'], expected_limit=300
+        )
+        self.assertEqual('absent', got)
+
+    def test__qos_backend_enabled_protocol_not_in_list(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'smb1'},
+                'limits': {'protocol_ops': 100},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3']
+        )
+        self.assertEqual('disabled', got)
+
+    def test__qos_backend_enabled_limit_nonint_ignored(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 'oops'},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3']
+        )
+        self.assertEqual('disabled', got)
+
+    def test__qos_backend_enabled_limit_zero_ignored(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 0},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3']
+        )
+        self.assertEqual('disabled', got)
+
+    def test__qos_backend_enabled_expected_limit_nonint_mismatch(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 300},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3'], expected_limit='abc'
+        )
+        self.assertEqual('mismatch', got)
+
+    @mock.patch.object(
+        powerscale.PowerScaleStorageConnection, '_find_qos_workload',
+        return_value=(7, 500),
+    )
+    def test__ensure_qos_workloads_equal_limit_no_update(self, _mf):
+        self.storage_connection._ensure_qos_workloads(
+            dataset_id=1, path_val='/ifs/x', protos=['nfs3'], limit=500
+        )
+        self._mock_powerscale_api.update_workload_limit.assert_not_called()
+
+    def test__find_qos_workload_uses_workload_id_fallback(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'workload_id': 42,
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 123},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        wid, cur = self.storage_connection._find_qos_workload(
+            1, '/ifs/x', 'nfs3'
+        )
+        self.assertEqual(42, wid)
+        self.assertEqual(123, cur)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'dataset': 'ds1'})
+    def test__ensure_dataset_for_qos_list_failure_returns_none(
+            self, _mock_specs):
+        self._mock_powerscale_api.list_datasets.side_effect = Exception('boom')
+        share = {}
+        got = self.storage_connection._ensure_dataset_for_qos(share)
+        self.assertIsNone(got)
+
+    @mock.patch.object(qos_types, 'get_specs_from_share',
+                       return_value={'protocol_ops': '400',
+                                     'dataset': 'ds1'})
+    def test_manage_existing_qos_dataset_not_found_raises(self, _mock_specs):
+        self.mock_object(
+            share_types,
+            'get_share_type',
+            mock.Mock(
+                return_value=self.get_fake_share_type_dedupe_disabled()
+            ),
+        )
+        share = {
+            'name': self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id',
+        }
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 1 * units.Gi},
+        }
+        self.storage_connection._ensure_dataset_for_qos = mock.Mock(
+            return_value=None
+        )
+        self.assertRaises(
+            exception.ManageInvalidShare,
+            self.storage_connection.manage_existing,
+            share,
+            {},
+        )
+
+    def test__qos_backend_enabled_zero_limit_skipped_returns_absent(self):
+        resp = mock.Mock()
+        resp.json = mock.Mock(return_value={
+            'workloads': [{
+                'metric_values': {'path': '/ifs/x', 'protocol': 'nfs3'},
+                'limits': {'protocol_ops': 0},
+            }]
+        })
+        self._mock_powerscale_api.list_workloads.return_value = resp
+        got = self.storage_connection._check_qos_backend_enabled_for_path(
+            1, '/ifs/x', ['nfs3'], expected_limit=100
+        )
+        self.assertEqual('absent', got)
