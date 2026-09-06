@@ -57,6 +57,8 @@
     name: manila-rally-no-ss
     parent: rally-task-manila-no-ss
     irrelevant-files: &irrelevant-files
+      - ^\.gitignore$
+      - ^\.gitreview$
       - ^(test-|)requirements.txt$
       - ^.*\.rst$
       - ^api-ref/.*$
