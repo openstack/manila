@@ -2,7 +2,9 @@
     name: manila-grenade
     parent: grenade
     irrelevant-files:
-      - ^(test-|)requirements.txt$
+      - ^\.gitignore$
+      - ^\.gitreview$
+      - ^test-requirements.txt$
       - ^.*\.rst$
       - ^api-ref/.*$
       - ^doc/.*$
