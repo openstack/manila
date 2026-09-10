@@ -180,13 +180,15 @@ class PowerScaleStorageConnection(base.StorageConnection):
 
         return location
 
-    def _check_domain_mark(self, share):
+    def _check_domain_mark(self, share, backend_path=None):
         share_type_id = share['share_type_id']
         revert_snap_support = share_types.parse_boolean_extra_spec(
             "revert_to_snapshot_support",
             share_types.get_share_type_extra_specs(
                 share_type_id, "revert_to_snapshot_support"))
         if revert_snap_support:
+            path = (backend_path if backend_path else
+                    self._get_container_path(share))
             params = {
                 'type': 'DomainMark',
                 'priority': 10,
@@ -194,7 +196,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                 'policy': 'HIGH',
                 'domainmark_params': {
                     'delete': False,
-                    'root': self._get_container_path(share),
+                    'root': path,
                     'type': 'SnapRevert'
                 }
             }
@@ -585,6 +587,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
                     )
                     LOG.error(reason)
                     raise exception.ManageInvalidShare(reason=reason)
+        self._check_domain_mark(share, backend_quota_path)
         return {
             'size': size_gb,
             'export_locations': [export_location],

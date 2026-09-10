@@ -50,6 +50,15 @@ The following operations are supported on an PowerScale cluster:
 * Delete snapshot
 * Create share from snapshot
 * Extend share
+* Shrink share
+* Manage and Unmanage CIFS/NFS share
+* Manage and Unmanage snapshot
+* Mount snapshot
+* Mount point name
+* Ensure shares
+* Schedule Dedupe job for a share
+* Revert to a snapshot
+* QoS support
 
 Backend Configuration
 ---------------------

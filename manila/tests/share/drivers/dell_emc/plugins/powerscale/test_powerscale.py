@@ -1666,6 +1666,101 @@ class PowerScaleTest(test.TestCase):
                 driver_options={},
             )
 
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_manage_existing_nfs_with_revert_to_snapshot_support(
+            self, mock_extra_specs):
+        share = {
+            "name": self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id'
+        }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 10 * units.Gi},
+        }
+        mock_extra_specs.return_value = {'revert_to_snapshot_support': 'True'}
+        self.mock_object(self.storage_connection, '_check_domain_mark')
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['10.0.0.1:/ifs/manila-test/share-foo'],
+            result['export_locations'],
+        )
+        self.assertEqual(10, result['size'])
+        self.storage_connection._check_domain_mark.assert_called_once_with(
+            share, '/ifs/manila-test/share-foo')
+
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_manage_existing_nfs_without_revert_to_snapshot_support(
+            self, mock_extra_specs):
+        share = {
+            "name": self.SHARE_NAME,
+            'share_proto': 'NFS',
+            'export_location': '10.0.0.1:/ifs/manila-test/share-foo',
+            'share_type_id': 'fake-st-id'
+        }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
+        self._mock_powerscale_api.lookup_nfs_export.return_value = 42
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 10 * units.Gi},
+        }
+        mock_extra_specs.return_value = {'revert_to_snapshot_support': 'False'}
+        self.mock_object(self.storage_connection, '_check_domain_mark')
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['10.0.0.1:/ifs/manila-test/share-foo'],
+            result['export_locations'],
+        )
+        self.assertEqual(10, result['size'])
+        self.storage_connection._check_domain_mark.assert_called_once_with(
+            share, '/ifs/manila-test/share-foo')
+
+    @mock.patch.object(share_types, 'get_share_type_extra_specs')
+    def test_manage_existing_cifs_with_revert_to_snapshot_support(
+            self, mock_extra_specs):
+        share = {
+            "name": self.SHARE_NAME,
+            'share_proto': 'CIFS',
+            'export_location': '\\\\10.0.0.1\\share-foo',
+            'share_type_id': 'fake-st-id'
+        }
+        self.mock_object(
+            share_types, 'get_share_type',
+            mock.Mock(return_value=self.get_fake_share_type_dedupe_disabled())
+        )
+        self._mock_powerscale_api.lookup_smb_share.return_value = {
+            'name': 'share-foo',
+            'path': '/ifs/manila-test/share-foo',
+        }
+        self._mock_powerscale_api.quota_get.return_value = {
+            'thresholds': {'hard': 5 * units.Gi},
+        }
+        mock_extra_specs.return_value = {'revert_to_snapshot_support': 'True'}
+        self.mock_object(self.storage_connection, '_check_domain_mark')
+
+        result = self.storage_connection.manage_existing(
+            share, driver_options={}
+        )
+        self.assertEqual(
+            ['\\\\10.0.0.1\\share-foo'], result['export_locations'],
+        )
+        self.assertEqual(5, result['size'])
+        self.storage_connection._check_domain_mark.assert_called_once_with(
+            share, '/ifs/manila-test/share-foo')
+
     def test_manage_existing_raises_when_hard_limit_missing_usage_only(self):
         share = {
             'name': self.SHARE_NAME,
