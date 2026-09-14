@@ -693,3 +693,18 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
         mock_share_rpcapi_call.assert_called_once_with(
             self.context, 'replica', host, request_spec=request_spec,
             filter_properties={})
+
+    def test_populate_filter_properties_replica_state(self):
+        sched = fakes.FakeFilterScheduler()
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = fakes.fake_replica_request_spec()
+        request_spec['share_properties']['snapshot_id'] = 'fake-snap-id'
+        request_spec['share_instance_properties']['replica_state'] = (
+            constants.REPLICA_STATE_OUT_OF_SYNC)
+        filter_properties = {}
+
+        sched.populate_filter_properties_share(
+            fake_context, request_spec, filter_properties)
+
+        self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC,
+                         filter_properties['replica_state'])

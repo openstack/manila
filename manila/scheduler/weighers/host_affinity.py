@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from manila.common import constants
 from manila import context
 from manila.db import api as db_api
 from manila.scheduler.weighers import base_host
@@ -41,6 +42,12 @@ class HostAffinityWeigher(base_host.BaseHostWeigher):
             # NOTE(silvacarlose): if the request does not contain a snapshot_id
             # or a snapshot_host, the user is not creating a share from a
             # snapshot and we don't need to weigh the host.
+            return 0
+
+        if (weight_properties.get('replica_state') ==
+                constants.REPLICA_STATE_OUT_OF_SYNC):
+            # This is a replica placement; snapshot-source affinity is
+            # irrelevant and potentially harmful for HA placement.
             return 0
 
         snapshot_ref = db_api.share_snapshot_get(ctx, snapshot_id)

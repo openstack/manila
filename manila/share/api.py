@@ -786,7 +786,8 @@ class API(base.Base):
             availability_zones=None, snapshot_host=None,
             az_request_multiple_subnet_support_map=None,
             mount_point_name=None, encryption_key_ref=None,
-            qos_type_id=None, share_instance_metadata=None):
+            qos_type_id=None, share_instance_metadata=None,
+            is_replica=False):
 
         availability_zone_id = None
         if availability_zone:
@@ -842,7 +843,9 @@ class API(base.Base):
             'share_id': share_instance['share_id'],
             'host': share_instance['host'],
             'status': share_instance['status'],
-            'replica_state': share_instance['replica_state'],
+            'replica_state': (constants.REPLICA_STATE_OUT_OF_SYNC
+                              if is_replica
+                              else share_instance['replica_state']),
             'share_type_id': share_instance['share_type_id'],
             'encryption_key_ref': share_instance['encryption_key_ref'],
             'qos_type_id': share_instance['qos_type_id'],
@@ -1014,7 +1017,8 @@ class API(base.Base):
                         az_request_multiple_subnet_support_map),
                     qos_type_id=qos_type_id,
                     share_instance_metadata=metadata,
-                    mount_point_name=active_replica.get('mount_point_name'))
+                    mount_point_name=active_replica.get('mount_point_name'),
+                    is_replica=True)
             )
             QUOTAS.commit(
                 context, reservations, project_id=share['project_id'],

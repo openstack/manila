@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed a bug where creating a replica of a share originally created from a
+    snapshot incorrectly used ``reserved_snapshot_percentage`` instead of
+    ``reserved_percentage`` when evaluating host capacity. Also, fixed the
+    ``HostAffinityWeigher`` skewing replica placement toward the snapshot's
+    source host, which is irrelevant and harmful for HA placement. For details,
+    check `Bug #2167240 <https://bugs.launchpad.net/manila/+bug/2167240>`_
