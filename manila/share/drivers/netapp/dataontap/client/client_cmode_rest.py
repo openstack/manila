@@ -1695,7 +1695,7 @@ class NetAppRestClient(object):
     @na_utils.trace
     def get_fpolicy_events(self, share_name, event_name=None, protocol=None,
                            file_operations=None):
-        """Retrives a list of fpolicy events.
+        """Retrieves a list of fpolicy events.
 
         :param event_name: name of the fpolicy event
         :param protocol: name of protocol. Possible values are: 'nfsv3',
@@ -4402,7 +4402,7 @@ class NetAppRestClient(object):
 
     @na_utils.trace
     def get_net_options(self):
-        """Retrives the IPv6 support."""
+        """Retrieves the IPv6 support."""
 
         return {
             'ipv6-enabled': True,

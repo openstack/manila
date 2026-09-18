@@ -6745,7 +6745,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     def get_fpolicy_events(self, event_name=None, protocol=None,
                            file_operations=None):
-        """Retrives a list of fpolicy events.
+        """Retrieves a list of fpolicy events.
 
         :param event_name: name of the fpolicy event
         :param protocol: name of protocol. Possible values are: 'nfsv3',
