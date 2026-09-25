@@ -33,6 +33,8 @@ PAPI_VERSION_NFS = '12'
 PAPI_VERSION_SNAPSHOT_NFS_EXPORT = '22'
 PAPI_VERSION_CLUSTER = '12'
 PAPI_VERSION_QOS = '19'
+NFS_NO_ACCESS_CLIENT = '127.0.0.1'
+SMB_NO_ACCESS_HOST = 'deny:ALL'
 
 
 class PowerScaleApi(object):
@@ -233,7 +235,10 @@ class PowerScaleApi(object):
         :return: "True" if created successfully; "False" otherwise
         """
 
-        data = {'paths': [export_path]}
+        data = {
+            'paths': [export_path],
+            'clients': [NFS_NO_ACCESS_CLIENT],
+        }
         url = self.host_url + '/platform/1/protocols/nfs/exports'
         response = self.send_post_request(url, data=data)
         return response.status_code == 201
@@ -245,10 +250,14 @@ class PowerScaleApi(object):
         :return: "True" if created successfully; "False" otherwise
         """
 
-        data = {'paths': [export_path],
-                'read_only': True,
-                "map_root": {"enabled": False}}
-        url = self.host_url + '/platform/22/protocols/nfs/exports'
+        data = {
+            'paths': [export_path],
+            'clients': [NFS_NO_ACCESS_CLIENT],
+            'read_only': True,
+            "map_root": {"enabled": False},
+        }
+        url = (self.host_url +
+               '/platform/22/protocols/nfs/exports?ignore_conflicts=true')
         response = self.send_post_request(url, data=data)
         return response.status_code == 201
 
@@ -260,7 +269,11 @@ class PowerScaleApi(object):
         :return: "True" if the share created successfully; returns "False"
         otherwise
         """
-        data = {'name': snapshot_name, 'path': share_path}
+        data = {
+            'name': snapshot_name,
+            'path': share_path,
+            'host_acl': [SMB_NO_ACCESS_HOST],
+        }
         url = self.host_url + '/platform/1/protocols/smb/shares'
         response = self.send_post_request(url, data=data)
         return response.status_code == 201
@@ -296,9 +309,12 @@ class PowerScaleApi(object):
         otherwise
         """
 
-        data = {'permissions': []}
-        data['name'] = share_name
-        data['path'] = share_path
+        data = {
+            'name': share_name,
+            'path': share_path,
+            'host_acl': [SMB_NO_ACCESS_HOST],
+            'permissions': [],
+        }
         url = self.host_url + '/platform/1/protocols/smb/shares'
         response = self.send_post_request(url, data=data)
         return response.status_code == 201

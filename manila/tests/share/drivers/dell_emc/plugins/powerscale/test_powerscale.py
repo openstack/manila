@@ -779,6 +779,31 @@ class PowerScaleTest(test.TestCase):
         }
         self.assertEqual(expected_rule_map, rule_map)
 
+    def test_update_access_add_cifs_ip_only(self):
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'CIFS',
+        }
+        access = {
+            'access_type': 'ip',
+            'access_to': '10.1.1.10',
+            'access_level': const.ACCESS_LEVEL_RW,
+            'access_id': '09960614-8574-4e03-89cf-7cf267b0bd08'
+        }
+        self._mock_powerscale_api.modify_smb_share_access.return_value = True
+
+        rule_map = self.storage_connection.update_access(
+            self.mock_context, share, [access], [], [])
+
+        self._mock_powerscale_api.modify_smb_share_access.\
+            assert_called_once_with(
+                self.SHARE_NAME,
+                host_acl=['allow:10.1.1.10', 'deny:ALL'],
+                permissions=[])
+        self.assertEqual(
+            {'09960614-8574-4e03-89cf-7cf267b0bd08': {'state': 'active'}},
+            rule_map)
+
     def test_update_access_delete_nfs(self):
         share = {
             'name': self.SHARE_NAME,
@@ -799,7 +824,8 @@ class PowerScaleTest(test.TestCase):
             self.mock_context, share, access_rules, [], [])
 
         self._mock_powerscale_api.modify_nfs_export_access. \
-            assert_called_once_with(fake_export_id, [], [])
+            assert_called_once_with(
+                fake_export_id, ro_ips=[], rw_ips=['127.0.0.1'])
         self.assertEqual({}, rule_map)
 
     def test_update_access_delete_cifs(self):
@@ -829,8 +855,73 @@ class PowerScaleTest(test.TestCase):
 
         self._mock_powerscale_api.modify_smb_share_access.\
             assert_called_once_with(
-                self.SHARE_NAME, host_acl=[], permissions=[])
+                self.SHARE_NAME,
+                host_acl=['deny:ALL'],
+                permissions=[])
         self.assertEqual({}, rule_map)
+
+    def test_update_access_nfs_empty_rules_denies_all(self):
+        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
+        fake_export_id = 4
+        self._mock_powerscale_api.lookup_nfs_export.return_value = (
+            fake_export_id)
+        self._mock_powerscale_api.modify_nfs_export_access.return_value = True
+
+        self.storage_connection.update_access(
+            self.mock_context, share, [], [], [])
+
+        self._mock_powerscale_api.modify_nfs_export_access.\
+            assert_called_once_with(
+                fake_export_id,
+                ro_ips=[],
+                rw_ips=['127.0.0.1'])
+
+    def test_update_access_cifs_empty_rules_denies_all(self):
+        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
+        self._mock_powerscale_api.modify_smb_share_access.return_value = True
+
+        self.storage_connection.update_access(
+            self.mock_context, share, [], [], [])
+
+        self._mock_powerscale_api.modify_smb_share_access.\
+            assert_called_once_with(
+                self.SHARE_NAME,
+                host_acl=['deny:ALL'],
+                permissions=[])
+
+    def test_snapshot_update_access_nfs_empty_rules_denies_all(self):
+        snapshot = self._make_snapshot(proto="NFS")
+        snap_path = "/ifs/manila-test/.snapshots/snap-001"
+        self.storage_connection._get_snapshot_path = mock.Mock(
+            return_value=snap_path)
+        fake_export_id = 7
+        self._mock_powerscale_api.lookup_nfs_export.return_value = (
+            fake_export_id)
+        self._mock_powerscale_api.modify_nfs_export_access.return_value = True
+
+        self.storage_connection.snapshot_update_access(
+            self.mock_context, snapshot, [], add_rules=None,
+            delete_rules=None, share_server=None)
+
+        self._mock_powerscale_api.modify_nfs_export_access.\
+            assert_called_once_with(
+                fake_export_id,
+                ro_ips=[],
+                rw_ips=['127.0.0.1'])
+
+    def test_snapshot_update_access_cifs_empty_rules_denies_all(self):
+        snapshot = self._make_snapshot(proto="CIFS")
+        self._mock_powerscale_api.modify_smb_share_access.return_value = True
+
+        self.storage_connection.snapshot_update_access(
+            self.mock_context, snapshot, [], add_rules=None,
+            delete_rules=None, share_server=None)
+
+        self._mock_powerscale_api.modify_smb_share_access.\
+            assert_called_once_with(
+                "snap-001",
+                host_acl=['deny:ALL'],
+                permissions=[])
 
     def test_update_access_nfs_share_not_found(self):
         share = {
