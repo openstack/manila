@@ -1,0 +1,11 @@
+---
+security:
+  - |
+    The Dell PowerScale driver now denies access by default for newly created
+    NFS and CIFS shares and snapshots when no explicit access rules exist.
+    Removing the final access rule also restores the deny-by-default behavior.
+upgrade:
+  - |
+    Newly created Dell PowerScale NFS and CIFS shares and snapshots now deny
+    all client access until an access rule is added. Existing shares and
+    snapshots are not modified.

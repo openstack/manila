@@ -776,6 +776,9 @@ class PowerScaleStorageConnection(base.StorageConnection):
             elif access_level == const.ACCESS_LEVEL_RO:
                 nfs_ro_ips.add(rule['access_to'])
 
+        if not nfs_rw_ips and not nfs_ro_ips:
+            nfs_rw_ips.add(powerscale_api.NFS_NO_ACCESS_CLIENT)
+
         export_id = self._powerscale_api.lookup_nfs_export(path)
         if export_id is None:
             # share does not exist on backend (set all rules to error state)
@@ -813,16 +816,8 @@ class PowerScaleStorageConnection(base.StorageConnection):
                                      read_only)
         user_permissions = self._get_cifs_user_permissions(
             user_access_rules, rule_state_map)
-        if read_only and len(user_permissions) == 0:
-            user_permissions = [{
-                "permission": "read",
-                "permission_type": "allow",
-                "trustee": {
-                    "id": "SID:S-1-1-0",
-                    "name": "Everyone",
-                    "type": "wellknown"
-                }
-            }]
+        if not ips and not user_permissions:
+            ips = [powerscale_api.SMB_NO_ACCESS_HOST]
         share_updated = self._powerscale_api.modify_smb_share_access(
             share_name,
             host_acl=ips,
@@ -856,7 +851,7 @@ class PowerScaleStorageConnection(base.StorageConnection):
             cifs_ips.append('allow:' + rule['access_to'])
             rule_state_map.update({rule['access_id']: {'state': 'active'}})
         if len(cifs_ips) > 0:
-            cifs_ips.append('deny:ALL')
+            cifs_ips.append(powerscale_api.SMB_NO_ACCESS_HOST)
         return cifs_ips
 
     def _get_cifs_user_permissions(self, access_rules, rule_state_map):

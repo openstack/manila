@@ -466,7 +466,10 @@ class PowerScaleApiTest(test.TestCase):
 
             self.assertEqual(1, len(m.request_history))
             call = m.request_history[0]
-            expected_request_body = '{"paths": ["/ifs/home/test"]}'
+            expected_request_body = (
+                '{"paths": ["/ifs/home/test"], '
+                '"clients": ["127.0.0.1"]}'
+            )
             self.assertEqual(json.loads(expected_request_body),
                              json.loads(call.body))
             self.assertEqual(expected_return_value, r)
@@ -488,6 +491,7 @@ class PowerScaleApiTest(test.TestCase):
             expected_request_data = {
                 'name': share_name,
                 'path': share_path,
+                'host_acl': ['deny:ALL'],
                 'permissions': []
             }
             self.assertEqual(expected_request_data,
@@ -1162,7 +1166,8 @@ class PowerScaleApiTest(test.TestCase):
         with requests_mock.mock() as m:
             self.assertEqual(0, len(m.request_history))
             export_path = "/ifs/manila-test/.snapshots/snap-001"
-            url = self._mock_url + "/platform/22/protocols/nfs/exports"
+            url = (self._mock_url +
+                   "/platform/22/protocols/nfs/exports?ignore_conflicts=true")
             m.post(url, status_code=status_code)
             r = self.powerscale_api.create_snapshot_nfs_export(export_path)
             self.assertEqual(expected_return_value, r)
@@ -1170,6 +1175,7 @@ class PowerScaleApiTest(test.TestCase):
             call = m.request_history[0]
             expected_request_body = {
                 "paths": [export_path],
+                "clients": ["127.0.0.1"],
                 "read_only": True,
                 "map_root": {"enabled": False},
             }
@@ -1192,10 +1198,67 @@ class PowerScaleApiTest(test.TestCase):
             expected_request_data = {
                 "name": snapshot_name,
                 "path": share_path,
+                "host_acl": ["deny:ALL"],
             }
             self.assertEqual(expected_request_data,
                              json.loads(m.request_history[0].body))
             self.assertEqual(url, m.request_history[0].url)
+
+    @requests_mock.mock()
+    def test_create_nfs_export_denies_all_by_default(self, m):
+        export_path = '/ifs/manila/new-share'
+        m.post(self._mock_url + '/platform/1/protocols/nfs/exports',
+               status_code=201)
+
+        self.powerscale_api.create_nfs_export(export_path)
+
+        self.assertEqual(1, len(m.request_history))
+        body = json.loads(m.request_history[0].body)
+        self.assertIn('clients', body)
+        self.assertEqual(['127.0.0.1'], body['clients'])
+
+    @requests_mock.mock()
+    def test_create_smb_share_denies_all_by_default(self, m):
+        share_name = 'new-smb'
+        share_path = '/ifs/manila/new-smb'
+        m.post(self._mock_url + '/platform/1/protocols/smb/shares',
+               status_code=201)
+
+        self.powerscale_api.create_smb_share(share_name, share_path)
+
+        body = json.loads(m.request_history[0].body)
+        self.assertIn('host_acl', body)
+        self.assertEqual(['deny:ALL'], body['host_acl'])
+
+    @requests_mock.mock()
+    def test_create_snapshot_smb_export_denies_all_by_default(self, m):
+        snapshot_name = 'snap-001'
+        share_path = '/ifs/manila/.snapshots/snap-001'
+        m.post(self._mock_url + '/platform/1/protocols/smb/shares',
+               status_code=201)
+
+        self.powerscale_api.create_snapshot_smb_export(
+            snapshot_name, share_path)
+
+        body = json.loads(m.request_history[0].body)
+        self.assertIn('host_acl', body)
+        self.assertEqual(['deny:ALL'], body['host_acl'])
+
+    @requests_mock.mock()
+    def test_create_snapshot_nfs_export_denies_all_by_default(self, m):
+        export_path = '/ifs/manila-test/.snapshots/snap-001'
+        m.post(self._mock_url + '/platform/22/protocols/nfs/exports',
+               status_code=201)
+
+        self.powerscale_api.create_snapshot_nfs_export(export_path)
+
+        self.assertEqual(
+            ['true'], m.request_history[0].qs['ignore_conflicts'])
+
+        self.assertEqual(1, len(m.request_history))
+        body = json.loads(m.request_history[0].body)
+        self.assertIn('clients', body)
+        self.assertEqual(['127.0.0.1'], body['clients'])
 
     @requests_mock.mock()
     def test_create_nfs_export_aliases_success(self, m):

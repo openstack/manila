@@ -60,6 +60,29 @@ The following operations are supported on an PowerScale cluster:
 * Revert to a snapshot
 * QoS support
 
+Default access behavior
+-----------------------
+
+The PowerScale driver denies access by default. A share or snapshot that has
+no access rules cannot be accessed by any client until an access rule is
+added.
+
+* NFS: the driver creates the export with ``127.0.0.1`` as its only client.
+  This is the loopback address, so a remote host cannot use it and cannot
+  mount the export. When the last access rule is removed, the export is set
+  back to this state.
+* CIFS: the driver creates the SMB share with the host ACL ``deny:ALL``. When
+  the last IP rule and user rule are removed, the host ACL is set back to
+  ``deny:ALL``.
+
+.. important::
+
+   After you create a share or snapshot, add an access rule before clients
+   try to use it. Until then, all clients are denied.
+
+   Existing shares and snapshots are not modified. They are denied by default
+   only if their last access rule is removed.
+
 Backend Configuration
 ---------------------
 
