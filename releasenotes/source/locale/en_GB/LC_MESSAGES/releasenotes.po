@@ -10,16 +10,26 @@ msgid ""
 msgstr ""
 "Project-Id-Version: manila\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-20 19:25+0000\n"
+"POT-Creation-Date: 2026-09-20 04:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2026-02-21 04:46+0000\n"
+"PO-Revision-Date: 2026-09-24 07:42+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
 "X-Generator: Zanata 4.3.3\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgid ""
+"\"MirrorAllSnapshots\" policy can mirror all snapshots, including those "
+"created before replica setup, to the secondary site."
+msgstr ""
+"\"MirrorAllSnapshots\" policy can mirror all snapshots, including those "
+"created before replica setup, to the secondary site."
+
+msgid "\"replication_policy\" accepted values:"
+msgstr "\"replication_policy\" accepted values:"
 
 msgid ""
 "'quota_per_share_gigabytes' config option allows admin to set per share size "
@@ -240,6 +250,9 @@ msgstr "20.0.0"
 msgid "20.0.1"
 msgstr "20.0.1"
 
+msgid "20.0.2"
+msgstr "20.0.2"
+
 msgid "2023.1 Series Release Notes"
 msgstr "2023.1 Series Release Notes"
 
@@ -264,20 +277,41 @@ msgstr "2024.1-eom"
 msgid "2024.2 Series Release Notes"
 msgstr "2024.2 Series Release Notes"
 
+msgid "2024.2-eol"
+msgstr "2024.2-eol"
+
 msgid "2025.1 Series Release Notes"
 msgstr "2025.1 Series Release Notes"
 
 msgid "2025.2 Series Release Notes"
 msgstr "2025.2 Series Release Notes"
 
+msgid "2026.1 Series Release Notes"
+msgstr "2026.1 Series Release Notes"
+
+msgid "2026.2 Series Release Notes"
+msgstr "2026.2 Series Release Notes"
+
 msgid "21.0.0"
 msgstr "21.0.0"
 
-msgid "21.0.0.0rc1-78"
-msgstr "21.0.0.0rc1-78"
-
 msgid "21.0.1"
 msgstr "21.0.1"
+
+msgid "21.0.2"
+msgstr "21.0.2"
+
+msgid "21.0.2-1"
+msgstr "21.0.2-1"
+
+msgid "22.0.0"
+msgstr "22.0.0"
+
+msgid "22.0.1"
+msgstr "22.0.1"
+
+msgid "22.0.1-1"
+msgstr "22.0.1-1"
 
 msgid "3.0.0"
 msgstr "3.0.0"
@@ -1277,6 +1311,22 @@ msgid ""
 msgstr ""
 "default route for service subnet wouldn't be created if "
 "connect_share_server_to_tenant_network is on"
+
+msgid ""
+"fixed a bug in the NetApp driver on replica create, where the driver failed "
+"to modify efficiency configuration of a flexgroup volume `Launchpad bug "
+"#2143199 <https://bugs.launchpad.net/manila/+bug/2143199>`_."
+msgstr ""
+"fixed a bug in the NetApp driver on replica create, where the driver failed "
+"to modify efficiency configuration of a flexgroup volume `Launchpad bug "
+"#2143199 <https://bugs.launchpad.net/manila/+bug/2143199>`_."
+
+msgid ""
+"fixed where driver-assisted share server migration would fail when using "
+"NetApp ONTAP's REST API client."
+msgstr ""
+"fixed where driver-assisted share server migration would fail when using "
+"NetApp ONTAP's REST API client."
 
 msgid ""
 "fixes a bug causing incorrect quotas being set in the backend when resizing "
