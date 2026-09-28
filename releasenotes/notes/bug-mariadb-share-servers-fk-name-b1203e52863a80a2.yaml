@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed database migration ``805685098bd2`` failing with error 1091
+    ("Can't DROP FOREIGN KEY") on MariaDB 12.1.1 and later, which no longer
+    auto-names foreign keys ``<table>_ibfk_<n>``. The migration now looks up
+    the name of the ``share_servers.share_network_id`` foreign key instead of
+    assuming ``share_servers_ibfk_1``.

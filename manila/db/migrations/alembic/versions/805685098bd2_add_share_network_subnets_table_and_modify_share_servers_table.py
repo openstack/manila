@@ -121,8 +121,12 @@ def upgrade():
     if connection.engine.name == 'mysql':
         # Drops necessary constraint from share servers table. Only mysql
         # needs constraint handling. Postgresql/sqlite don't
-        op.drop_constraint("share_servers_ibfk_1", "share_servers",
-                           type_="foreignkey")
+        # MariaDB >= 12.1.1 no longer auto-names FKs <table>_ibfk_N, so look
+        # the constraint up instead of assuming the legacy name.
+        for fk in sa.inspect(connection).get_foreign_keys('share_servers'):
+            if fk['constrained_columns'] == ['share_network_id']:
+                op.drop_constraint(fk['name'], "share_servers",
+                                   type_="foreignkey")
 
     op.drop_column('share_servers', 'share_network_id')
     op.drop_column('share_networks', 'neutron_net_id')
