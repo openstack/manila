@@ -63,7 +63,8 @@ OPTS = [
     ),
     cfg.StrOpt(
         "vast_vippool_name",
-        help="Name of Virtual IP pool"
+        help="Default name of Virtual IP pool. Can be overridden per share "
+             "using share type extra spec 'vast:vippool_name'."
     ),
     cfg.StrOpt(
         "vast_root_export",
@@ -104,9 +105,21 @@ MANILA_TO_VAST_ACCESS_LEVEL = {
     driver_util.verbose_driver_trace
 )
 class VASTShareDriver(driver.ShareDriver):
-    """Driver for the VastData Filesystem."""
+    """Driver for the VastData Filesystem.
 
-    VERSION = "1.0"  # driver version
+    Version history::
+
+        1.0 - Initial version.
+              - Support for NFS shares.
+              - Support for snapshots (create, delete, revert).
+              - Support for share creation from snapshots.
+              - Support for share access rules (IP-based).
+              - Support for share resize (extend/shrink).
+        1.1 - Added multi-tenancy support.
+              - Support for per-share VIP pool selection via extra specs.
+    """
+
+    VERSION = "1.1"
 
     def __init__(self, *args, **kwargs):
         super().__init__(False, *args, config_opts=[OPTS], **kwargs)
@@ -116,10 +129,7 @@ class VASTShareDriver(driver.ShareDriver):
         backend_name = self.configuration.safe_get("share_backend_name")
         root_export = self.configuration.vast_root_export
         vip_pool_name = self.configuration.safe_get("vast_vippool_name")
-        if not vip_pool_name:
-            raise exception.VastDriverException(
-                reason="vast_vippool_name must be set"
-            )
+
         self._backend_name = backend_name or self.__class__.__name__
         self._vippool_name = vip_pool_name
         self._root_export = "/" + root_export.strip("/")
@@ -276,9 +286,14 @@ class VASTShareDriver(driver.ShareDriver):
         self._resize_share(share, new_size)
 
     def create_snapshot(self, context, snapshot, share_server=None):
-        """Is called to create snapshot."""
+        """Is called to create a snapshot."""
         path = self._to_volume_path(snapshot["share_instance_id"])
-        self.rest.snapshots.create(path=path, name=snapshot["name"])
+        tenant_id = self._get_tenant_id_for_share(snapshot["share"])
+        self.rest.snapshots.create(
+            name=snapshot["name"],
+            path=path,
+            tenant_id=tenant_id,
+        )
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove share."""
@@ -316,6 +331,33 @@ class VASTShareDriver(driver.ShareDriver):
                 share_id=share['id'])
         self.rest.quotas.update(quota.id, hard_limit=requested_capacity)
 
+    def _get_vip_pool_for_share(self, share):
+        # Get extra specs from share type
+        extra_specs = driver_util.get_share_extra_specs_params(share)
+        # Use vippool_name from extra specs if provided, otherwise use config
+        vippool_name = extra_specs.get('vippool_name') or self._vippool_name
+
+        if not vippool_name:
+            raise exception.VastDriverException(
+                reason="VIP pool name must be specified either in manila.conf "
+                       "(vast_vippool_name) or in share type extra specs "
+                       "(vast:vippool_name)"
+            )
+
+        LOG.debug(
+            "Using VIP pool '%s' for share %s (from %s)",
+            vippool_name, share["id"],
+            "extra_specs" if extra_specs.get('vippool_name') else "config"
+        )
+
+        return self.rest.vip_pools.one(
+            name=vippool_name,
+            fail_if_missing=True,
+        )
+
+    def _get_tenant_id_for_share(self, share):
+        return self._get_vip_pool_for_share(share).tenant_id
+
     def _ensure_share(self, share):
         share_proto = share["share_proto"]
         if share_proto != "NFS":
@@ -325,15 +367,26 @@ class VASTShareDriver(driver.ShareDriver):
                 )
             )
 
-        vips = self.rest.vip_pools.vips(pool_name=self._vippool_name)
+        vippool = self._get_vip_pool_for_share(share)
+        vips = driver_util.generate_ip_range(vippool.ip_ranges)
+        if not vips:
+            raise exception.VastDriverException(
+                reason=f"Pool {vippool.name} has no available vips"
+            )
 
         share_id = share["id"]
         requested_capacity = share["size"] * units.Gi
         path = self._to_volume_path(share_id)
-        policy = self.rest.view_policies.ensure(name=share_id)
+        policy = self.rest.view_policies.ensure(
+            name=share_id,
+            tenant_id=vippool.tenant_id,
+        )
         quota = self.rest.quotas.ensure(
-            name=share_id, path=path,
-            create_dir=True, hard_limit=requested_capacity
+            name=share_id,
+            path=path,
+            create_dir=True,
+            hard_limit=requested_capacity,
+            tenant_id=vippool.tenant_id,
         )
         if quota.hard_limit != requested_capacity:
             raise exception.VastDriverException(
@@ -341,7 +394,10 @@ class VASTShareDriver(driver.ShareDriver):
                 f" (requested={requested_capacity}, exists={quota.hard_limit})"
                 )
         view = self.rest.views.ensure(
-            name=share_id, path=path, policy_id=policy.id
+            name=share_id,
+            path=path,
+            policy_id=policy.id,
+            tenant_id=vippool.tenant_id,
         )
         if view.policy != share_id:
             self.rest.views.update(view.id, policy_id=policy.id)
