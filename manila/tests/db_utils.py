@@ -242,7 +242,7 @@ def create_share_type(**kwargs):
     """Create a share type object"""
 
     share_type = {
-        'name': 'fake_type',
+        'name': 'fake_type_%s' % uuidutils.generate_uuid(),
         'is_public': True,
     }
 

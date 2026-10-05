@@ -5333,6 +5333,14 @@ class ShareTypeAPITestCase(test.TestCase):
                           db_api.share_type_update,
                           self.ctxt, share_type['id'], values)
 
+    def test_share_type_update_name_exist(self):
+        db_utils.create_share_type(name='exist_name')
+        share_type = db_utils.create_share_type(name='new_name')
+        values = {"name": "exist_name"}
+        self.assertRaises(exception.ShareTypeExists,
+                          db_api.share_type_update,
+                          self.ctxt, share_type['id'], values)
+
 
 class MessagesDatabaseAPITestCase(test.TestCase):
 
