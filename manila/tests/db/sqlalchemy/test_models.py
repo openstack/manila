@@ -16,11 +16,79 @@
 
 import ddt
 
+import sqlalchemy as sa
+
 from manila.common import constants
 from manila import context
 from manila.db.sqlalchemy import api as db_api
+from manila.db.sqlalchemy import models
 from manila import test
 from manila.tests import db_utils
+
+
+class ManilaBaseTestCase(test.TestCase):
+    """Testing of ManilaBase SQLAlchemy model representation.
+
+    https://docs.sqlalchemy.org/en/21/orm/session_state_management.html
+    """
+
+    def test_repr_model_transient(self):
+        service_ref = models.Service(host='fake-host', binary='manila-share')
+
+        self.assertTrue(sa.inspect(service_ref).transient)
+        self.assertFalse(sa.inspect(service_ref).detached)
+        self.assertFalse(sa.inspect(service_ref).persistent)
+
+        r = repr(service_ref)
+        self.assertTrue(r.startswith('Service('))
+        self.assertTrue(r.endswith(')'))
+        self.assertIn("host='fake-host'", r)
+        self.assertIn("binary='manila-share'", r)
+        self.assertIn("id=<not loaded>", r)
+        self.assertIn("topic=<not loaded>", r)
+
+    def test_repr_model_persistent(self):
+        ctxt = context.get_admin_context()
+        with db_api.context_manager.writer.using(ctxt):
+            service_ref = db_api.service_create(
+                ctxt,
+                {
+                    'host': 'fake-host',
+                    'binary': 'manila-share',
+                    'topic': 'share',
+                    'availability_zone': 'fake_az',
+                },
+            )
+            self.assertFalse(sa.inspect(service_ref).detached)
+            self.assertTrue(sa.inspect(service_ref).persistent)
+            r = repr(service_ref)
+
+        self.assertTrue(r.startswith('Service('))
+        self.assertIn("host='fake-host'", r)
+        self.assertIn("binary='manila-share'", r)
+        self.assertIn("topic='share'", r)
+        self.assertIn(f"id={service_ref.id}", r)
+
+    def test_repr_model_detached(self):
+        ctxt = context.get_admin_context()
+        service_ref = db_api.service_create(
+            ctxt,
+            {
+                'host': 'fake-host',
+                'binary': 'manila-share',
+                'topic': 'share',
+                'availability_zone': 'fake_az',
+            },
+        )
+        self.assertTrue(sa.inspect(service_ref).detached)
+        self.assertFalse(sa.inspect(service_ref).transient)
+        self.assertFalse(sa.inspect(service_ref).persistent)
+        # Model returned from DB API is already detached; unloaded fields
+        # are shown as '<not loaded>' without triggering lazy loads or errors.
+        r = repr(service_ref)
+        self.assertTrue(r.startswith('Service('))
+        self.assertIn("host='fake-host'", r)
+        self.assertIn("state=<not loaded>", r)
 
 
 @ddt.ddt
