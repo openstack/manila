@@ -21,10 +21,8 @@ SQLAlchemy models for Manila data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
-from sqlalchemy import Column, Integer, String, schema
-from sqlalchemy import orm
-from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
-from sqlalchemy_utils import generic_repr
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey
+from sqlalchemy import inspect, Integer, orm, schema, String
 
 from manila.common import constants
 
@@ -32,13 +30,28 @@ CONF = cfg.CONF
 BASE = orm.declarative_base()
 
 
-@generic_repr
 class ManilaBase(models.ModelBase,
                  models.TimestampMixin,
                  models.SoftDeleteMixin):
     """Base class for Manila Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
     metadata = None
+
+    def __repr__(self):
+        state = inspect(self, raiseerr=False)
+        if state is None or state.mapper is None:
+            return super().__repr__()
+
+        field_reprs = []
+        for key in state.mapper.columns.keys():
+            if (key in state.unloaded or
+                    state.attrs[key].loaded_value is orm.attributes.NO_VALUE):
+                value = '<not loaded>'
+            else:
+                value = repr(state.attrs[key].loaded_value)
+            field_reprs.append(f'{key}={value}')
+
+        return f'{self.__class__.__name__}({", ".join(field_reprs)})'
 
     def to_dict(self):
         model_dict = {}

@@ -32,6 +32,10 @@ class ManilaBaseTestCase(test.TestCase):
     https://docs.sqlalchemy.org/en/21/orm/session_state_management.html
     """
 
+    def test_repr_unmapped(self):
+        base = models.ManilaBase()
+        self.assertIn('ManilaBase object at', repr(base))
+
     def test_repr_model_transient(self):
         service_ref = models.Service(host='fake-host', binary='manila-share')
 
