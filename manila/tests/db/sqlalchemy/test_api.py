@@ -2074,6 +2074,56 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
             self.assertEqual(s[0]['key'], filter_meta_key)
             self.assertEqual(s[0]['value'], filter_meta_val)
 
+    def test_share_snapshot_get_all_for_share_status(self):
+        share = db_utils.create_share()
+        restoring = db_utils.create_snapshot(
+            share_id=share['id'], status=constants.STATUS_RESTORING)
+        for status in (constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
+                       constants.STATUS_CREATING, constants.STATUS_DELETING):
+            db_utils.create_snapshot(share_id=share['id'], status=status)
+        db_utils.create_snapshot(with_share=True,
+                                 status=constants.STATUS_RESTORING)
+        filters = {'status': constants.STATUS_RESTORING}
+
+        snapshots = db_api.share_snapshot_get_all_for_share(
+            self.ctxt, share['id'], filters=filters)
+
+        self.assertEqual([restoring['id']], [s['id'] for s in snapshots])
+        self.assertEqual({'status': constants.STATUS_RESTORING}, filters)
+
+    @ddt.data('asc', 'desc')
+    def test_share_snapshot_get_all_for_share_sort(self, sort_dir):
+        share = db_utils.create_share()
+        snapshots = [db_utils.create_snapshot(share_id=share['id'], size=size)
+                     for size in (2, 1, 3)]
+        expected = sorted(snapshots, key=lambda s: s['size'],
+                          reverse=sort_dir == 'desc')
+
+        result = db_api.share_snapshot_get_all_for_share(
+            self.ctxt, share['id'], sort_key='size', sort_dir=sort_dir)
+
+        self.assertEqual([s['id'] for s in expected],
+                         [s['id'] for s in result])
+
+    @ddt.data(None, False, True)
+    def test_share_snapshot_get_all_for_share_deferred(self, list_deferred):
+        share = db_utils.create_share()
+        available = db_utils.create_snapshot(
+            share_id=share['id'], status=constants.STATUS_AVAILABLE)
+        deferred = [
+            db_utils.create_snapshot(share_id=share['id'], status=status)
+            for status in (constants.STATUS_DEFERRED_DELETING,
+                           constants.STATUS_ERROR_DEFERRED_DELETING)]
+        filters = (None if list_deferred is None else
+                   {'list_deferred_delete': list_deferred})
+        expected = [available] + deferred if list_deferred else [available]
+
+        snapshots = db_api.share_snapshot_get_all_for_share(
+            self.ctxt, share['id'], filters=filters)
+
+        self.assertCountEqual([s['id'] for s in expected],
+                              [s['id'] for s in snapshots])
+
     def test_share_snapshot_get_latest_for_share(self):
 
         share = db_utils.create_share(size=1)

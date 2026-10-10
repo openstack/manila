@@ -9787,6 +9787,40 @@ class ShareManagerTestCase(test.TestCase):
                       {'status': constants.STATUS_AVAILABLE}),
         ])
 
+    def test_async_revert_only_processes_restoring_snapshot(self):
+        share = db_utils.create_share(size=3)
+        restoring = db_utils.create_snapshot(
+            share_id=share['id'], size=2, status=constants.STATUS_RESTORING)
+        other_snapshots = [
+            db_utils.create_snapshot(
+                share_id=share['id'], size=3, status=status)
+            for status in (constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
+                           constants.STATUS_CREATING,
+                           constants.STATUS_DELETING)]
+        mock_reserve = self.mock_object(
+            quota.QUOTAS, 'reserve', mock.Mock(return_value=['reservation']))
+        mock_commit = self.mock_object(quota.QUOTAS, 'commit')
+
+        self.share_manager._finalize_async_revert(self.context, share.instance)
+        self.share_manager._restore_snapshot_after_revert(
+            self.context, share.instance)
+
+        self.assertEqual(2, db.share_get(self.context, share['id'])['size'])
+        self.assertEqual(constants.STATUS_AVAILABLE, db.share_snapshot_get(
+            self.context, restoring['id'])['status'])
+        for snapshot in other_snapshots:
+            self.assertEqual(snapshot['status'], db.share_snapshot_get(
+                self.context, snapshot['id'])['status'])
+        mock_reserve.assert_called_once_with(
+            self.context, project_id=share['project_id'], gigabytes=-1,
+            user_id=share['user_id'],
+            share_type_id=share.instance.share_type_id,
+            overquota_allowed=True)
+        mock_commit.assert_called_once_with(
+            self.context, ['reservation'], project_id=share['project_id'],
+            user_id=share['user_id'],
+            share_type_id=share.instance.share_type_id)
+
     def test__build_server_metadata(self):
         share = {'host': 'host', 'share_type_id': 'id'}
         expected_metadata = {'request_host': 'host', 'share_type_id': 'id',

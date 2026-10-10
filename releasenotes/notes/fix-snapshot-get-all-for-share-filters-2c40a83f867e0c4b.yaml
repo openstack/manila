@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed share snapshot database lookups ignoring their filter and sorting
+    arguments. Asynchronous revert-to-snapshot completion now uses only the
+    snapshot being restored to update the share size and quota, and preserves
+    the states of other snapshots. Requests to include deferred-deletion
+    snapshots and to sort a share's snapshots are also honored.

@@ -4021,7 +4021,8 @@ def share_snapshot_get_all_for_share(
     context, share_id, filters=None, sort_key=None, sort_dir=None,
 ):
     return _share_snapshot_get_all_for_share(
-        context, share_id, filters=None, sort_key=None, sort_dir=None,
+        context, share_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir,
     )
 
 
