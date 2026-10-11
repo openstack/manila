@@ -18,7 +18,6 @@ import unittest
 from unittest import mock
 
 import ddt
-import netaddr
 
 import manila.context as manila_context
 import manila.exception as exception
@@ -209,6 +208,8 @@ class VASTShareDriverTestCase(unittest.TestCase):
                 mock_rest.view_policies.ensure.assert_called_once_with(
                     name="fakeid",
                     tenant_id=123,
+                    nfs_read_write=[],
+                    nfs_read_only=[],
                 )
                 mock_rest.quotas.ensure.assert_called_once_with(
                     name="fakeid",
@@ -277,7 +278,12 @@ class VASTShareDriverTestCase(unittest.TestCase):
     def test_update_access_add_rules_no_policy(self):
         share = fake_share.fake_share(share_proto="NFS")
         mock_rest = self._create_mocked_rest_api()
-        mock_rest.view_policies.one.return_value = None
+        mock_rest.view_policies.one.side_effect = (
+            exception.VastDriverException(
+                reason="No 'viewpolicy' found for params "
+                       "{\"name\": \"fakeid\"}"
+            )
+        )
         access_rules = [
             {
                 "access_level": "rw",
@@ -290,230 +296,122 @@ class VASTShareDriverTestCase(unittest.TestCase):
                 self._driver.update_access(
                     self._context, share, access_rules, None, None, None
                 )
-            self.assertIn("Policy not found", str(exc.exception))
+            self.assertIn("viewpolicy", str(exc.exception))
+        mock_rest.view_policies.one.assert_called_once_with(
+            name="fakeid", fail_if_missing=True
+        )
 
-    @ddt.data(
-        (["*"], ["10.10.10.1", "10.10.10.2"]),
-        (["10.10.10.1", "10.10.10.2"], []),
-        (["*"], []),
-    )
-    @ddt.unpack
-    def test_update_access_add_rules(self, rw, ro):
+    def test_update_access_add_rules(self):
+        """Desired rules replace whatever host lists the policy has."""
         share = fake_share.fake_share(share_proto="NFS")
         mock_rest = self._create_mocked_rest_api()
         mock_rest.view_policies.one.return_value = driver_util.Bunch(
-            id=1, nfs_read_write=rw, nfs_read_only=ro
+            id=1, nfs_read_write=["*"], nfs_read_only=["*"]
         )
         access_rules = [
             {
                 "access_level": "rw",
                 "access_to": "127.0.0.1",
-                "access_type": "ip"
-            }
-        ]
-        with mock.patch.object(self._driver, "rest", mock_rest):
-            failed_rules = self._driver.update_access(
-                self._context,
-                share,
-                access_rules,
-                None,
-                None,
-                None
-            )
-
-        expected_ro = set(ro)
-        if rw == ["*"]:
-            expected_rw = {"127.0.0.1"}
-        else:
-            expected_rw = set(["127.0.0.1"] + rw)
-        kw = mock_rest.view_policies.update.call_args.kwargs
-        self.assertEqual(kw["name"], "fakeid")
-        self.assertSetEqual(set(kw["nfs_read_write"]), expected_rw)
-        self.assertSetEqual(set(kw["nfs_read_only"]), expected_ro)
-        self.assertEqual(kw["nfs_no_squash"], ["*"])
-        self.assertEqual(kw["nfs_root_squash"], ["*"])
-        self.assertFalse(failed_rules)
-
-        # and the same for ro
-        mock_rest = self._create_mocked_rest_api()
-        mock_rest.view_policies.one.return_value = driver_util.Bunch(
-            id=1, nfs_read_write=rw, nfs_read_only=ro
-        )
-        access_rules = [
+                "access_type": "ip",
+            },
             {
                 "access_level": "ro",
-                "access_to": "127.0.0.1",
-                "access_type": "ip"
-            }
+                "access_to": "10.0.0.5",
+                "access_type": "ip",
+            },
         ]
         with mock.patch.object(self._driver, "rest", mock_rest):
             failed_rules = self._driver.update_access(
-                self._context,
-                share,
-                access_rules,
-                None,
-                None,
-                None
+                self._context, share, access_rules, None, None, None
             )
 
-        expected_rw = set(rw)
-        if ro == ["*"]:
-            expected_ro = {"127.0.0.1"}
-        else:
-            expected_ro = set(["127.0.0.1"] + ro)
         kw = mock_rest.view_policies.update.call_args.kwargs
         self.assertEqual(kw["name"], "fakeid")
-        self.assertSetEqual(set(kw["nfs_read_write"]), expected_rw)
-        self.assertSetEqual(set(kw["nfs_read_only"]), expected_ro)
+        self.assertEqual(kw["nfs_read_write"], ["127.0.0.1"])
+        self.assertEqual(kw["nfs_read_only"], ["10.0.0.5"])
         self.assertEqual(kw["nfs_no_squash"], ["*"])
         self.assertEqual(kw["nfs_root_squash"], ["*"])
         self.assertFalse(failed_rules)
 
-    @ddt.data(
-        (["*"], ["10.10.10.1", "10.10.10.2"]),
-        (["10.10.10.1", "10.10.10.2"], []),
-        (["*"], []),
-    )
-    @ddt.unpack
-    def test_update_access_delete_rules(self, rw, ro):
+    def test_update_access_delete_rules(self):
+        """Rules Manila has dropped are absent from the new policy."""
         share = fake_share.fake_share(share_proto="NFS")
         mock_rest = self._create_mocked_rest_api()
         mock_rest.view_policies.one.return_value = driver_util.Bunch(
-            id=1, nfs_read_write=rw, nfs_read_only=ro
+            id=1,
+            nfs_read_write=["10.10.10.1", "10.10.10.2"],
+            nfs_read_only=["10.10.10.1"],
         )
+        # 10.10.10.1 was deleted; 10.10.10.2 rw remains.
+        access_rules = [
+            {
+                "access_level": "rw",
+                "access_to": "10.10.10.2",
+                "access_type": "ip",
+            }
+        ]
         delete_rules = [
             {
                 "access_level": "rw",
                 "access_to": "10.10.10.1",
-                "access_type": "ip"
+                "access_type": "ip",
             }
         ]
         with mock.patch.object(self._driver, "rest", mock_rest):
             failed_rules = self._driver.update_access(
-                self._context, share,
-                None,
-                None,
-                delete_rules,
-                None,
+                self._context, share, access_rules, None, delete_rules, None
             )
 
-        expected_ro = set(ro)
-        if rw == ["*"]:
-            expected_rw = set(rw)
-        else:
-            expected_rw = set([r for r in rw if r != "10.10.10.1"])
         kw = mock_rest.view_policies.update.call_args.kwargs
-        self.assertEqual(kw["name"], "fakeid")
-        self.assertSetEqual(set(kw["nfs_read_write"]), expected_rw)
-        self.assertSetEqual(set(kw["nfs_read_only"]), expected_ro)
-        self.assertEqual(kw["nfs_no_squash"], ["*"])
-        self.assertEqual(kw["nfs_root_squash"], ["*"])
-        self.assertFalse(failed_rules)
-
-        # and the same for ro
-        mock_rest = self._create_mocked_rest_api()
-        mock_rest.view_policies.one.return_value = driver_util.Bunch(
-            id=1, nfs_read_write=rw, nfs_read_only=ro
-        )
-        delete_rules = [
-            {
-                "access_level": "ro",
-                "access_to": "10.10.10.1",
-                "access_type": "ip"
-            }
-        ]
-        with mock.patch.object(self._driver, "rest", mock_rest):
-            failed_rules = self._driver.update_access(
-                self._context, share, None, None, delete_rules, None
-            )
-
-        expected_rw = set(rw)
-        if ro == ["*"]:
-            expected_ro = set(ro)
-        else:
-            expected_ro = set([r for r in ro if r != "10.10.10.1"])
-        kw = mock_rest.view_policies.update.call_args.kwargs
-        self.assertEqual(kw["name"], "fakeid")
-        self.assertSetEqual(set(kw["nfs_read_write"]), expected_rw)
-        self.assertSetEqual(set(kw["nfs_read_only"]), expected_ro)
-        self.assertEqual(kw["nfs_no_squash"], ["*"])
-        self.assertEqual(kw["nfs_root_squash"], ["*"])
+        self.assertEqual(kw["nfs_read_write"], ["10.10.10.2"])
+        self.assertEqual(kw["nfs_read_only"], [])
         self.assertFalse(failed_rules)
 
     def test_update_access_for_cidr(self):
         share = fake_share.fake_share(share_proto="NFS")
         mock_rest = self._create_mocked_rest_api()
         mock_rest.view_policies.one.return_value = driver_util.Bunch(
-            id=1, nfs_read_write=["10.0.0.1"], nfs_read_only=["*"]
+            id=1, nfs_read_write=["*"], nfs_read_only=["*"]
         )
         access_rules = [
             {
                 "access_level": "ro",
-                "access_to": "10.0.0.1/29",
+                "access_to": "10.0.0.0/29",
                 "access_type": "ip",
                 "access_id": 12345,
             }
         ]
         with mock.patch.object(self._driver, "rest", mock_rest):
             failed_rules = self._driver.update_access(
-                self._context,
-                share,
-                access_rules,
-                None,
-                None,
-                None
+                self._context, share, access_rules, None, None, None
             )
             kw = mock_rest.view_policies.update.call_args.kwargs
             self.assertEqual(kw["name"], "fakeid")
-            self.assertSetEqual(set(kw["nfs_read_write"]), {"10.0.0.1"})
-            self.assertSetEqual(
-                set(kw["nfs_read_only"]),
-                {
-                    '10.0.0.1',
-                    '10.0.0.3',
-                    '10.0.0.2',
-                    '10.0.0.6',
-                    '10.0.0.5',
-                    '10.0.0.4'
-                }
-            )
+            self.assertEqual(kw["nfs_read_write"], [])
+            self.assertEqual(kw["nfs_read_only"], ["10.0.0.0/29"])
             self.assertFalse(failed_rules)
 
-        delete_rules = [
+    def test_update_access_allow_all(self):
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.view_policies.one.return_value = driver_util.Bunch(
+            id=1, nfs_read_write=[], nfs_read_only=[]
+        )
+        access_rules = [
             {
-                "access_level": "ro",
-                "access_to": "10.0.0.1/30",
+                "access_level": "rw",
+                "access_to": "0.0.0.0/0",
                 "access_type": "ip",
                 "access_id": 12345,
             }
         ]
-        mock_rest.view_policies.one.return_value = driver_util.Bunch(
-            id=1, nfs_read_write=["10.0.0.1"],
-            nfs_read_only=[
-                '10.0.0.1',
-                '10.0.0.3',
-                '10.0.0.2',
-                '10.0.0.6',
-                '10.0.0.5',
-                '10.0.0.4',
-            ]
-        )
         with mock.patch.object(self._driver, "rest", mock_rest):
             failed_rules = self._driver.update_access(
-                self._context,
-                share,
-                None,
-                None,
-                delete_rules,
-                None
+                self._context, share, access_rules, None, None, None
             )
             kw = mock_rest.view_policies.update.call_args.kwargs
-            self.assertEqual(kw["name"], "fakeid")
-            self.assertSetEqual(set(kw["nfs_read_write"]), {"10.0.0.1"})
-            self.assertSetEqual(
-                set(kw["nfs_read_only"]),
-                {'10.0.0.6', '10.0.0.3', '10.0.0.4', '10.0.0.5'}
-            )
+            self.assertEqual(kw["nfs_read_write"], ["*"])
+            self.assertEqual(kw["nfs_read_only"], [])
             self.assertFalse(failed_rules)
 
     def test_update_access_for_invalid_rules(self):
@@ -563,8 +461,8 @@ class VASTShareDriverTestCase(unittest.TestCase):
             )
             kw = mock_rest.view_policies.update.call_args.kwargs
             self.assertEqual(kw["name"], "fakeid")
-            self.assertSetEqual(set(kw["nfs_read_write"]), {"10.0.0.1"})
-            self.assertSetEqual(set(kw["nfs_read_only"]), {'10.0.0.2'})
+            self.assertEqual(kw["nfs_read_write"], [])
+            self.assertEqual(kw["nfs_read_only"], ["10.0.0.2"])
             self.assertDictEqual(
                 failed_rules,
                 {
@@ -573,6 +471,165 @@ class VASTShareDriverTestCase(unittest.TestCase):
                     12348: {'state': 'error'}
                 }
             )
+
+    def _rule(self, level, addr, rule_id, access_type="ip"):
+        return {
+            "access_level": level,
+            "access_to": addr,
+            "access_type": access_type,
+            "access_id": rule_id,
+            "id": rule_id,
+        }
+
+    def _policy(self, mock_rest):
+        mock_rest.view_policies.one.return_value = driver_util.Bunch(
+            id=1, nfs_read_write=["*"], nfs_read_only=["*"]
+        )
+
+    def test_update_access_unsupported_access_type(self):
+        """An unsupported type is an error and is left out of the policy."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        self._policy(mock_rest)
+        access_rules = [
+            self._rule("rw", "10.0.0.2", "valid-rule-id"),
+            self._rule("rw", "demo", "invalid-rule-id", access_type="user"),
+        ]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context, share, access_rules, None, None, None
+            )
+
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], ["10.0.0.2"])
+        self.assertEqual(kw["nfs_read_only"], [])
+        self.assertEqual(result, {"invalid-rule-id": {"state": "error"}})
+
+    def test_update_access_update_rules_change_level(self):
+        """A level change puts the host on the new list only."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        self._policy(mock_rest)
+        access_rules = [self._rule("ro", "10.0.0.1", "rule-123")]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context, share, access_rules, None, None, None
+            )
+
+        mock_rest.view_policies.update.assert_called_once()
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], [])
+        self.assertEqual(kw["nfs_read_only"], ["10.0.0.1"])
+        self.assertEqual(result, {})
+
+    def test_update_access_keeps_other_hosts_and_drops_wildcard(self):
+        """Sibling hosts stay, and a cluster '*' is not carried over."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.view_policies.one.return_value = driver_util.Bunch(
+            id=1,
+            nfs_read_write=["*", "10.0.0.1", "10.0.0.2"],
+            nfs_read_only=["*"],
+        )
+        access_rules = [
+            self._rule("rw", "10.0.0.2", "keep"),
+            self._rule("ro", "10.0.0.1", "moved"),
+        ]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context, share, access_rules, None, None, None
+            )
+
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], ["10.0.0.2"])
+        self.assertEqual(kw["nfs_read_only"], ["10.0.0.1"])
+        self.assertEqual(result, {})
+
+    def test_update_access_invalid_address(self):
+        """A bad address is an error and does not fail the call."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        self._policy(mock_rest)
+        access_rules = [
+            self._rule("ro", "not-an-ip", "bad-addr"),
+            self._rule("rw", "10.0.0.1", "good-rule"),
+        ]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context, share, access_rules, None, None, None
+            )
+
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], ["10.0.0.1"])
+        self.assertEqual(kw["nfs_read_only"], [])
+        self.assertEqual(result, {"bad-addr": {"state": "error"}})
+
+    def test_update_access_invalid_level(self):
+        """An invalid level is an error and is left out of the policy."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        self._policy(mock_rest)
+        access_rules = [self._rule("invalid_level", "10.0.0.1", "bad-level")]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context, share, access_rules, None, None, None
+            )
+
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], [])
+        self.assertEqual(kw["nfs_read_only"], [])
+        self.assertEqual(result, {"bad-level": {"state": "error"}})
+
+    def test_update_access_add_and_delete_simultaneously(self):
+        """The policy becomes the rules that remain after add and delete."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        mock_rest.view_policies.one.return_value = driver_util.Bunch(
+            id=1, nfs_read_write=["10.0.0.1"], nfs_read_only=["*"]
+        )
+        access_rules = [self._rule("rw", "10.0.0.2", "add-rule")]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context,
+                share,
+                access_rules,
+                [self._rule("rw", "10.0.0.2", "add-rule")],
+                [self._rule("rw", "10.0.0.1", "del-rule")],
+                None,
+            )
+
+        mock_rest.view_policies.update.assert_called_once()
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], ["10.0.0.2"])
+        self.assertEqual(kw["nfs_read_only"], [])
+        self.assertEqual(result, {})
+
+    def test_update_access_all_rules_invalid(self):
+        """When every desired rule is invalid the policy denies everyone."""
+        share = fake_share.fake_share(share_proto="NFS")
+        mock_rest = self._create_mocked_rest_api()
+        self._policy(mock_rest)
+        access_rules = [
+            self._rule("invalid_level", "10.0.0.1", "rule-1"),
+            self._rule("rw", "invalid_ip", "rule-2"),
+        ]
+
+        with mock.patch.object(self._driver, "rest", mock_rest):
+            result = self._driver.update_access(
+                self._context, share, access_rules, None, None, None
+            )
+
+        kw = mock_rest.view_policies.update.call_args.kwargs
+        self.assertEqual(kw["nfs_read_write"], [])
+        self.assertEqual(kw["nfs_read_only"], [])
+        self.assertEqual(result["rule-1"]["state"], "error")
+        self.assertEqual(result["rule-2"]["state"], "error")
 
     def test_resize_share_quota_not_found(self):
         share = fake_share.fake_share(share_proto="NFS")
@@ -1002,36 +1059,6 @@ class TestExtraSpecsParsing(unittest.TestCase):
         # Should return default VAST extra specs when no vast: specs provided
         self.assertEqual(opts, {'vippool_name': None})
         mock_get_specs.assert_called_once_with(share)
-
-
-class TestPolicyPayloadFromRules(unittest.TestCase):
-    def test_policy_payload_from_rules_update(self):
-        rules = [{"access_level": "rw", "access_to": "127.0.0.1"}]
-        policy = mock.MagicMock()
-        policy.nfs_read_write = ["127.0.0.1"]
-        policy.nfs_read_only = []
-        result = driver.policy_payload_from_rules(rules, policy, "update")
-        self.assertEqual(
-            result, {"nfs_read_write": ["127.0.0.1"], "nfs_read_only": []}
-        )
-
-    def test_policy_payload_from_rules_deny(self):
-        rules = [{"access_level": "rw", "access_to": "127.0.0.1"}]
-        policy = mock.MagicMock()
-        policy.nfs_read_write = ["127.0.0.1"]
-        policy.nfs_read_only = []
-        result = driver.policy_payload_from_rules(rules, policy, "deny")
-        self.assertEqual(result, {"nfs_read_write": [], "nfs_read_only": []})
-
-    def test_policy_payload_from_rules_invalid_action(self):
-        rules = [{"access_level": "rw", "access_to": "127.0.0.1"}]
-        with self.assertRaises(ValueError):
-            driver.policy_payload_from_rules(rules, None, "invalid")
-
-    def test_policy_payload_from_rules_invalid_ip(self):
-        rules = [{"access_level": "rw", "access_to": "1.0.0.257"}]
-        with self.assertRaises(netaddr.core.AddrFormatError):
-            driver.policy_payload_from_rules(rules, None, "deny")
 
 
 class TestValidateAccessRules(unittest.TestCase):

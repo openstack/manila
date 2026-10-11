@@ -34,8 +34,6 @@ vast_mgmt_user = admin
 vast_mgmt_password = 123456
 """
 
-import collections
-
 import netaddr
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -211,70 +209,56 @@ class VASTShareDriver(driver.ShareDriver):
         self.rest.quotas.delete(name=share_id)
         self.rest.view_policies.delete(name=share_id)
 
+    def _mark_rule_error(self, rule, exc, rule_state_map):
+        rule_id = rule["access_id"]
+        access_level = rule["access_level"]
+        access_to = rule["access_to"]
+        LOG.exception(
+            f"Failed to provide {access_level} access to "
+            f"{access_to} (Rule ID: {rule_id}, Reason: {exc}). "
+            "Setting rule to 'error' state."
+        )
+        rule_state_map[rule['id']] = {'state': 'error'}
+
     def update_access(
         self, context, share, access_rules,
         add_rules, delete_rules, update_rules, share_server=None
     ):
         """Update access rules for share."""
-        rule_state_map = {}
-
-        if not (add_rules or delete_rules):
-            add_rules = access_rules
-
         if share["share_proto"] != "NFS":
             LOG.error("The share protocol flavor is invalid. Please use NFS.")
             return
 
-        valid_add_rules = []
-        for rule in (add_rules or []):
+        rule_state_map = {}
+        hosts = {"nfs_read_write": set(), "nfs_read_only": set()}
+        for rule in access_rules or []:
             try:
                 validate_access_rule(rule)
             except (
                     exception.InvalidShareAccess,
                     exception.InvalidShareAccessLevel,
             ) as exc:
-                rule_id = rule["access_id"]
-                access_level = rule["access_level"]
-                access_to = rule["access_to"]
-                LOG.exception(
-                    f"Failed to provide {access_level} access to "
-                    f"{access_to} (Rule ID: {rule_id}, Reason: {exc}). "
-                    "Setting rule to 'error' state."
-                )
-                rule_state_map[rule['id']] = {'state': 'error'}
-            else:
-                valid_add_rules.append(rule)
+                self._mark_rule_error(rule, exc, rule_state_map)
+                continue
+            level = MANILA_TO_VAST_ACCESS_LEVEL[rule["access_level"]]
+            hosts[level].update(
+                driver_util.expand_ip_or_cidr(rule["access_to"])
+            )
 
         share_id = share["id"]
-        export = self._to_volume_path(share_id)
+        policy = self.rest.view_policies.one(
+            name=share_id, fail_if_missing=True
+        )
 
         LOG.debug(f"Changing access on {share_id}.")
-        data = {
-            "name": share_id,
-            "nfs_no_squash": ["*"],
-            "nfs_root_squash": ["*"]
-        }
-        policy = self.rest.view_policies.one(name=share_id)
-        if not policy:
-            raise exception.VastDriverException(
-                reason=f"Policy not found for share {share_id}."
-            )
-        if valid_add_rules:
-            policy_rules = policy_payload_from_rules(
-                rules=valid_add_rules, policy=policy, action="update"
-            )
-            data.update(policy_rules)
-            LOG.debug(f"Changing access on {export}. Rules: {policy_rules}.")
-            self.rest.view_policies.update(policy.id, **data)
-
-        if delete_rules:
-            policy_rules = policy_payload_from_rules(
-                rules=delete_rules, policy=policy, action="deny"
-            )
-            LOG.debug(f"Changing access on {export}. Rules: {policy_rules}.")
-            data.update(policy_rules)
-            self.rest.view_policies.update(policy.id, **data)
-
+        self.rest.view_policies.update(
+            policy.id,
+            name=share_id,
+            nfs_no_squash=["*"],
+            nfs_root_squash=["*"],
+            nfs_read_write=sorted(hosts["nfs_read_write"]),
+            nfs_read_only=sorted(hosts["nfs_read_only"]),
+        )
         return rule_state_map
 
     def extend_share(self, share, new_size, share_server=None):
@@ -377,9 +361,12 @@ class VASTShareDriver(driver.ShareDriver):
         share_id = share["id"]
         requested_capacity = share["size"] * units.Gi
         path = self._to_volume_path(share_id)
+        # Deny all access until Manila access rules are applied.
         policy = self.rest.view_policies.ensure(
             name=share_id,
             tenant_id=vippool.tenant_id,
+            nfs_read_write=[],
+            nfs_read_only=[],
         )
         quota = self.rest.quotas.ensure(
             name=share_id,
@@ -404,57 +391,6 @@ class VASTShareDriver(driver.ShareDriver):
         return [
             dict(path=f"{vip}:{path}", is_admin_only=False) for vip in vips
         ]
-
-
-def policy_payload_from_rules(rules, policy, action):
-    """Convert list of manila rules
-
-    into vast compatible payload for updating/creating policy.
-    """
-    hosts = collections.defaultdict(set)
-    for rule in rules:
-        addr_list = map(
-            str, netaddr.IPNetwork(rule["access_to"]).iter_hosts()
-        )
-        hosts[
-            MANILA_TO_VAST_ACCESS_LEVEL[rule["access_level"]]
-        ].update(addr_list)
-
-    _default_rules = set()
-
-    # Delete default_vast_policy on each update.
-    # There is no sense to keep * in list of allowed/denied hosts
-    # as user want to set particular ip/ips only.
-    _default_vast_policy = {"*"}
-    if action == "update":
-        rw = set(policy.nfs_read_write).union(
-            hosts.get("nfs_read_write", _default_rules)
-        )
-        ro = set(policy.nfs_read_only).union(
-            hosts.get("nfs_read_only", _default_rules)
-        )
-    elif action == "deny":
-        rw = set(policy.nfs_read_write).difference(
-            hosts.get("nfs_read_write", _default_rules)
-        )
-        ro = set(policy.nfs_read_only).difference(
-            hosts.get("nfs_read_only", _default_rules)
-        )
-    else:
-        raise ValueError("Invalid action")
-
-    # When policy created default access is
-    # "*" for read-write and read-only operations.
-    # After updating any of rules (rw or ro)
-    # we need to delete "*" to prevent ambiguous state when
-    # resource available for certain ip and for all range of ip addresses.
-    if len(rw) > 1:
-        rw -= _default_vast_policy
-
-    if len(ro) > 1:
-        ro -= _default_vast_policy
-
-    return {"nfs_read_write": list(rw), "nfs_read_only": list(ro)}
 
 
 def validate_access_rule(access_rule):

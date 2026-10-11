@@ -1,0 +1,23 @@
+---
+security:
+  - |
+    The VAST driver now creates new shares with empty ACLs (deny all
+    access) by default. Access must be explicitly granted via Manila
+    access rules, matching the behavior of other Manila drivers.
+    `Launchpad bug 2172349
+    <https://bugs.launchpad.net/manila/+bug/2172349>`_.
+fixes:
+  - |
+    Fixed VastData driver issue where changing share access rule level
+    (e.g., from 'rw' to 'ro') would result in the IP address appearing
+    in both 'nfs_read_write' and 'nfs_read_only' lists on the VAST cluster.
+    The driver now replaces both lists with the access rules Manila
+    wants on the share. `Launchpad bug 2172349
+    <https://bugs.launchpad.net/manila/+bug/2172349>`_.
+upgrade:
+  - |
+    The VAST driver behavior has changed: new shares are now created
+    with empty ACLs (deny all access) by default, instead of being
+    reachable from any host until the first access rule is applied.
+    Add access rules after creating a share to grant access, as with
+    other Manila drivers.

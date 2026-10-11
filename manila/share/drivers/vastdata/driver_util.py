@@ -16,6 +16,7 @@ import copy
 import ipaddress
 import types
 
+import netaddr
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import timeutils
@@ -247,6 +248,31 @@ def generate_ip_range(ip_ranges):
         )
         for ip in net
     ]
+
+
+def expand_ip_or_cidr(access_to):
+    """Expand a single IP or CIDR into list of host IP addresses.
+
+    Args:
+        access_to: IP address or CIDR (e.g., "10.0.0.1" or "10.0.0.0/24")
+
+    Returns:
+        list: One VAST ACL host entry (IP, CIDR, or '*')
+
+    Examples:
+        >>> expand_ip_or_cidr("10.0.0.1")
+        ["10.0.0.1"]
+        >>> expand_ip_or_cidr("10.0.0.0/30")
+        ["10.0.0.0/30"]
+        >>> expand_ip_or_cidr("0.0.0.0/0")
+        ["*"]
+    """
+    network = netaddr.IPNetwork(access_to)
+    if network.prefixlen == 0:
+        return ["*"]
+    if network.size == 1:
+        return [str(network.ip)]
+    return [str(network.cidr)]
 
 
 def decorate_methods_with(dec):
