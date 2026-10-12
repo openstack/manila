@@ -11,7 +11,10 @@
             "updated_at": "2023-08-17T12:14:15.000000",
             "availability_zone": null,
             "progress": "100",
-            "restore_progress": "0"
+            "restore_progress": "0",
+            "backup_type": null,
+            "host": null,
+            "topic": null
         },
         {
             "id": "c1cdc0ce-4ddc-4018-9796-505d2e26fcc7",
@@ -24,7 +27,10 @@
             "updated_at": "2023-08-16T13:13:15.000002",
             "availability_zone": null,
             "progress": "0",
-            "restore_progress": "0"
+            "restore_progress": "0",
+            "backup_type": null,
+            "host": null,
+            "topic": null
         }
     ]
 }

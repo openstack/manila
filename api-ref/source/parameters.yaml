@@ -1126,6 +1126,13 @@ backup_az:
   in: body
   required: true
   type: string
+backup_host:
+  description: |
+    The host that manages the backup. Only visible to users with the
+    ``context_is_host_admin`` policy (``role:admin and project_id``).
+  in: body
+  required: false
+  type: string
 backup_id_response:
   description: |
     The UUID of the share backup.
@@ -1177,6 +1184,22 @@ backup_status_request:
   in: body
   required: false
   type: string
+backup_topic:
+  description: |
+    The topic of the service that manages the backup. Only visible to
+    users with the ``context_is_host_admin`` policy
+    (``role:admin and project_id``).
+  in: body
+  required: false
+  type: string
+backup_type:
+  description: |
+    The backup type, which is a driver-defined string identifying the
+    mechanism used to create the backup.
+  in: body
+  required: false
+  type: string
+  min_version: '2.85'
 capabilities:
   description: |
     The back end capabilities which include ``qos``, ``total_capacity_gb``,
