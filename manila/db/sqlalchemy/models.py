@@ -519,6 +519,10 @@ class ShareInstanceExportLocationsMetadata(BASE, ManilaBase):
 class ShareTypes(BASE, ManilaBase):
     """Represent possible share_types of volumes offered."""
     __tablename__ = "share_types"
+    __table_args__ = (
+        schema.UniqueConstraint(
+            "name", "deleted", name="uniq_share_types_name_deleted"),
+    )
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     name = Column(String(255))
