@@ -49,10 +49,8 @@ def get_fingerprint(self):
     return hashlib.md5(self.asbytes(), usedforsecurity=False).digest()
 
 
-if paramiko is None:
-    raise exception.RequirementMissing(req='paramiko')
-
-paramiko.pkey.PKey.get_fingerprint = get_fingerprint
+if paramiko is not None:
+    paramiko.pkey.PKey.get_fingerprint = get_fingerprint
 
 
 class SSHPool:
@@ -60,6 +58,10 @@ class SSHPool:
 
     def __init__(self, ip, port, conn_timeout, login, password=None,
                  privatekey=None, min_size=1, max_size=10):
+        # Raise here rather than on import, so drivers that only import this
+        # module keep working without paramiko.
+        if paramiko is None:
+            raise exception.RequirementMissing(req='paramiko')
         self.ip = ip
         self.port = port
         self.login = login

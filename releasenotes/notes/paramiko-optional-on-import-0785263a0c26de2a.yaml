@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Share drivers that import ``manila.ssh_utils`` without using SSH, such
+    as CephFS, LVM and ZFSonLinux, no longer fail to load when paramiko
+    cannot be imported. A missing paramiko is now reported only when an SSH
+    connection pool is created.

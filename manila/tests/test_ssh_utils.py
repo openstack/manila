@@ -67,6 +67,12 @@ class FakeSSHClient(object):
 class SSHPoolTestCase(test.TestCase):
     """Unit test for SSH Connection Pool."""
 
+    @mock.patch.object(ssh_utils, 'paramiko', None)
+    def test_sshpool_without_paramiko(self):
+        self.assertRaises(exception.RequirementMissing,
+                          ssh_utils.SSHPool, "127.0.0.1", 22, 10, "test",
+                          password="test")
+
     def test_single_ssh_connect(self):
         with mock.patch.object(paramiko, "SSHClient",
                                mock.Mock(return_value=FakeSSHClient())):
