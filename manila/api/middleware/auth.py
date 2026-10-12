@@ -29,18 +29,7 @@ from manila import context
 from manila.i18n import _
 from manila.wsgi import common as base_wsgi
 
-use_forwarded_for_opt = cfg.BoolOpt(
-    'use_forwarded_for',
-    default=False,
-    deprecated_for_removal=True,
-    deprecated_reason='This feature is duplicate of the HTTPProxyToWSGI '
-                      'middleware of oslo.middleware.',
-    deprecated_since='Zed',
-    help='Treat X-Forwarded-For as the canonical remote address. '
-         'Only enable this if you have a sanitizing proxy.')
-
 CONF = cfg.CONF
-CONF.register_opt(use_forwarded_for_opt)
 LOG = log.getLogger(__name__)
 
 
@@ -79,8 +68,6 @@ class ManilaKeystoneContext(base_wsgi.Middleware):
     def __call__(self, req):
         # Build a context, including the auth_token...
         remote_address = req.remote_addr
-        if CONF.use_forwarded_for:
-            remote_address = req.headers.get('X-Forwarded-For', remote_address)
 
         service_catalog = None
         if req.headers.get('X_SERVICE_CATALOG') is not None:
@@ -141,8 +128,6 @@ class NoAuthMiddlewareBase(base_wsgi.Middleware):
         user_id, _sep, project_id = token.partition(':')
         project_id = project_id or user_id
         remote_address = getattr(req, 'remote_addr', '127.0.0.1')
-        if CONF.use_forwarded_for:
-            remote_address = req.headers.get('X-Forwarded-For', remote_address)
         ctx = context.RequestContext(user_id,
                                      project_id,
                                      is_admin=True,

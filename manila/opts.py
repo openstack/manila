@@ -105,7 +105,6 @@ import manila.wsgi.eventlet_server
 _global_opt_lists = [
     # Keep list alphabetically sorted
     manila.api.common.api_common_opts,
-    [manila.api.middleware.auth.use_forwarded_for_opt],
     manila.common.config.core_opts,
     manila.common.config.debug_opts,
     manila.common.config.global_opts,

@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    The deprecated [DEFAULT] use_forwarded_for`` option has been removed.
