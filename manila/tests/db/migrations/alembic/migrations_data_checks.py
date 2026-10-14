@@ -38,6 +38,7 @@ import copy
 import datetime
 
 from oslo_db import exception as oslo_db_exc
+from oslo_utils import timeutils
 from oslo_utils import uuidutils
 from sqlalchemy import exc as sa_exc
 
@@ -3464,8 +3465,8 @@ class AddShareReplicaMetadata(BaseMigrationChecks):
                                                    engine)
         engine.execute(availability_zone_table.insert().values(
             {'id': 'fake', 'name': 'fake',
-             'created_at': datetime.datetime.utcnow(),
-             'updated_at': datetime.datetime.utcnow()}
+             'created_at': timeutils.utcnow(),
+             'updated_at': timeutils.utcnow()}
         ))
         # Setup Share
         share_data = {
