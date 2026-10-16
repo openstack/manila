@@ -49,6 +49,8 @@ The following operations are supported:
 
 - Ensure shares.
 
+- Extend share.
+
 - Shrink share.
 
 - Manage/Unmanage snapshot
