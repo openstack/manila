@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed an issue where listing share snapshots with an older
+    microversion could return ``400 Bad Request`` if a parameter
+    introduced in a newer microversion (e.g. ``with_count``) was
+    supplied with an invalid value. Unsupported parameters are now
+    ignored as intended. Refer to `bug 2171025
+    <https://bugs.launchpad.net/manila/+bug/2171025>`_ for more
+    details.
