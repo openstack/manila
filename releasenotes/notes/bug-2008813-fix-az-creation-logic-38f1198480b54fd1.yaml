@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    A `bug previously caused <https://launchpad.net/bugs/2008813>`_
+    failures during simultaneous service startup due to an incorrect
+    database rollback. This has now been addressed.
