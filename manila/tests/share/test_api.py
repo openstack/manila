@@ -3361,6 +3361,64 @@ class ShareAPITestCase(test.TestCase):
                 ctx, 'share', 'get', share, do_raise=False)
             db_api.share_get.assert_called_once_with(ctx, share['id'])
 
+    def test_get_public_share_skips_policy_check(self):
+        fake_share = db_utils.create_share(is_public=True)
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=fake_share))
+
+        result = self.api.get(self.context, 'fakeid')
+
+        self.assertEqual(fake_share, result)
+        share_api.policy.check_policy.assert_not_called()
+
+    def test_get_public_share_for_modification_checks_policy(self):
+        fake_share = db_utils.create_share(is_public=True)
+        share_api.policy.check_policy.return_value = True
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=fake_share))
+
+        result = self.api.get(
+            self.context, 'fakeid', for_modification=True)
+
+        self.assertEqual(fake_share, result)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'get', fake_share, do_raise=True)
+
+    def test_get_public_share_for_modification_not_authorized(self):
+        fake_share = db_utils.create_share(
+            is_public=True,
+            project_id='df6d65cc1f8946ba86be06b8140ec4b3')
+        self.mock_object(
+            share_api.policy, 'check_policy',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=fake_share))
+        ctx = context.RequestContext('fake_uid', 'fake_pid', is_admin=False)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.api.get,
+                          ctx,
+                          fake_share['id'],
+                          for_modification=True)
+
+    def test_get_private_share_for_modification_not_authorized(self):
+        fake_share = db_utils.create_share(
+            is_public=False,
+            project_id='df6d65cc1f8946ba86be06b8140ec4b3')
+        share_api.policy.check_policy.return_value = False
+        self.mock_object(db_api, 'share_get',
+                         mock.Mock(return_value=fake_share))
+        ctx = context.RequestContext('fake_uid', 'fake_pid', is_admin=False)
+
+        self.assertRaises(exception.NotFound,
+                          self.api.get,
+                          ctx,
+                          fake_share['id'],
+                          for_modification=True)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get', fake_share, do_raise=False)
+
     @mock.patch.object(db_api, 'share_snapshot_get_all_by_project',
                        mock.Mock())
     def test_get_all_snapshots_admin_not_all_tenants(self):

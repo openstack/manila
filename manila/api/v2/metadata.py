@@ -99,7 +99,10 @@ class MetadataController(object):
             get_res_method = getattr(
                 db, self.resource_get[self.resource_name])
             if parent_id is not None:
-                kwargs["parent_id"] = parent_id
+                if self.resource_name == 'share_export_location':
+                    kwargs["share_id"] = parent_id
+                else:
+                    kwargs["parent_id"] = parent_id
             if self.resource_name == 'share_replica':
                 kwargs['with_share_data'] = True
             res = get_res_method(context, resource_id, **kwargs)

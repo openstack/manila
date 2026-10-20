@@ -384,6 +384,43 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.member_context, self.resource_name, 'create')
 
+    def test_create_share_from_other_project_not_found(self):
+        # A share that belongs to another project is not visible to the
+        # caller, so the ownership lookup must fail with 404.
+        body = {
+            'share_replica': {
+                'share_id': 'FAKE_SHAREID',
+                'availability_zone': 'FAKE_AZ'
+            }
+        }
+        self.mock_object(share.API, 'get',
+                         mock.Mock(side_effect=exception.NotFound))
+
+        self.assertRaises(exc.HTTPNotFound,
+                          self.controller.create,
+                          self.replicas_req, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.member_context, self.resource_name, 'create')
+
+    def test_create_share_from_other_project_not_authorized(self):
+        # A public share that belongs to another project: the ownership
+        # policy check inside the share lookup must raise
+        # PolicyNotAuthorized, which the WSGI layer converts to 403.
+        body = {
+            'share_replica': {
+                'share_id': 'FAKE_SHAREID',
+                'availability_zone': 'FAKE_AZ'
+            }
+        }
+        self.mock_object(share.API, 'get', mock.Mock(
+            side_effect=exception.PolicyNotAuthorized(action='share:get')))
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.create,
+                          self.replicas_req, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.member_context, self.resource_name, 'create')
+
     def test_create_has_been_soft_deleted(self):
         share_ref = fake_share.fake_share(is_soft_deleted=True)
         body = {
@@ -395,7 +432,7 @@ class ShareReplicasApiTest(test.TestCase):
         mock__view_builder_call = self.mock_object(
             share_replicas.replication_view.ReplicationViewBuilder,
             'detail_list')
-        self.mock_object(share_replicas.db, 'share_get',
+        self.mock_object(share.API, 'get',
                          mock.Mock(return_value=share_ref))
 
         self.assertRaises(exc.HTTPForbidden,
@@ -416,7 +453,7 @@ class ShareReplicasApiTest(test.TestCase):
         mock__view_builder_call = self.mock_object(
             share_replicas.replication_view.ReplicationViewBuilder,
             'detail_list')
-        self.mock_object(share_replicas.db, 'share_get',
+        self.mock_object(share.API, 'get',
                          mock.Mock(return_value=share_ref))
 
         self.assertRaises(exc.HTTPForbidden,
@@ -442,7 +479,7 @@ class ShareReplicasApiTest(test.TestCase):
         mock__view_builder_call = self.mock_object(
             share_replicas.replication_view.ReplicationViewBuilder,
             'detail_list')
-        self.mock_object(share_replicas.db, 'share_get',
+        self.mock_object(share.API, 'get',
                          mock.Mock(return_value=fake_replica))
         self.mock_object(share_replicas.db, 'share_network_get',
                          mock.Mock(side_effect=exception.ShareNetworkNotFound(
@@ -471,7 +508,7 @@ class ShareReplicasApiTest(test.TestCase):
             }
         }
         exc_args = {'id': 'xyz', 'reason': 'abc'}
-        self.mock_object(share_replicas.db, 'share_get',
+        self.mock_object(share.API, 'get',
                          mock.Mock(return_value=fake_replica))
         self.mock_object(share.API, 'create_share_replica',
                          mock.Mock(side_effect=exception_type(**exc_args)))
@@ -513,7 +550,7 @@ class ShareReplicasApiTest(test.TestCase):
         if self.is_microversion_ge(microversion, '2.95'):
             body["share_replica"].update({"metadata": {"foo": "bar"}})
 
-        self.mock_object(share_replicas.db, 'share_get',
+        self.mock_object(share.API, 'get',
                          mock.Mock(return_value=fake_replica))
         self.mock_object(share.API, 'create_share_replica',
                          mock.Mock(return_value=fake_replica))

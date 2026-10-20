@@ -428,7 +428,7 @@ class ShareController(
         LOG.debug("Soft delete share with id: %s", id, context=context)
 
         try:
-            share = self.share_api.get(context, id)
+            share = self.share_api.get(context, id, for_modification=True)
             self.share_api.soft_delete(context, share)
         except exception.NotFound:
             raise exc.HTTPNotFound()
@@ -453,7 +453,7 @@ class ShareController(
         LOG.debug("Restore share with id: %s", id, context=context)
 
         try:
-            share = self.share_api.get(context, id)
+            share = self.share_api.get(context, id, for_modification=True)
         except exception.NotFound:
             msg = _("No share exists with ID %s.")
             raise exc.HTTPNotFound(explanation=msg % id)
@@ -711,7 +711,7 @@ class ShareController(
         access_data = body.get('allow_access', body.get('os-allow_access'))
         if not enable_metadata:
             access_data.pop('metadata', None)
-        share = self.share_api.get(context, id)
+        share = self.share_api.get(context, id, for_modification=True)
 
         if share.get('is_soft_deleted'):
             msg = _("Cannot allow access for share '%s' "
@@ -856,7 +856,7 @@ class ShareController(
 
         self._check_for_access_rule_locks(context, access_data, access_id, id)
 
-        share = self.share_api.get(context, id)
+        share = self.share_api.get(context, id, for_modification=True)
 
         if share.get('is_soft_deleted'):
             msg = _("Cannot deny access for share '%s' "
