@@ -1,0 +1,8 @@
+fixes:
+  - |
+    Fixed a race condition in ``manila.context.RequestContext`` where
+    an ``AttributeError`` occurred during object initialization.
+    Attributes such as ``read_deleted``, ``remote_address``, ``timestamp``,
+    ``quota_class`` and ``service_catalog`` are now initialized before calling
+    the parent class constructor to ensure they are available for any early
+    calls to ``to_dict()`` made by the ``oslo_context``.
