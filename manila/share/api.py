@@ -2296,11 +2296,13 @@ class API(base.Base):
     def snapshot_update(self, context, snapshot, fields):
         return self.db.share_snapshot_update(context, snapshot['id'], fields)
 
-    def get(self, context, share_id):
+    def get(self, context, share_id, for_modification=False):
         share = self.db.share_get(context, share_id)
-        if not share['is_public']:
+        share_is_public = share['is_public']
+        if not share_is_public or for_modification:
             authorized = policy.check_policy(
-                context, 'share', 'get', share, do_raise=False)
+                context, 'share', 'get', share,
+                do_raise=share_is_public and for_modification)
             if not authorized:
                 raise exception.NotFound()
         if share['status'] in (

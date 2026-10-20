@@ -1627,8 +1627,14 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       version='2.69')
         body = {"soft_delete": None}
-        resp = self.controller.share_soft_delete(req, 1, body)
+        mock_get = self.mock_object(
+            share_api.API, 'get', mock.Mock(return_value=self.share))
+
+        resp = self.controller.share_soft_delete(req, 1, body=body)
+
         self.assertEqual(202, resp.status_int)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], 1, for_modification=True)
 
     def test_share_soft_delete_has_been_soft_deleted_already(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
@@ -1661,10 +1667,15 @@ class ShareAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
                                       version='2.69')
         body = {"restore": None}
-        self.mock_object(share_api.API, 'get',
-                         mock.Mock(return_value=self.share_in_recycle_bin))
-        resp = self.controller.share_restore(req, 1, body)
+        mock_get = self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(return_value=self.share_in_recycle_bin))
+
+        resp = self.controller.share_restore(req, 1, body=body)
+
         self.assertEqual(202, resp.status_int)
+        mock_get.assert_called_once_with(
+            req.environ['manila.context'], 1, for_modification=True)
 
     def test_share_restore_with_deleting_status(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
@@ -1675,7 +1686,35 @@ class ShareAPITest(test.TestCase):
             mock.Mock(return_value=self.share_in_recycle_bin_is_deleting))
         self.assertRaises(
             webob.exc.HTTPForbidden, self.controller.share_restore,
-            req, 1, body)
+            req, 1, body=body)
+
+    def test_share_soft_delete_policy_not_authorized(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"soft_delete": None}
+        self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.share_soft_delete,
+            req, 1, body=body)
+
+    def test_share_restore_policy_not_authorized(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/shares/1/action',
+                                      version='2.69')
+        body = {"restore": None}
+        self.mock_object(
+            share_api.API, 'get',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='share:get')))
+
+        self.assertRaises(
+            exception.PolicyNotAuthorized,
+            self.controller.share_restore,
+            req, 1, body=body)
 
     def test_share_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/shares/1')
