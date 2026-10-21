@@ -43,6 +43,7 @@ shared file system storage resources.
 .. include:: share-instances.inc
 .. include:: share-instance-export-locations.inc
 .. include:: share-types.inc
+.. include:: qos-types.inc
 .. include:: scheduler-stats.inc
 .. include:: services.inc
 .. include:: availability-zones.inc
