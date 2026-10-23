@@ -545,3 +545,25 @@ class DatetimeTestCase(APIValidationTestCase):
         self.check_validation_error(
             self.post, body={'foo': '123'}, expected_detail=detail
         )
+
+
+class MissingBodyTestCase(APIValidationTestCase):
+    def setUp(self):
+        schema = {
+            'type': 'object',
+            'properties': {
+                'foo': {
+                    'type': 'integer',
+                },
+            },
+        }
+        super().setUp(schema=schema)
+
+    def test_missing_body_kwarg(self):
+        # Simulate the WSGI layer omitting the 'body' kwarg entirely
+        ex = self.assertRaises(
+            exception.ValidationError,
+            self.post,
+            req=FakeRequest()
+        )
+        self.assertIn("None is not of type 'object'", ex.kwargs['detail'])
