@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed an issue where PUT/POST requests sent with no
+    body and no Content-Type to APIs such as resource
+    lock create/update and quota class set update,
+    returned an HTTP 500 Internal Server Error. These
+    requests now return a 400 Bad Request response.
+    `Bug #2171678 <https://bugs.launchpad.net/manila/+bug/2171678>`_
