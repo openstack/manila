@@ -101,7 +101,10 @@ def request_body_schema(
         def wrapper(*args, **kwargs):
             _schema_validator(
                 schema,
-                kwargs['body'],
+                # NOTE(folasadef): The WSGI layer omits 'body' when a request
+                # has no body and no Content-Type. Using .get() returns None
+                # so validation fails with a 400 instead of a KeyError (500).
+                kwargs.get('body'),
                 min_version,
                 max_version,
                 args,
