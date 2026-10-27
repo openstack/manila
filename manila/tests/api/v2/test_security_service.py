@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import itertools
 from unittest import mock
 from urllib import parse
 
@@ -332,6 +333,105 @@ class ShareApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/security_services')
         res_dict = self.controller.index(req)
         self.assertEqual(self.security_service_list_expected_resp, res_dict)
+
+    @ddt.data(*itertools.product(
+        ('index', 'detail'), (True, False),
+        (('', [1, 2]), ('limit=1', [1]), ('offset=1', [2]),
+         ('limit=1&offset=1', [2]), ('limit=0', [1, 2]),
+         ('offset=0', [1, 2]), ('offset=2', []), ('offset=3', []))))
+    @ddt.unpack
+    def test_security_service_list_pagination(self, method, is_admin, page):
+        query, expected_ids = page
+        self.mock_object(db, 'security_service_get_all_by_project',
+                         mock.Mock(return_value=[self.ss_active_directory,
+                                                 self.ss_ldap]))
+        self.mock_object(db, 'share_network_get_all_by_security_service',
+                         mock.Mock(return_value=[]))
+        req = fakes.HTTPRequest.blank('/security-services?' + query,
+                                      use_admin_context=is_admin)
+
+        result = getattr(self.controller, method)(req)
+
+        self.assertEqual(expected_ids,
+                         [ss['id'] for ss in result['security_services']])
+        db.security_service_get_all_by_project.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['manila.context'].project_id)
+
+    @ddt.data(*itertools.product(
+        ('index', 'detail'), (True, False),
+        ('project', 'all_tenants', 'share_network')))
+    @ddt.unpack
+    def test_security_service_list_pagination_with_filter(
+            self, method, is_admin, source):
+        services = [self.ss_active_directory, self.ss_ldap,
+                    dict(self.ss_active_directory, id=3)]
+        self.mock_object(db, 'security_service_get_all_by_project',
+                         mock.Mock(return_value=services))
+        self.mock_object(db, 'security_service_get_all',
+                         mock.Mock(return_value=services))
+        self.mock_object(db, 'share_network_get', mock.Mock(return_value={
+            'security_services': services}))
+        self.mock_object(db, 'share_network_get_all_by_security_service',
+                         mock.Mock(return_value=[]))
+        query = 'type=%s&limit=1&offset=1' % services[0]['type']
+        if source == 'all_tenants':
+            query += '&all_tenants=1'
+        elif source == 'share_network':
+            query += '&share_network_id=fake_sn_id'
+        req = fakes.HTTPRequest.blank('/security-services?' + query,
+                                      use_admin_context=is_admin)
+
+        result = getattr(self.controller, method)(req)
+
+        self.assertEqual([3],
+                         [ss['id'] for ss in result['security_services']])
+        context = req.environ['manila.context']
+        if source == 'project':
+            db.security_service_get_all_by_project.assert_called_once_with(
+                context, context.project_id)
+            db.security_service_get_all.assert_not_called()
+            db.share_network_get.assert_not_called()
+        elif source == 'all_tenants':
+            db.security_service_get_all.assert_called_once_with(context)
+            db.security_service_get_all_by_project.assert_not_called()
+            db.share_network_get.assert_not_called()
+        else:
+            db.share_network_get.assert_called_once_with(context, 'fake_sn_id')
+            db.security_service_get_all_by_project.assert_not_called()
+            db.security_service_get_all.assert_not_called()
+        if method == 'detail':
+            self.assertEqual(
+                [mock.call(context, 3)],
+                db.share_network_get_all_by_security_service.call_args_list)
+        else:
+            db.share_network_get_all_by_security_service.assert_not_called()
+
+    @ddt.data(*itertools.product(
+        ('index', 'detail'), (True, False),
+        ('limit=-1', 'limit=invalid', 'offset=-1', 'offset=invalid')))
+    @ddt.unpack
+    def test_security_service_list_invalid_pagination(self, method, is_admin,
+                                                      query):
+        self.mock_object(db, 'security_service_get_all_by_project',
+                         mock.Mock(return_value=[self.ss_active_directory]))
+        req = fakes.HTTPRequest.blank('/security-services?' + query,
+                                      use_admin_context=is_admin)
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          getattr(self.controller, method), req)
+
+    @ddt.data(*itertools.product(('index', 'detail'), (True, False)))
+    @ddt.unpack
+    def test_security_service_list_pagination_empty(self, method, is_admin):
+        self.mock_object(db, 'security_service_get_all_by_project',
+                         mock.Mock(return_value=[]))
+        req = fakes.HTTPRequest.blank('/security-services?limit=1&offset=1',
+                                      use_admin_context=is_admin)
+
+        result = getattr(self.controller, method)(req)
+
+        self.assertEqual({'security_services': []}, result)
 
     @mock.patch.object(db, 'share_network_get', mock.Mock())
     def test_security_service_list_filter_by_sn(self):
