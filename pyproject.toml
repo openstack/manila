@@ -11,20 +11,20 @@ authors = [
 readme = {file = "README.rst", content-type = "text/x-rst"}
 license = {text = "Apache-2.0"}
 dynamic = ["version", "dependencies"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
-  "Environment :: OpenStack",
-  "Intended Audience :: Information Technology",
-  "Intended Audience :: System Administrators",
-  "License :: OSI Approved :: Apache Software License",
-  "Operating System :: POSIX :: Linux",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: OpenStack",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.urls]
@@ -92,10 +92,8 @@ manila-scheduler = "manila.cmd.scheduler:main"
 manila-share = "manila.cmd.share:main"
 manila-status = "manila.cmd.status:main"
 
-[tool.setuptools]
-packages = [
-    "manila"
-]
+[tool.setuptools.packages.find]
+include = ["manila*"]
 
 [tool.setuptools.data-files]
 "etc/manila" = [
