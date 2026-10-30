@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Manila now prevents a user from reading or deleting a share network subnet
+    from another share network when its UUID is known. See `Launchpad bug
+    2171578 <https://bugs.launchpad.net/manila/+bug/2171578>`_ for details.
