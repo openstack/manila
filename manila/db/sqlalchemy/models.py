@@ -27,15 +27,16 @@ from sqlalchemy import inspect, Integer, orm, schema, String
 from manila.common import constants
 
 CONF = cfg.CONF
-BASE = orm.declarative_base()
 
 
-class ManilaBase(models.ModelBase,
-                 models.TimestampMixin,
-                 models.SoftDeleteMixin):
+class ManilaBase(
+    orm.DeclarativeBase,
+    models.ModelBase,
+    models.TimestampMixin,
+    models.SoftDeleteMixin
+):
     """Base class for Manila Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
-    metadata = None
 
     def __repr__(self):
         state = inspect(self, raiseerr=False)
@@ -69,7 +70,7 @@ class ManilaBase(models.ModelBase,
         return super(ManilaBase, self).soft_delete(session)
 
 
-class Service(BASE, ManilaBase):
+class Service(ManilaBase):
     """Represents a running service on a host."""
 
     __tablename__ = 'services'
@@ -98,7 +99,7 @@ class Service(BASE, ManilaBase):
     )
 
 
-class Quota(BASE, ManilaBase):
+class Quota(ManilaBase):
     """Represents a single quota override for a project.
 
     If there is no row for a given project id and resource, then the
@@ -118,7 +119,7 @@ class Quota(BASE, ManilaBase):
     hard_limit = Column(Integer, nullable=True)
 
 
-class ProjectUserQuota(BASE, ManilaBase):
+class ProjectUserQuota(ManilaBase):
     """Represents a single quota override for a user with in a project."""
 
     __tablename__ = 'project_user_quotas'
@@ -132,7 +133,7 @@ class ProjectUserQuota(BASE, ManilaBase):
     hard_limit = Column(Integer)
 
 
-class ProjectShareTypeQuota(BASE, ManilaBase):
+class ProjectShareTypeQuota(ManilaBase):
     """Represents a single quota override for a share type within a project."""
 
     __tablename__ = 'project_share_type_quotas'
@@ -144,7 +145,7 @@ class ProjectShareTypeQuota(BASE, ManilaBase):
     hard_limit = Column(Integer)
 
 
-class QuotaClass(BASE, ManilaBase):
+class QuotaClass(ManilaBase):
     """Represents a single quota override for a quota class.
 
     If there is no row for a given quota class and resource, then the
@@ -161,7 +162,7 @@ class QuotaClass(BASE, ManilaBase):
     hard_limit = Column(Integer, nullable=True)
 
 
-class QuotaUsage(BASE, ManilaBase):
+class QuotaUsage(ManilaBase):
     """Represents the current usage for a given resource."""
 
     __tablename__ = 'quota_usages'
@@ -182,7 +183,7 @@ class QuotaUsage(BASE, ManilaBase):
     until_refresh = Column(Integer, nullable=True)
 
 
-class Reservation(BASE, ManilaBase):
+class Reservation(ManilaBase):
     """Represents a resource reservation for quotas."""
 
     __tablename__ = 'reservations'
@@ -200,7 +201,7 @@ class Reservation(BASE, ManilaBase):
     expire = Column(DateTime, nullable=False)
 
 
-class Share(BASE, ManilaBase):
+class Share(ManilaBase):
     """Represents an NFS and CIFS shares."""
     __tablename__ = 'shares'
     _extra_keys = ['name', 'export_location', 'export_locations', 'status',
@@ -353,7 +354,7 @@ class Share(BASE, ManilaBase):
     )
 
 
-class ShareInstance(BASE, ManilaBase):
+class ShareInstance(ManilaBase):
     __tablename__ = 'share_instances'
 
     _extra_keys = ['name', 'export_location', 'availability_zone',
@@ -463,7 +464,7 @@ class ShareInstance(BASE, ManilaBase):
     )
 
 
-class ShareInstanceExportLocations(BASE, ManilaBase):
+class ShareInstanceExportLocations(ManilaBase):
     """Represents export locations of share instances."""
     __tablename__ = 'share_instance_export_locations'
 
@@ -488,7 +489,7 @@ class ShareInstanceExportLocations(BASE, ManilaBase):
     is_admin_only = Column(Boolean, default=False, nullable=False)
 
 
-class ShareInstanceExportLocationsMetadata(BASE, ManilaBase):
+class ShareInstanceExportLocationsMetadata(ManilaBase):
     """Represents export location metadata of share instances."""
     __tablename__ = "share_instance_export_locations_metadata"
 
@@ -516,7 +517,7 @@ class ShareInstanceExportLocationsMetadata(BASE, ManilaBase):
         return self.export_location.uuid  # pylint: disable=no-member
 
 
-class ShareTypes(BASE, ManilaBase):
+class ShareTypes(ManilaBase):
     """Represent possible share_types of volumes offered."""
     __tablename__ = "share_types"
     __table_args__ = (
@@ -530,7 +531,7 @@ class ShareTypes(BASE, ManilaBase):
     is_public = Column(Boolean, default=True)
 
 
-class ShareTypeProjects(BASE, ManilaBase):
+class ShareTypeProjects(ManilaBase):
     """Represent projects associated share_types."""
     __tablename__ = "share_type_projects"
     __table_args__ = (schema.UniqueConstraint(
@@ -551,7 +552,7 @@ class ShareTypeProjects(BASE, ManilaBase):
                     'ShareTypeProjects.deleted == 0)')
 
 
-class ShareTypeExtraSpecs(BASE, ManilaBase):
+class ShareTypeExtraSpecs(ManilaBase):
     """Represents additional specs as key/value pairs for a share_type."""
     __tablename__ = 'share_type_extra_specs'
     id = Column(Integer, primary_key=True)
@@ -569,7 +570,7 @@ class ShareTypeExtraSpecs(BASE, ManilaBase):
     )
 
 
-class ShareMetadata(BASE, ManilaBase):
+class ShareMetadata(ManilaBase):
     """Represents a metadata key/value pair for a share."""
     __tablename__ = 'share_metadata'
     id = Column(Integer, primary_key=True)
@@ -583,7 +584,7 @@ class ShareMetadata(BASE, ManilaBase):
                              'ShareMetadata.deleted == 0)')
 
 
-class ShareAccessMapping(BASE, ManilaBase):
+class ShareAccessMapping(ManilaBase):
     """Represents access to share."""
     __tablename__ = 'share_access_map'
 
@@ -627,7 +628,7 @@ class ShareAccessMapping(BASE, ManilaBase):
     )
 
 
-class ShareAccessRulesMetadata(BASE, ManilaBase):
+class ShareAccessRulesMetadata(ManilaBase):
     """Represents a metadata key/value pair for a share access rule."""
     __tablename__ = 'share_access_rules_metadata'
     id = Column(Integer, primary_key=True)
@@ -645,7 +646,7 @@ class ShareAccessRulesMetadata(BASE, ManilaBase):
         'ShareAccessRulesMetadata.deleted == "False")')
 
 
-class ShareInstanceAccessMapping(BASE, ManilaBase):
+class ShareInstanceAccessMapping(ManilaBase):
     """Represents access to individual share instances."""
 
     __tablename__ = 'share_instance_access_map'
@@ -674,7 +675,7 @@ class ShareInstanceAccessMapping(BASE, ManilaBase):
     )
 
 
-class ShareInstanceMetadata(BASE, ManilaBase):
+class ShareInstanceMetadata(ManilaBase):
     """Represents a metadata key/value pair for an instance."""
     __tablename__ = 'share_instance_metadata'
     id = Column(Integer, primary_key=True)
@@ -693,7 +694,7 @@ class ShareInstanceMetadata(BASE, ManilaBase):
         'ShareInstanceMetadata.deleted == "False")')
 
 
-class ShareSnapshot(BASE, ManilaBase):
+class ShareSnapshot(ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshots'
     _extra_keys = ['name', 'share_name', 'status', 'progress',
@@ -813,7 +814,7 @@ class ShareSnapshot(BASE, ManilaBase):
                              'ShareSnapshot.deleted == "False")')
 
 
-class ShareSnapshotMetadata(BASE, ManilaBase):
+class ShareSnapshotMetadata(ManilaBase):
     """Represents a metadata key/value pair for a snapshot."""
     __tablename__ = 'share_snapshot_metadata'
     id = Column(Integer, primary_key=True)
@@ -831,7 +832,7 @@ class ShareSnapshotMetadata(BASE, ManilaBase):
         'ShareSnapshotMetadata.deleted == "False")')
 
 
-class ShareSnapshotInstance(BASE, ManilaBase):
+class ShareSnapshotInstance(ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshot_instances'
     _extra_keys = ['name', 'share_id', 'share_name']
@@ -917,7 +918,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     )
 
 
-class ShareSnapshotAccessMapping(BASE, ManilaBase):
+class ShareSnapshotAccessMapping(ManilaBase):
     """Represents access to share snapshot."""
     __tablename__ = 'share_snapshot_access_map'
 
@@ -949,7 +950,7 @@ class ShareSnapshotAccessMapping(BASE, ManilaBase):
     )
 
 
-class ShareSnapshotInstanceAccessMapping(BASE, ManilaBase):
+class ShareSnapshotInstanceAccessMapping(ManilaBase):
     """Represents access to individual share snapshot instances."""
 
     __tablename__ = 'share_snapshot_instance_access_map'
@@ -980,7 +981,7 @@ class ShareSnapshotInstanceAccessMapping(BASE, ManilaBase):
     )
 
 
-class ShareSnapshotInstanceExportLocation(BASE, ManilaBase):
+class ShareSnapshotInstanceExportLocation(ManilaBase):
     """Represents export locations of share snapshot instances."""
     __tablename__ = 'share_snapshot_instance_export_locations'
 
@@ -992,7 +993,7 @@ class ShareSnapshotInstanceExportLocation(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
 
 
-class SecurityService(BASE, ManilaBase):
+class SecurityService(ManilaBase):
     """Security service information for manila shares."""
 
     __tablename__ = 'security_services'
@@ -1011,7 +1012,7 @@ class SecurityService(BASE, ManilaBase):
     default_ad_site = Column(String(255), nullable=True)
 
 
-class ShareNetwork(BASE, ManilaBase):
+class ShareNetwork(ManilaBase):
     """Represents network data used by share."""
     __tablename__ = 'share_networks'
     id = Column(String(36), primary_key=True, nullable=False)
@@ -1075,7 +1076,7 @@ class ShareNetwork(BASE, ManilaBase):
         return all(share_servers_support_updating)
 
 
-class ShareNetworkSubnet(BASE, ManilaBase):
+class ShareNetworkSubnet(ManilaBase):
     """Represents a share network subnet used by some resources."""
 
     _extra_keys = ['availability_zone', 'subnet_metadata']
@@ -1147,7 +1148,7 @@ class ShareNetworkSubnet(BASE, ManilaBase):
         return self.share_network['project_id']
 
 
-class ShareNetworkSubnetMetadata(BASE, ManilaBase):
+class ShareNetworkSubnetMetadata(ManilaBase):
     """Represents a metadata key/value pair for a subnet."""
     __tablename__ = 'share_network_subnet_metadata'
     id = Column(Integer, primary_key=True)
@@ -1167,7 +1168,7 @@ class ShareNetworkSubnetMetadata(BASE, ManilaBase):
         'ShareNetworkSubnetMetadata.deleted == "False")')
 
 
-class ShareServer(BASE, ManilaBase):
+class ShareServer(ManilaBase):
     """Represents share server used by share."""
     __tablename__ = 'share_servers'
     id = Column(String(36), primary_key=True, nullable=False)
@@ -1286,7 +1287,7 @@ class ShareServer(BASE, ManilaBase):
     _extra_keys = ['backend_details', 'share_network_subnet_ids']
 
 
-class EncryptionRef(BASE, ManilaBase):
+class EncryptionRef(ManilaBase):
     """Represents a share server with encryption keys."""
     __tablename__ = 'encryption_refs'
     id = Column(String(36), primary_key=True, nullable=False)
@@ -1319,7 +1320,7 @@ class EncryptionRef(BASE, ManilaBase):
     )
 
 
-class ShareServerBackendDetails(BASE, ManilaBase):
+class ShareServerBackendDetails(ManilaBase):
     """Represents a metadata key/value pair for a share server."""
     __tablename__ = 'share_server_backend_details'
     deleted = Column(String(36), default='False')
@@ -1330,7 +1331,7 @@ class ShareServerBackendDetails(BASE, ManilaBase):
                              nullable=False)
 
 
-class ShareServerShareNetworkSubnetMapping(BASE, ManilaBase):
+class ShareServerShareNetworkSubnetMapping(ManilaBase):
     """Represents the Share Server and Share Network Subnet mapping."""
     __tablename__ = 'share_server_share_network_subnet_mappings'
     id = Column(Integer, primary_key=True)
@@ -1340,7 +1341,7 @@ class ShareServerShareNetworkSubnetMapping(BASE, ManilaBase):
         String(36), ForeignKey('share_network_subnets.id'), nullable=False)
 
 
-class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
+class ShareNetworkSecurityServiceAssociation(ManilaBase):
     """Association table between compute_zones and compute_nodes tables."""
 
     __tablename__ = 'share_network_security_service_association'
@@ -1354,7 +1355,7 @@ class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
                                  nullable=False)
 
 
-class Transfer(BASE, ManilaBase):
+class Transfer(ManilaBase):
     """Represents a share transfer request."""
 
     __tablename__ = 'transfers'
@@ -1374,7 +1375,7 @@ class Transfer(BASE, ManilaBase):
     accepted = Column(Boolean, default=False)
 
 
-class NetworkAllocation(BASE, ManilaBase):
+class NetworkAllocation(ManilaBase):
     """Represents network allocation data."""
     __tablename__ = 'network_allocations'
     id = Column(String(36), primary_key=True, nullable=False)
@@ -1396,7 +1397,7 @@ class NetworkAllocation(BASE, ManilaBase):
         String(36), ForeignKey('share_network_subnets.id'), nullable=True)
 
 
-class DriverPrivateData(BASE, ManilaBase):
+class DriverPrivateData(ManilaBase):
     """Represents a private data as key-value pairs for a driver."""
     __tablename__ = 'drivers_private_data'
     entity_uuid = Column(String(36), nullable=False, primary_key=True)
@@ -1404,7 +1405,7 @@ class DriverPrivateData(BASE, ManilaBase):
     value = Column(String(1023), nullable=False)
 
 
-class AvailabilityZone(BASE, ManilaBase):
+class AvailabilityZone(ManilaBase):
     """Represents a private data as key-value pairs for a driver."""
     __tablename__ = 'availability_zones'
     __table_args__ = (
@@ -1415,7 +1416,7 @@ class AvailabilityZone(BASE, ManilaBase):
     name = Column(String(255), nullable=False)
 
 
-class ShareGroupTypes(BASE, ManilaBase):
+class ShareGroupTypes(ManilaBase):
     """Represent possible share group types of shares offered."""
     __tablename__ = "share_group_types"
     __table_args__ = (
@@ -1428,7 +1429,7 @@ class ShareGroupTypes(BASE, ManilaBase):
     is_public = Column(Boolean, default=True)
 
 
-class ShareGroup(BASE, ManilaBase):
+class ShareGroup(ManilaBase):
     """Represents a share group."""
     __tablename__ = 'share_groups'
     _extra_keys = [
@@ -1476,7 +1477,7 @@ class ShareGroup(BASE, ManilaBase):
             return self._availability_zone['name']
 
 
-class ShareGroupTypeProjects(BASE, ManilaBase):
+class ShareGroupTypeProjects(ManilaBase):
     """Represent projects associated share group types."""
     __tablename__ = "share_group_type_projects"
     __table_args__ = (schema.UniqueConstraint(
@@ -1498,7 +1499,7 @@ class ShareGroupTypeProjects(BASE, ManilaBase):
                     'ShareGroupTypeProjects.deleted == 0)')
 
 
-class ShareGroupTypeSpecs(BASE, ManilaBase):
+class ShareGroupTypeSpecs(ManilaBase):
     """Represents additional specs for a share group type."""
     __tablename__ = 'share_group_type_specs'
     id = Column(Integer, primary_key=True)
@@ -1516,7 +1517,7 @@ class ShareGroupTypeSpecs(BASE, ManilaBase):
     )
 
 
-class ShareGroupSnapshot(BASE, ManilaBase):
+class ShareGroupSnapshot(ManilaBase):
     """Represents a share group snapshot."""
     __tablename__ = 'share_group_snapshots'
     id = Column(String(36), primary_key=True)
@@ -1537,7 +1538,7 @@ class ShareGroupSnapshot(BASE, ManilaBase):
     )
 
 
-class ShareGroupTypeShareTypeMapping(BASE, ManilaBase):
+class ShareGroupTypeShareTypeMapping(ManilaBase):
     """Represents the share types supported by a share group type."""
     __tablename__ = 'share_group_type_share_type_mappings'
     id = Column(String(36), primary_key=True)
@@ -1557,7 +1558,7 @@ class ShareGroupTypeShareTypeMapping(BASE, ManilaBase):
     )
 
 
-class ShareGroupShareTypeMapping(BASE, ManilaBase):
+class ShareGroupShareTypeMapping(ManilaBase):
     """Represents the share types in a share group."""
     __tablename__ = 'share_group_share_type_mappings'
     id = Column(String(36), primary_key=True)
@@ -1577,7 +1578,7 @@ class ShareGroupShareTypeMapping(BASE, ManilaBase):
     )
 
 
-class Message(BASE, ManilaBase):
+class Message(ManilaBase):
     """Represents a user message.
 
     User messages show information about API operations to the API end-user.
@@ -1602,7 +1603,7 @@ class Message(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
 
 
-class ResourceLock(BASE, ManilaBase):
+class ResourceLock(ManilaBase):
     """Represents a resource lock.
 
     Resource locks are held by users (or on behalf of users) and prevent
@@ -1627,14 +1628,14 @@ class ResourceLock(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
 
 
-class BackendInfo(BASE, ManilaBase):
+class BackendInfo(ManilaBase):
     """Represent Backend Info."""
     __tablename__ = "backend_info"
     host = Column(String(255), primary_key=True)
     info_hash = Column(String(255))
 
 
-class AsynchronousOperationData(BASE, ManilaBase):
+class AsynchronousOperationData(ManilaBase):
     """Represents data as key-value pairs for asynchronous operations."""
     __tablename__ = 'async_operation_data'
     entity_uuid = Column(String(36), nullable=False, primary_key=True)
@@ -1642,7 +1643,7 @@ class AsynchronousOperationData(BASE, ManilaBase):
     value = Column(String(1023), nullable=False)
 
 
-class ShareBackup(BASE, ManilaBase):
+class ShareBackup(ManilaBase):
     """Represents a backup of a share."""
     __tablename__ = 'share_backups'
     id = Column(String(36), primary_key=True)
@@ -1687,7 +1688,7 @@ class ShareBackup(BASE, ManilaBase):
     )
 
 
-class QosTypes(BASE, ManilaBase):
+class QosTypes(ManilaBase):
     """Represent possible qos_types offered."""
     __tablename__ = "qos_types"
 
@@ -1701,7 +1702,7 @@ class QosTypes(BASE, ManilaBase):
     description = Column(String(255))
 
 
-class QosTypeSpecs(BASE, ManilaBase):
+class QosTypeSpecs(ManilaBase):
     """Represents additional specs as key/value pairs for a qos_type."""
     __tablename__ = 'qos_type_specs'
     id = Column(Integer, primary_key=True)

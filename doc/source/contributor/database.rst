@@ -40,11 +40,14 @@ The :mod:`manila.db.sqlalchemy.api` Module
 The :mod:`manila.db.sqlalchemy.models` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. SQLAlchemy's metadata docstring references labels from its own docs.
+
 .. automodule:: manila.db.sqlalchemy.models
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
+    :exclude-members: metadata
 
 
 Tests

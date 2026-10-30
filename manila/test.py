@@ -110,7 +110,7 @@ class DatabaseFixture(fixtures.Fixture):
     def setup_sqlite(self, db_migrate):
         if db_migrate.version():
             return
-        db_models.BASE.metadata.create_all(self.engine)
+        db_models.ManilaBase.metadata.create_all(self.engine)
         db_migrate.stamp('head')
 
 
