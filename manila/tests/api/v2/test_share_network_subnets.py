@@ -99,7 +99,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
 
         self.assertEqual(202, result.status_int)
         mock_sns_get.assert_called_once_with(
-            context, self.subnet['id'])
+            context, self.subnet['id'], parent_id=self.share_network['id'])
         mock_all_get_all_shares_by_ss.assert_called_once_with(
             context, self.subnet['share_servers'][0].id
         )
@@ -150,9 +150,29 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                           self.share_network['id'],
                           self.subnet['id'])
         mock_sns_get.assert_called_once_with(
-            context, self.subnet['id'])
+            context, self.subnet['id'], parent_id=self.share_network['id'])
         self.mock_policy_check.assert_called_once_with(
             context, self.resource_name, 'delete')
+
+    @ddt.data('show', 'delete')
+    def test_subnet_from_different_share_network_not_found(self, action):
+        other_share_network = db_utils.create_share_network()
+        other_subnet = db_utils.create_share_network_subnet(
+            id='other_subnet_%s' % action,
+            share_network_id=other_share_network['id'])
+        req = fakes.HTTPRequest.blank('/subnets/%s' % other_subnet['id'],
+                                      version='2.51')
+        context = req.environ['manila.context']
+
+        self.assertRaises(
+            exc.HTTPNotFound,
+            getattr(self.controller, action),
+            req,
+            self.share_network['id'],
+            other_subnet['id'])
+
+        self.mock_policy_check.assert_called_once_with(
+            context, self.resource_name, action)
 
     def test_delete_subnet_with_share_servers_fail(self):
         req = fakes.HTTPRequest.blank('/subnets/%s' % self.subnet['id'],
@@ -177,7 +197,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                           self.subnet['id'])
 
         mock_sns_get.assert_called_once_with(
-            context, self.subnet['id'])
+            context, self.subnet['id'], parent_id=self.share_network['id'])
         mock_all_get_all_shares_by_ss.assert_called_once_with(
             context, self.subnet['share_servers'][0].id
         )
@@ -211,7 +231,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         mock_network_get.assert_called_once_with(
             context, self.share_network['id'])
         mock_sns_get.assert_called_once_with(
-            context, self.subnet['id'])
+            context, self.subnet['id'], parent_id=self.share_network['id'])
         mock_all_get_all_shares_by_ss.assert_called_once_with(
             context, self.subnet['share_servers'][0].id
         )
@@ -243,7 +263,7 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
         mock_network_get.assert_called_once_with(
             context, self.share_network['id'])
         mock_sns_get.assert_called_once_with(
-            context, self.subnet['id'])
+            context, self.subnet['id'], parent_id=self.share_network['id'])
         mock_all_get_all_shares_by_ss.assert_called_once_with(
             context, self.subnet['share_servers'][0].id)
         mock_share_group_get.assert_called_once_with(
@@ -450,7 +470,8 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
 
         self.assertEqual(expected_result, result)
         mock_sn_get.assert_called_once_with(context, self.share_network['id'])
-        mock_sns_get.assert_called_once_with(context, subnet['id'])
+        mock_sns_get.assert_called_once_with(
+            context, subnet['id'], parent_id=self.share_network['id'])
 
     @ddt.data(
         (mock.Mock(side_effect=exception.ShareNetworkNotFound(
@@ -477,7 +498,8 @@ class ShareNetworkSubnetControllerTest(test.TestCase):
                           self.subnet['id'])
         mock_sn_get.assert_called_once_with(context, self.share_network['id'])
         if sns_get_side_effect:
-            mock_sns_get.assert_called_once_with(context, self.subnet['id'])
+            mock_sns_get.assert_called_once_with(
+                context, self.subnet['id'], parent_id=self.share_network['id'])
 
     def test_list_subnet(self):
         share_network_id = 'fake_id'
