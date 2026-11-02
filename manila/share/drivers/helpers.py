@@ -400,8 +400,8 @@ class NFSHelper(NASHelperBase):
         maintenance_file = self._get_maintenance_file_path(share_name)
         backup_exports = [
             'cat', const.NFS_EXPORTS_FILE,
-            '|', 'grep', share_name,
-            '|', 'sudo', 'tee', maintenance_file
+            utils.SSHCommandOperator('|'), 'grep', share_name,
+            utils.SSHCommandOperator('|'), 'sudo', 'tee', maintenance_file
         ]
         self._ssh_exec(server, backup_exports)
 
@@ -412,7 +412,7 @@ class NFSHelper(NASHelperBase):
         for host in hosts:
             self._ssh_exec(server,
                            ['sudo', 'exportfs', '-u',
-                            '"{}"'.format(':'.join((host, local_path)))])
+                            ':'.join((host, local_path))])
         self._sync_nfs_temp_and_perm_files(server)
 
     @nfs_synchronized
@@ -420,9 +420,11 @@ class NFSHelper(NASHelperBase):
         maintenance_file = self._get_maintenance_file_path(share_name)
         restore_exports = [
             'cat', maintenance_file,
-            '|', 'sudo', 'tee', '-a', const.NFS_EXPORTS_FILE,
-            '&&', 'sudo', 'exportfs', '-r',
-            '&&', 'sudo', 'rm', '-f', maintenance_file
+            utils.SSHCommandOperator('|'), 'sudo', 'tee', '-a',
+            const.NFS_EXPORTS_FILE,
+            utils.SSHCommandOperator('&&'), 'sudo', 'exportfs', '-r',
+            utils.SSHCommandOperator('&&'), 'sudo', 'rm', '-f',
+            maintenance_file
         ]
         self._ssh_exec(server, restore_exports)
 
@@ -563,8 +565,8 @@ class CIFSHelperIPAccess(CIFSHelperBase):
         allowed_hosts = " ".join(self._get_allow_hosts(server, share_name))
 
         backup_exports = [
-            'echo', "'%s'" % allowed_hosts, '|', 'sudo', 'tee',
-            maintenance_file
+            'echo', allowed_hosts, utils.SSHCommandOperator('|'), 'sudo',
+            'tee', maintenance_file
         ]
         self._ssh_exec(server, backup_exports)
         self._set_allow_hosts(server, [], share_name)

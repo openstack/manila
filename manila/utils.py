@@ -22,6 +22,7 @@ import functools
 import inspect
 import pyclbr
 import re
+import shlex
 import shutil
 import sys
 import tempfile
@@ -96,12 +97,32 @@ def execute(*cmd, **kwargs):
     return processutils.execute(*cmd, **kwargs)
 
 
+class SSHCommandOperator(str):
+    """Explicitly trusted shell syntax in a command sequence."""
+
+
+def ssh_command(command):
+    """Serialize command arguments for execution through an SSH shell."""
+    return ' '.join(
+        token if isinstance(token, SSHCommandOperator) else shlex.quote(token)
+        for token in command)
+
+
 def check_ssh_injection(cmd_list):
     ssh_injection_pattern = ['`', '$', '|', '||', ';', '&', '&&', '>', '>>',
                              '<']
 
     # Check whether injection attacks exist
     for arg in cmd_list:
+        # Shell syntax must be explicitly marked as trusted by the caller.
+        if isinstance(arg, SSHCommandOperator):
+            continue
+
+        # Do not strip line breaks before validation: callers execute the
+        # original argument and a line break is a shell command separator.
+        if '\n' in arg or '\r' in arg:
+            raise exception.SSHInjectionThreat(command=cmd_list)
+
         arg = arg.strip()
 
         # Check for matching quotes on the ends
@@ -125,10 +146,19 @@ def check_ssh_injection(cmd_list):
             if c not in arg:
                 continue
 
-            result = arg.find(c)
-            if not result == -1:
-                if result == 0 or not arg[result - 1] == '\\':
+            start = 0
+            while True:
+                result = arg.find(c, start)
+                if result == -1:
+                    break
+                preceding_backslashes = 0
+                position = result - 1
+                while position >= 0 and arg[position] == '\\':
+                    preceding_backslashes += 1
+                    position -= 1
+                if not preceding_backslashes % 2:
                     raise exception.SSHInjectionThreat(command=cmd_list)
+                start = result + len(c)
 
 
 class LazyPluggable(object):
