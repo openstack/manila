@@ -170,11 +170,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
 
-        # (aovchinnikov): ssh_execute does not behave well when passed
-        # parameters with spaces.
-        wrap = lambda token: "\"" + token + "\""  # noqa: E731
-        command = [wrap(tkn) if tkn.count(' ') else tkn for tkn in command]
-        return processutils.ssh_execute(ssh, ' '.join(command),
+        return processutils.ssh_execute(ssh, utils.ssh_command(command),
                                         check_exit_code=check_exit_code)
 
     def check_for_setup_error(self):
@@ -310,7 +306,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._ssh_exec(
                 server_details,
                 ['grep', share_id, const.MOUNT_FILE_TEMP,
-                 '|', 'sudo', 'tee', '-a', const.MOUNT_FILE],
+                 utils.SSHCommandOperator('|'), 'sudo', 'tee', '-a',
+                 const.MOUNT_FILE],
             )
             output, __ = self._ssh_exec(
                 server_details,
@@ -341,7 +338,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._ssh_exec(
                 server_details,
-                ['sudo', 'sed', '-i', '\'/%s/d\'' % share_id,
+                ['sudo', 'sed', '-i', '/%s/d' % share_id,
                  const.MOUNT_FILE],
             )
         except exception.ProcessExecutionError as e:
@@ -375,9 +372,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                               "server '%(server)s'.", log_data)
                     mount_cmd = (
                         'sudo', 'mkdir', '-p', mount_path,
-                        '&&', 'sudo', 'mount', device_path, mount_path,
-                        '&&', 'sudo', 'chmod', '777', mount_path,
-                        '&&', 'sudo', 'umount', mount_path,
+                        utils.SSHCommandOperator('&&'), 'sudo', 'mount',
+                        device_path, mount_path,
+                        utils.SSHCommandOperator('&&'), 'sudo', 'chmod',
+                        '777', mount_path,
+                        utils.SSHCommandOperator('&&'), 'sudo', 'umount',
+                        mount_path,
                         # NOTE(vponomaryov): 'tune2fs' is required to make
                         # filesystem of share created from snapshot have
                         # unique ID, in case of LVM volumes, by default,
@@ -387,9 +387,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         # effect only after it was mounted. Closes #1645751
                         # NOTE(gouthamr): Executing tune2fs -U only works on
                         # a recently checked filesystem. See debian bug 857336
-                        '&&', 'sudo', 'e2fsck', '-y', '-f', device_path,
-                        '&&', 'sudo', 'tune2fs', '-U', 'random', device_path,
-                        '&&', 'sudo', 'mount', device_path, mount_path,
+                        utils.SSHCommandOperator('&&'), 'sudo', 'e2fsck',
+                        '-y', '-f', device_path,
+                        utils.SSHCommandOperator('&&'), 'sudo', 'tune2fs',
+                        '-U', 'random', device_path,
+                        utils.SSHCommandOperator('&&'), 'sudo', 'mount',
+                        device_path, mount_path,
                     )
                     self._ssh_exec(server_details, mount_cmd)
                     self._add_mount_permanently(share.id, device_path,
@@ -416,8 +419,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             if self._is_device_mounted(mount_path, server_details):
                 LOG.debug("Unmounting path '%(path)s' on server "
                           "'%(server)s'.", log_data)
-                unmount_cmd = ['sudo', 'umount', mount_path, '&&', 'sudo',
-                               'rmdir', mount_path]
+                unmount_cmd = [
+                    'sudo', 'umount', mount_path,
+                    utils.SSHCommandOperator('&&'), 'sudo', 'rmdir',
+                    mount_path]
                 try:
                     self._ssh_exec(server_details, unmount_cmd)
                 except exception.ProcessExecutionError as e:
@@ -425,8 +430,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         LOG.warning("Device '%(path)s' is busy on server "
                                     "'%(server)s', retrying with lazy "
                                     "unmount.", log_data)
-                        lazy_cmd = ['sudo', 'umount', '-l', mount_path,
-                                    '&&', 'sudo', 'rmdir', mount_path]
+                        lazy_cmd = [
+                            'sudo', 'umount', '-l', mount_path,
+                            utils.SSHCommandOperator('&&'), 'sudo', 'rmdir',
+                            mount_path]
                         self._ssh_exec(server_details, lazy_cmd)
                     else:
                         raise

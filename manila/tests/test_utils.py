@@ -74,7 +74,8 @@ class GenericUtilsTestCase(test.TestCase):
 
     @ddt.data(['ssh', '-D', 'my_name@name_of_remote_computer'],
               ['echo', '"quoted arg with space"'],
-              ['echo', "'quoted arg with space'"])
+              ['echo', "'quoted arg with space'"],
+              ['cmd', utils.SSHCommandOperator('\n'), 'next'])
     def test_check_ssh_injection(self, cmd):
         cmd_list = cmd
         self.assertIsNone(utils.check_ssh_injection(cmd_list))
@@ -82,6 +83,9 @@ class GenericUtilsTestCase(test.TestCase):
     @ddt.data(['ssh', 'my_name@      name_of_remote_computer'],
               ['||', 'my_name@name_of_remote_computer'],
               ['cmd', 'virus;ls'],
+              ['cmd', r'\;;virus'],
+              ['cmd', r'\\;virus'],
+              ['cmd', 'safe\ncommand'],
               ['cmd', '"arg\"withunescaped"'],
               ['cmd', 'virus;"quoted argument"'],
               ['echo', '"quoted argument";rm -rf'],

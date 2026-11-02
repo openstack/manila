@@ -79,6 +79,22 @@ class InfortrendNASDriverTestCase(test.TestCase):
             self._get_driver,
             self.fake_conf)
 
+    def test_execute_rejects_unsafe_command_argument(self):
+        self._get_driver(self.fake_conf)
+
+        self.assertRaises(exception.SSHInjectionThreat,
+                          self._iftnas._execute,
+                          ['acl', r'\;;unsafe'])
+
+    def test_execute_rejects_whitespace_argument(self):
+        self._get_driver(self.fake_conf)
+        self.mock_object(self._iftnas, '_ssh_execute')
+
+        self.assertRaises(exception.SSHInjectionThreat,
+                          self._iftnas._execute,
+                          ['acl', 'unsafe command'])
+        self._iftnas._ssh_execute.assert_not_called()
+
     def test_parser_with_service_status(self):
         self._get_driver(self.fake_conf)
         expect_service_status = [{

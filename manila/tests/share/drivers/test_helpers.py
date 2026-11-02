@@ -403,13 +403,13 @@ class NFSHelperTestCase(test.TestCase):
             self._helper._ssh_exec.assert_has_calls([
                 mock.call(self.server,
                           ['sudo', 'exportfs', '-u',
-                           '"{}"'.format(':'.join(['1.1.1.10', local_path]))]),
+                           ':'.join(['1.1.1.10', local_path])]),
                 mock.call(self.server,
                           ['sudo', 'exportfs', '-u',
-                           '"{}"'.format(':'.join(['1.1.1.16', local_path]))]),
+                           ':'.join(['1.1.1.16', local_path])]),
                 mock.call(self.server,
                           ['sudo', 'exportfs', '-u',
-                           '"{}"'.format(':'.join(['*', local_path]))]),
+                           ':'.join(['*', local_path])]),
             ])
 
         self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
@@ -777,7 +777,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
         kickoff_user_cmd = ['sudo', 'smbstatus', '-S']
         self._helper._ssh_exec.assert_any_call(
             self.server_details, kickoff_user_cmd)
-        valid_cmd = ['echo', "'test test2'", '|', 'sudo', 'tee',
+        valid_cmd = ['echo', 'test test2', '|', 'sudo', 'tee',
                      maintenance_path]
         self._helper._ssh_exec.assert_any_call(
             self.server_details, valid_cmd)
