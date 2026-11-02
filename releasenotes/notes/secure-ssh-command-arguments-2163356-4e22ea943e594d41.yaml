@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Hardened SSH command argument handling in share drivers to prevent
+    untrusted access-rule values from being interpreted by remote shells.
+    See bug `#2163356 <https://bugs.launchpad.net/manila/+bug/2163356>`_
+    for more details.
