@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    NetApp ONTAP REST FlexGroup create keeps thin provisioning when
+    volume tags are set.
