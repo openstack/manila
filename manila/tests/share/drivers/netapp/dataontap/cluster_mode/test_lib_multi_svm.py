@@ -2826,6 +2826,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         network_info = {
             'network_allocations':
                 self.fake_src_share_server['network_allocations'],
+            'neutron_net_id':
+                self.fake_src_share_server['share_network_subnets'][0].get(
+                    'neutron_net_id'),
             'neutron_subnet_id':
                 self.fake_src_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
@@ -2883,6 +2886,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         network_info = {
             'network_allocations':
                 self.fake_src_share_server['network_allocations'],
+            'neutron_net_id':
+                self.fake_src_share_server['share_network_subnets'][0].get(
+                    'neutron_net_id'),
             'neutron_subnet_id':
                 self.fake_src_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
@@ -2926,6 +2932,49 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.IPSPACE, network_info)
         self.mock_dest_client.delete_ipspace.assert_called_once_with(
             fake.IPSPACE)
+
+    def test__check_compatibility_for_svm_migrate_create_ipspace(self):
+        network_info = {
+            'network_allocations':
+                self.fake_src_share_server['network_allocations'],
+            'neutron_net_id':
+                self.fake_src_share_server['share_network_subnets'][0].get(
+                    'neutron_net_id'),
+            'neutron_subnet_id':
+                self.fake_src_share_server['share_network_subnets'][0].get(
+                    'neutron_subnet_id')
+        }
+        self.mock_object(self.library._client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library, '_get_node_data_port',
+                         mock.Mock(return_value=fake.NODE_DATA_PORT))
+        self.mock_object(
+            self.library._client, 'get_ipspace_name_for_vlan_port',
+            mock.Mock(return_value=None))
+        mock_create_ipspace = self.mock_object(
+            self.library, '_create_ipspace',
+            mock.Mock(return_value=fake.IPSPACE))
+        self.mock_object(self.library, '_create_port_and_broadcast_domain')
+        self.mock_object(
+            self.mock_dest_client, 'svm_migration_start',
+            mock.Mock(return_value=c_fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+        self.mock_object(self.library, '_get_job_uuid',
+                         mock.Mock(return_value=c_fake.FAKE_JOB_ID))
+        self.mock_object(self.library, '_wait_for_operation_status')
+        self.mock_object(self.mock_dest_client, 'delete_ipspace',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+
+        compatibility = self.library._check_compatibility_for_svm_migrate(
+            fake.CLUSTER_NAME, fake.VSERVER1, self.fake_src_share_server,
+            fake.AGGREGATES, self.mock_dest_client)
+
+        self.assertTrue(compatibility)
+        mock_create_ipspace.assert_called_once_with(
+            network_info, client=self.mock_dest_client)
+        self.library._create_port_and_broadcast_domain.assert_called_once_with(
+            fake.IPSPACE, network_info)
 
     def test_share_server_migration_check_compatibility_compatible(self):
         compatible = {
@@ -3174,6 +3223,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         network_info = {
             'network_allocations':
                 server_to_get_network_info['network_allocations'],
+            'neutron_net_id':
+                server_to_get_network_info['share_network_subnets'][0].get(
+                    'neutron_net_id'),
             'neutron_subnet_id':
                 server_to_get_network_info['share_network_subnets'][0].get(
                     'neutron_subnet_id')
@@ -3236,6 +3288,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         network_info = {
             'network_allocations':
                 server_to_get_network_info['network_allocations'],
+            'neutron_net_id':
+                server_to_get_network_info['share_network_subnets'][0].get(
+                    'neutron_net_id'),
             'neutron_subnet_id':
                 server_to_get_network_info['share_network_subnets'][0].get(
                     'neutron_subnet_id')
@@ -3287,6 +3342,94 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             dest_ipspace=fake.IPSPACE)
         self.assertTrue(mock_get_aggregates.called)
         mock_delete_ipspace.assert_called_once_with(fake.IPSPACE)
+
+    @ddt.data(
+        {'network_change_during_migration': True},
+        {'network_change_during_migration': False})
+    @ddt.unpack
+    def test__migration_start_using_svm_migrate_create_ipspace(
+            self, network_change_during_migration):
+
+        self.fake_src_share_server['share_network_subnet_id'] = 'fake_sns_id'
+        self.fake_dest_share_server['share_network_subnet_id'] = 'fake_sns_id'
+        node_name = fake.CLUSTER_NODES[0]
+        expected_server_info = {
+            'backend_details': {
+                'migration_operation_id': c_fake.FAKE_MIGRATION_POST_ID
+            }
+        }
+
+        if not network_change_during_migration:
+            self.fake_dest_share_server['network_allocations'] = None
+        server_to_get_network_info = (
+            self.fake_dest_share_server
+            if network_change_during_migration else self.fake_src_share_server)
+
+        if network_change_during_migration:
+            self.fake_dest_share_server['share_network_subnet_id'] = (
+                'different_sns_id')
+
+        segmentation_id = (
+            server_to_get_network_info['network_allocations'][0][
+                'segmentation_id'])
+
+        network_info = {
+            'network_allocations':
+                server_to_get_network_info['network_allocations'],
+            'neutron_net_id':
+                server_to_get_network_info['share_network_subnets'][0].get(
+                    'neutron_net_id'),
+            'neutron_subnet_id':
+                server_to_get_network_info['share_network_subnets'][0].get(
+                    'neutron_subnet_id')
+        }
+
+        mock_list_cluster_nodes = self.mock_object(
+            self.library._client, 'list_cluster_nodes',
+            mock.Mock(return_value=fake.CLUSTER_NODES))
+        mock_get_data_port = self.mock_object(
+            self.library, '_get_node_data_port',
+            mock.Mock(return_value=fake.NODE_DATA_PORT))
+        mock_get_ipspace = self.mock_object(
+            self.library._client, 'get_ipspace_name_for_vlan_port',
+            mock.Mock(return_value=None))
+        mock_create_ipspace = self.mock_object(
+            self.library, '_create_ipspace',
+            mock.Mock(return_value=fake.IPSPACE))
+        mock_create_port = self.mock_object(
+            self.library, '_create_port_and_broadcast_domain')
+        mock_get_cluster_name = self.mock_object(
+            self.mock_src_client, 'get_cluster_name',
+            mock.Mock(return_value=fake.CLUSTER_NAME))
+        mock_get_aggregates = self.mock_object(
+            self.library, '_find_matching_aggregates',
+            mock.Mock(return_value=fake.AGGREGATES))
+        mock_svm_migration_start = self.mock_object(
+            self.mock_dest_client, 'svm_migration_start',
+            mock.Mock(return_value=c_fake.FAKE_MIGRATION_RESPONSE_WITH_JOB))
+        mock_get_job = self.mock_object(
+            self.mock_dest_client, 'get_job',
+            mock.Mock(return_value=c_fake.FAKE_JOB_SUCCESS_STATE))
+
+        server_info = self.library._migration_start_using_svm_migrate(
+            None, self.fake_src_share_server, self.fake_dest_share_server,
+            self.mock_src_client, self.mock_dest_client)
+
+        self.assertTrue(mock_list_cluster_nodes.called)
+        mock_get_data_port.assert_called_once_with(node_name)
+        mock_get_ipspace.assert_called_once_with(
+            node_name, fake.NODE_DATA_PORT, segmentation_id)
+        mock_create_ipspace.assert_called_once_with(
+            network_info, client=self.mock_dest_client)
+        mock_create_port.assert_called_once_with(
+            fake.IPSPACE, network_info)
+        self.assertTrue(mock_get_cluster_name.called)
+        mock_svm_migration_start.assert_called_once_with(
+            fake.CLUSTER_NAME, self.fake_src_vserver, fake.AGGREGATES,
+            dest_ipspace=fake.IPSPACE)
+        self.assertTrue(mock_get_aggregates.called)
+        self.assertEqual(expected_server_info, server_info)
+        mock_get_job.assert_called_once_with(c_fake.FAKE_JOB_ID)
 
     def test__get_snapmirror_svm(self):
         dm_session_mock = mock.Mock()
