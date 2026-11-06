@@ -81,6 +81,43 @@ class PowerScaleApiTest(test.TestCase):
         self.powerscale_api.verify_ssl_cert = verify_cert
         self.powerscale_api.certificate_path = certificate_path
 
+    @mock.patch('manila.share.drivers.dell_emc.plugins.powerscale.'
+                'powerscale_api.PowerScaleApi.create_session')
+    def test__init__verify_ssl_cert_default(self, mockup_create_session):
+        mockup_create_session.return_value = True
+
+        api = powerscale_api.PowerScaleApi(
+            self._mock_url, self.username, self.password)
+
+        self.assertTrue(api.verify_ssl_cert)
+        self.assertIs(True, api._verify_cert)
+
+    @mock.patch('manila.share.drivers.dell_emc.plugins.powerscale.'
+                'powerscale_api.PowerScaleApi.create_session')
+    def test__init__verify_ssl_cert_explicit_false(
+            self, mockup_create_session):
+        mockup_create_session.return_value = True
+
+        api = powerscale_api.PowerScaleApi(
+            self._mock_url, self.username, self.password,
+            verify_ssl_cert=False, ssl_cert_path='fake_certificate_path')
+
+        self.assertFalse(api.verify_ssl_cert)
+        self.assertIs(False, api._verify_cert)
+
+    @mock.patch('requests.Session.request')
+    def test_create_session_default_verifies_certificate(self, mock_request):
+        mock_response = mock.Mock()
+        mock_response.status_code = 201
+        mock_response.cookies = {'isisessid': 'test_session_token',
+                                 'isicsrf': 'test_csrf_token'}
+        mock_request.return_value = mock_response
+
+        powerscale_api.PowerScaleApi(
+            self._mock_url, self.username, self.password)
+
+        self.assertIs(True, mock_request.call_args.kwargs['verify'])
+
     @mock.patch('requests.Session.request')
     def test_create_session_success(self, mock_request):
         mock_response = mock.Mock()
@@ -96,7 +133,7 @@ class PowerScaleApiTest(test.TestCase):
             data=json.dumps({"username": self.username,
                              "password": self.password,
                              "services": ["platform", "namespace"]}),
-            verify=False
+            verify=True
         )
         self.assertTrue(result)
         self.assertEqual(self.powerscale_api.session_token,

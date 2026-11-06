@@ -40,7 +40,7 @@ SMB_NO_ACCESS_HOST = 'deny:ALL'
 class PowerScaleApi(object):
 
     def __init__(self, api_url, username, password,
-                 verify_ssl_cert=False,
+                 verify_ssl_cert=True,
                  ssl_cert_path=None,
                  dir_permission=None,
                  threshold_limit=0,
