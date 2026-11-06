@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed the generic driver to restore client access when a share
+    extension fails. Previously, a failure during the extension (for
+    example, a Cinder volume extension error) left the share without
+    its exports, disconnecting clients until an administrator
+    intervened. See `bug 2173501
+    <https://bugs.launchpad.net/manila/+bug/2173501>`_ for details.
