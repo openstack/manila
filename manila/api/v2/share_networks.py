@@ -452,7 +452,7 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
             data = body['add_security_service']
 
             security_service = db_api.security_service_get(
-                context, data['security_service_id'])
+                context, data['security_service_id'], project_only=True)
         except KeyError:
             msg = "Malformed request body"
             raise exc.HTTPBadRequest(explanation=msg)
@@ -529,10 +529,10 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
             data = body['update_security_service']
 
             current_security_service = db_api.security_service_get(
-                context, data['current_service_id']
+                context, data['current_service_id'], project_only=True
             )
             new_security_service = db_api.security_service_get(
-                context, data['new_service_id']
+                context, data['new_service_id'], project_only=True
             )
         except KeyError:
             msg = "Malformed request body."
@@ -581,10 +581,10 @@ class ShareNetworkController(wsgi.Controller, wsgi.AdminActionsMixin):
             data = body['update_security_service_check']
 
             current_security_service = db_api.security_service_get(
-                context, data['current_service_id']
+                context, data['current_service_id'], project_only=True
             )
             new_security_service = db_api.security_service_get(
-                context, data['new_service_id']
+                context, data['new_service_id'], project_only=True
             )
         except KeyError:
             msg = "Malformed request body."
