@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Adding a security service to a share network, updating it, and
+    checking an update now only accept security services that belong to
+    the same project. Previously, a project member who knew the ID of
+    another project's security service could associate it with their own
+    share network and see its stored credentials. Such a security
+    service is now treated as not found. See `Launchpad bug 2171016
+    <https://bugs.launchpad.net/manila/+bug/2171016>`_ for more details.
