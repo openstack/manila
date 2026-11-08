@@ -1639,6 +1639,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
             self.rados_client, "nfs export info", argdict, json_obj=True)
         if export:
             export["clients"] = access
+            export["access_type"] = "none"
         else:
             export = {
                 "path": self._get_export_path(share, sub_name=sub_name),
@@ -1651,6 +1652,7 @@ class NFSClusterProtocolHelper(NFSProtocolHelperMixin, ganesha.NASHelperBase):
                     "fs_name": self.volname,
 
                 },
+                "access_type": "none",
                 "clients": access
             }
         return json.dumps(export).encode('utf-8')
