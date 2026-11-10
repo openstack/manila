@@ -1,0 +1,8 @@
+---
+security:
+  - |
+    Deleting a security service now checks the delete policy before checking
+    whether the security service is attached to share networks. Users who are
+    not allowed to delete a security service no longer learn whether it is in
+    use. See `Launchpad bug 2173910
+    <https://bugs.launchpad.net/manila/+bug/2173910>`_ for more details.
