@@ -183,6 +183,21 @@ class ShareApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
                           req, 1)
 
+    def test_security_service_delete_policy_checked_first(self):
+        self.mock_object(db, 'security_service_get')
+        self.mock_object(
+            db, 'share_network_get_all_by_security_service',
+            mock.Mock(return_value=[{'share_network': 'fake_sn'}]))
+        self.mock_object(
+            security_service.policy, 'check_policy',
+            mock.Mock(side_effect=exception.PolicyNotAuthorized(
+                action='security_service:delete')))
+        req = fakes.HTTPRequest.blank('/security_services/1')
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller.delete, req, 1)
+        db.share_network_get_all_by_security_service.assert_not_called()
+
     def test_security_service_update_name(self):
         new = self.ss_active_directory.copy()
         updated = self.ss_active_directory.copy()
