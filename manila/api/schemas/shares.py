@@ -283,7 +283,9 @@ migration_get_progress_response_body = {
         'task_state': {
 
         },
-        'total_progress': {'type': 'integer', 'min': 0, 'max': 100},
+        'total_progress': {
+            'type': 'integer', 'minimum': 0, 'maximum': 100,
+        },
     },
     'required': ['task_state', 'total_progress'],
     'additionalProperties': False,
