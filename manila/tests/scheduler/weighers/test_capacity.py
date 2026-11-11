@@ -21,6 +21,7 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 
+from manila.common import constants
 from manila import context
 from manila.scheduler.weighers import base_host
 from manila.scheduler.weighers import capacity
@@ -355,3 +356,32 @@ class CapacityWeigherTestCase(test.TestCase):
         self.assertEqual(2.0, weighed_host.weight)
         self.assertEqual(
             winner, utils.extract_host(weighed_host.obj.host))
+
+    def test_replica_uses_regular_reserved(self):
+        host_state = mock.Mock()
+        host_state.free_capacity_gb = 120
+        host_state.total_capacity_gb = 200
+        host_state.provisioned_capacity_gb = 80
+        host_state.max_over_subscription_ratio = 1.0
+        host_state.thin_provisioning = False
+        host_state.reserved_percentage = 5
+        host_state.reserved_snapshot_percentage = 90  # would starve if used
+        host_state.reserved_share_extend_percentage = 0
+
+        weigher = capacity.CapacityWeigher()
+        weight_properties = {
+            'snapshot_id': 'fake-snapshot-id',
+            'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
+            'share_type': {},
+        }
+        result_replica = weigher._weigh_object(host_state, weight_properties)
+
+        host_state.reserved_snapshot_percentage = 5
+        weight_properties_snapshot = {
+            'snapshot_id': 'fake-snapshot-id',
+            'share_type': {},
+        }
+        result_snapshot = weigher._weigh_object(host_state,
+                                                weight_properties_snapshot)
+
+        self.assertEqual(result_replica, result_snapshot)

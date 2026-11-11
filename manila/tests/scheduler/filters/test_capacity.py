@@ -17,6 +17,7 @@ Tests For CapacityFilter.
 
 import ddt
 
+from manila.common import constants
 from manila.scheduler.filters import capacity
 from manila import test
 from manila.tests.scheduler import fakes
@@ -405,3 +406,26 @@ class HostFiltersTestCase(test.TestCase):
                                     'updated_at': None,
                                     'service': service})
         self.assertFalse(self.filter.host_passes(host, filter_properties))
+
+    @ddt.data(
+        {'free_capacity': 120, 'total_capacity': 200,
+         'reserved': 5, 'reserved_snapshot': 90})
+    @ddt.unpack
+    def test_capacity_filter_replica_uses_regular_reserved(
+            self, free_capacity, total_capacity, reserved, reserved_snapshot):
+        self._stub_service_is_up(True)
+        filter_properties = {
+            'size': 100,
+            'snapshot_id': 'fake-snapshot-id',
+            'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
+        }
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': total_capacity,
+                                    'free_capacity_gb': free_capacity,
+                                    'reserved_percentage': reserved,
+                                    'reserved_snapshot_percentage':
+                                        reserved_snapshot,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(self.filter.host_passes(host, filter_properties))

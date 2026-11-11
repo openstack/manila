@@ -35,13 +35,15 @@ class HostAffinityWeigherTestCase(test.TestCase):
     @staticmethod
     def _create_weight_properties(snapshot_id=None,
                                   snapshot_host=None,
-                                  availability_zone_id=None):
+                                  availability_zone_id=None,
+                                  replica_state=None):
         return {
             'request_spec': {
                 'snapshot_id': snapshot_id,
                 'snapshot_host': snapshot_host,
             },
             'availability_zone_id': availability_zone_id,
+            'replica_state': replica_state,
         }
 
     def test_without_snapshot_id(self):
@@ -136,3 +138,14 @@ class HostAffinityWeigherTestCase(test.TestCase):
 
         weight = self.weigher._weigh_object(host_state, weight_properties)
         self.assertEqual(25, weight)
+
+    def test_replica_of_snapshot_share_returns_zero(self):
+        share = fakes.FakeHostState('host1@AAA#pool1', {})
+        weight_properties = self._create_weight_properties(
+            snapshot_id='fake-snapshot-id',
+            snapshot_host='host1@AAA#pool1',
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC,
+        )
+
+        weight = self.weigher._weigh_object(share, weight_properties)
+        self.assertEqual(0, weight)

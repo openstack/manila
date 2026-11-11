@@ -1385,6 +1385,19 @@ class ShareAPITestCase(test.TestCase):
             self.api.share_rpcapi.create_share_instance_and_get_request_spec
                 .called)
 
+    def test_create_share_instance_replica_sets_out_of_sync_state(self):
+        snapshot, share, _, _ = self._setup_create_from_snapshot_mocks()
+
+        request_spec, share_instance = (
+            self.api.create_share_instance_and_get_request_spec(
+                self.context, share, is_replica=True)
+        )
+
+        self.assertIsNotNone(share_instance)
+        self.assertEqual(
+            constants.REPLICA_STATE_OUT_OF_SYNC,
+            request_spec['share_instance_properties']['replica_state'])
+
     def test_create_instance_share_group_snapshot_member(self):
         fake_req_spec = {
             'share_properties': 'fake_share_properties',
@@ -4999,7 +5012,8 @@ class ShareAPITestCase(test.TestCase):
              cast_rules_to_readonly=cast_rules_to_readonly,
              qos_type_id=None,
              share_instance_metadata=None,
-             mount_point_name=None))
+             mount_point_name=None,
+             is_replica=True))
         db_api.share_replica_update.assert_called_once()
         mock_snapshot_get_all_call.assert_called_once()
         mock_sched_rpcapi_call.assert_called_once()
@@ -5142,7 +5156,8 @@ class ShareAPITestCase(test.TestCase):
              cast_rules_to_readonly=cast_rules_to_readonly,
              qos_type_id=None,
              share_instance_metadata=None,
-             mount_point_name=None))
+             mount_point_name=None,
+             is_replica=True))
 
     def test_create_share_replica_mount_point_name_inheritance(self):
         extra_specs = {'replication_type': constants.REPLICATION_TYPE_DR}
@@ -5186,7 +5201,8 @@ class ShareAPITestCase(test.TestCase):
                 cast_rules_to_readonly=False,
                 qos_type_id=None,
                 share_instance_metadata=None,
-                mount_point_name='fake_mpn')
+                mount_point_name='fake_mpn',
+                is_replica=True)
 
     def test_delete_last_active_replica(self):
         fake_replica = fakes.fake_replica(
@@ -5427,7 +5443,8 @@ class ShareAPITestCase(test.TestCase):
                                  cast_rules_to_readonly=False,
                                  qos_type_id=None,
                                  share_instance_metadata=None,
-                                 mount_point_name=None))
+                                 mount_point_name=None,
+                                 is_replica=True))
 
     def test_migration_complete(self):
 

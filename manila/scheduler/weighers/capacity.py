@@ -31,6 +31,7 @@ import math
 
 from oslo_config import cfg
 
+from manila.common import constants
 from manila.scheduler import utils
 from manila.scheduler.weighers import base_host
 
@@ -54,7 +55,9 @@ class CapacityWeigher(base_host.BaseHostWeigher):
         """Higher weighers win.  We want spreading to be the default."""
         if weight_properties.get('is_share_extend'):
             reserved = float(host_state.reserved_share_extend_percentage) / 100
-        elif weight_properties.get('snapshot_id'):
+        elif (weight_properties.get('snapshot_id') and
+              weight_properties.get('replica_state') !=
+              constants.REPLICA_STATE_OUT_OF_SYNC):
             reserved = float(host_state.reserved_snapshot_percentage) / 100
         else:
             reserved = float(host_state.reserved_percentage) / 100
