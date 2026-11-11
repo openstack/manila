@@ -4245,7 +4245,7 @@ snapshot_status_request:
     ``error_deleting``, ``migrating``, ``migrating_to`` or
     ``restoring``.
   in: body
-  required: false
+  required: true
   type: string
 snapshot_support:
   description: |
