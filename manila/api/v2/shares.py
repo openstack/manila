@@ -935,8 +935,6 @@ class ShareController(
         access_data = body.get('deny_access', body.get('os-deny_access'))
         access_id = access_data['access_id']
 
-        self._check_for_access_rule_locks(context, access_data, access_id, id)
-
         share = self.share_api.get(context, id, for_modification=True)
 
         if share.get('is_soft_deleted'):
@@ -957,6 +955,8 @@ class ShareController(
             share = self.share_api.get(context, id)
         except exception.NotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.message)
+
+        self._check_for_access_rule_locks(context, access_data, access_id, id)
         self.share_api.deny_access(context, share, access,
                                    allow_on_error_state)
         return webob.Response(status_int=http_client.ACCEPTED)

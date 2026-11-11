@@ -1,0 +1,9 @@
+---
+security:
+  - |
+    The deny access share action now checks that the caller can access the
+    share and the access rule before checking the rule's locks. Users who
+    are not allowed to modify a share no longer learn whether another
+    project's access rule exists and has a delete lock. See `Launchpad bug
+    2174012 <https://bugs.launchpad.net/manila/+bug/2174012>`_ for more
+    details.

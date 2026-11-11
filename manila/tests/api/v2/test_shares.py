@@ -3320,6 +3320,7 @@ class ShareActionsTest(test.TestCase):
         self.mock_object(share_api.API, "deny_access", _stub_deny_access)
         self.mock_object(share_api.API, "access_get", _fake_access_get)
 
+        self.mock_object(self.controller, '_check_for_access_rule_locks')
         id = 'super_fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
         req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id)
@@ -3328,6 +3329,7 @@ class ShareActionsTest(test.TestCase):
                           req,
                           id,
                           body)
+        self.controller._check_for_access_rule_locks.assert_not_called()
 
     def test_deny_access_delete_locks(self):
         def _stub_deny_access(*args, **kwargs):
@@ -3386,6 +3388,7 @@ class ShareActionsTest(test.TestCase):
             self.controller._deny_access, req, id, body)
         mock_get.assert_called_once_with(
             req.environ['manila.context'], id, for_modification=True)
+        self.controller._check_for_access_rule_locks.assert_not_called()
 
     def test__check_for_access_rule_locks_no_locks(self):
         self.mock_object(
