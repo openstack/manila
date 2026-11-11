@@ -1518,6 +1518,15 @@ class HNASSSHTestCase(test.TestCase):
 
         self.assertTrue(self.mock_log.debug.called)
 
+    def test__execute_rejects_newline_in_argument(self):
+        self.mock_object(putils, 'ssh_execute')
+
+        self.assertRaises(exception.SSHInjectionThreat,
+                          self._driver_ssh._execute,
+                          ['cifs', 'user', 'safe\ncommand'])
+
+        putils.ssh_execute.assert_not_called()
+
     def test__locked_selectfs_create_operation(self):
         exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
                         'console-context', '--evs', str(self.evs_id),
