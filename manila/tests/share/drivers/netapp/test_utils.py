@@ -153,6 +153,22 @@ class NetAppDriverUtilsTestCase(test.TestCase):
             sorted(na_utils.convert_to_list({'key1': 'value1',
                                              'key2': 'value2'})))
 
+    @ddt.data(
+        ('9.12.1', (9, 12, 1)),
+        ('NetApp Release 9.12.1: Wed Feb 01 01:10:18 UTC 2023', (9, 12, 1)),
+        ('NetApp Release Wookeyjack__9.21.1: Wed Aug 05 19:53:41 UTC 2026',
+         (9, 21, 1)),
+    )
+    @ddt.unpack
+    def test_parse_ontap_version_tuple(self, version_string, expected):
+        self.assertEqual(expected,
+                         na_utils.parse_ontap_version_tuple(version_string))
+
+    def test_parse_ontap_version_tuple_invalid(self):
+        self.assertRaises(ValueError,
+                          na_utils.parse_ontap_version_tuple,
+                          'not-a-version')
+
     @ddt.data({'is_fg': True, 'type': na_utils.EXTENDED_DATA_PROTECTION_TYPE},
               {'is_fg': False, 'type': na_utils.DATA_PROTECTION_TYPE})
     @ddt.unpack

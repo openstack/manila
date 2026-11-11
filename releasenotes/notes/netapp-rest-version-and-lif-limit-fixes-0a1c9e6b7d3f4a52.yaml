@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp ONTAP: Fixed reading the cluster version from the REST
+    ``/cluster`` endpoint when ``version`` is returned as a string or as
+    a nested object. SVM-scoped credentials use the same endpoint. A
+    parse failure now raises a short error and no longer logs the full
+    response.

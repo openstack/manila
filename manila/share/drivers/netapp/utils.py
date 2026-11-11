@@ -158,6 +158,18 @@ def convert_string_to_list(string, separator=','):
     return [elem.strip() for elem in string.split(separator)]
 
 
+def parse_ontap_version_tuple(version_string):
+    """Return ``(generation, major, minor)`` from an ONTAP version string.
+
+    Accepts strings such as ``NetApp Release 9.12.1: ...`` or ``9.12.1``.
+    """
+    match = re.search(r'(\d+)\.(\d+)\.(\d+)', version_string)
+    if not match:
+        raise ValueError('Could not parse ONTAP version from %r' %
+                         version_string)
+    return tuple(int(part) for part in match.groups())
+
+
 def get_relationship_type(is_flexgroup):
     """Returns the snapmirror relationship type."""
     return (EXTENDED_DATA_PROTECTION_TYPE if is_flexgroup

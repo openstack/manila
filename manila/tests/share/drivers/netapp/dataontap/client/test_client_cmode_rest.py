@@ -353,31 +353,41 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(return_mock, result)
 
-    def test_get_ontap_version_svm_scoped_fallback(self):
+    def test_get_ontap_version_string_response(self):
         self.client.get_ontap_version = self.original_get_ontap_version
-        cli_response = fake.FAKE_GET_ONTAP_VERSION_CLI_REST
+        version_full = 'NetApp Release 9.12.1: Wed Feb 01 01:10:18 UTC 2023'
         expected = {
-            'version': fake.VERSION,
-            'version-tuple': (8, 2, 1)
+            'version': version_full,
+            'version-tuple': (9, 12, 1)
         }
         mock_send_request = self.mock_object(
             self.client,
             'send_request',
-            mock.Mock(side_effect=[
-                netapp_api.api.NaApiError(
-                    code=netapp_api.EREST_NOT_AUTHORIZED),
-                cli_response,
-            ]))
+            mock.Mock(return_value={'version': version_full}))
 
         result = self.client.get_ontap_version(self=self.client, cached=False)
 
-        mock_send_request.assert_has_calls([
-            mock.call('/cluster', 'get', query={'fields': 'version'},
-                      enable_tunneling=False),
-            mock.call('/private/cli/version', 'get',
-                      query={'fields': 'version'}),
-        ])
+        mock_send_request.assert_called_once_with(
+            '/cluster', 'get', query={'fields': 'version'},
+            enable_tunneling=False)
         self.assertEqual(expected, result)
+
+    def test_get_ontap_version_not_authorized_no_cli_fallback(self):
+        self.client.get_ontap_version = self.original_get_ontap_version
+        mock_send_request = self.mock_object(
+            self.client,
+            'send_request',
+            mock.Mock(side_effect=netapp_api.api.NaApiError(
+                code=netapp_api.EREST_NOT_AUTHORIZED)))
+
+        self.assertRaises(
+            netapp_api.api.NaApiError,
+            lambda: self.client.get_ontap_version(
+                self=self.client, cached=False))
+
+        mock_send_request.assert_called_once_with(
+            '/cluster', 'get', query={'fields': 'version'},
+            enable_tunneling=False)
 
     def test_get_ontap_version_unexpected_error(self):
         self.client.get_ontap_version = self.original_get_ontap_version
@@ -388,6 +398,20 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
         self.assertRaises(
             netapp_api.api.NaApiError,
+            lambda: self.client.get_ontap_version(
+                self=self.client, cached=False))
+
+    def test_get_ontap_version_cluster_malformed_response(self):
+        self.client.get_ontap_version = self.original_get_ontap_version
+        # missing the 'full' key
+        malformed_response = {'version': {'generation': 9}}
+        self.mock_object(
+            self.client,
+            'send_request',
+            mock.Mock(return_value=malformed_response))
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
             lambda: self.client.get_ontap_version(
                 self=self.client, cached=False))
 
@@ -8292,17 +8316,18 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
 
     def test_get_ontap_version_scoped(self):
         self.client.get_ontap_version = self.original_get_ontap_version
-        e = netapp_api.api.NaApiError(code=netapp_api.EREST_NOT_AUTHORIZED)
-        res_list = [e, fake.GET_VERSION_RESPONSE_REST]
-        version = fake.GET_VERSION_RESPONSE_REST['records'][0]['version']
-        expected = {
-            'version': version['full'],
-            'version-tuple': (9, 11, 1)
-        }
-        self.mock_object(self.client, 'send_request',
-                         mock.Mock(side_effect=res_list))
-        result = self.client.get_ontap_version(self=self.client, cached=False)
-        self.assertEqual(expected, result)
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=netapp_api.api.NaApiError(
+                code=netapp_api.EREST_NOT_AUTHORIZED)))
+
+        self.assertRaises(
+            netapp_api.api.NaApiError,
+            lambda: self.client.get_ontap_version(
+                self=self.client, cached=False))
+        mock_send_request.assert_called_once_with(
+            '/cluster', 'get', query={'fields': 'version'},
+            enable_tunneling=False)
 
     def test_get_licenses_error(self):
         self.mock_object(self.client, 'send_request',
