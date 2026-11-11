@@ -26,7 +26,7 @@ from enum import Enum
 import json
 import math
 import re
-import socket
+
 
 from manila.exception import SnapshotResourceNotFound
 from oslo_config import cfg
@@ -49,6 +49,7 @@ from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
 from manila.share.drivers.netapp.dataontap.client import rest_api as rest_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import performance
+from manila.share.drivers.netapp.dataontap import ems as netapp_ems
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
@@ -78,7 +79,8 @@ class Backup(Enum):
 
 
 class NetAppCmodeFileStorageLibrary(object):
-    AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
+    AUTOSUPPORT_INTERVAL_SECONDS = 3600   # hourly  (event-0)
+    AUTOSUPPORT_DAILY_INTERVAL_SECONDS = 86400  # daily (event-1)
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
     HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
@@ -377,11 +379,23 @@ class NetAppCmodeFileStorageLibrary(object):
         ssc_periodic_task.start(interval=self.SSC_UPDATE_INTERVAL_SECONDS,
                                 initial_delay=self.SSC_UPDATE_INTERVAL_SECONDS)
 
-        # Start the task that logs autosupport (EMS) data to the controller
-        ems_periodic_task = loopingcall.FixedIntervalLoopingCall(
-            self._handle_ems_logging)
-        ems_periodic_task.start(interval=self.AUTOSUPPORT_INTERVAL_SECONDS,
-                                initial_delay=0)
+        if self.configuration.safe_get('netapp_enable_ems_autosupport'):
+            # event-0: deployment identity + feature flags, sent every hour.
+            ems0_periodic_task = loopingcall.FixedIntervalLoopingCall(
+                self._handle_ems_logging_0)
+            ems0_periodic_task.start(
+                interval=self.AUTOSUPPORT_INTERVAL_SECONDS,
+                initial_delay=0)
+
+            # event-1: pool catalog + capacity stats, sent once a day.
+            ems1_periodic_task = loopingcall.FixedIntervalLoopingCall(
+                self._handle_ems_logging_1)
+            ems1_periodic_task.start(
+                interval=self.AUTOSUPPORT_DAILY_INTERVAL_SECONDS,
+                initial_delay=0)
+        else:
+            LOG.info('NetApp EMS AutoSupport reporting is disabled '
+                     '(netapp_enable_ems_autosupport=False).')
 
         # Start the task that runs other housekeeping tasks, such as deletion
         # of previously soft-deleted storage artifacts.
@@ -751,47 +765,31 @@ class NetAppCmodeFileStorageLibrary(object):
         return encryption_status
 
     @na_utils.trace
-    def _handle_ems_logging(self):
-        """Build and send an EMS log message."""
-        self._client.send_ems_log_message(self._build_ems_log_message_0())
-        self._client.send_ems_log_message(self._build_ems_log_message_1())
+    def _handle_ems_logging_0(self):
+        """Send hourly EMS event-0 (deployment identity + feature flags)."""
+        try:
+            self._client.send_ems_log_message(self._build_ems_log_message_0())
+        except Exception as exc:
+            LOG.warning('Failed to build or send EMS event-0: %s', exc)
 
-    def _build_base_ems_log_message(self):
-        """Construct EMS Autosupport log message common to all events."""
-
-        ems_log = {
-            'computer-name': socket.gethostname() or 'Manila_node',
-            'event-source': 'Manila driver %s' % self.driver_name,
-            'app-version': self._app_version,
-            'category': 'provisioning',
-            'log-level': '5',
-            'auto-support': 'false',
-        }
-        return ems_log
+    @na_utils.trace
+    def _handle_ems_logging_1(self):
+        """Send daily EMS event-1 (pool catalog + capacity stats)."""
+        try:
+            self._client.send_ems_log_message(self._build_ems_log_message_1())
+        except Exception as exc:
+            LOG.warning('Failed to build or send EMS event-1: %s', exc)
 
     @na_utils.trace
     def _build_ems_log_message_0(self):
-        """Construct EMS Autosupport log message with deployment info."""
-
-        ems_log = self._build_base_ems_log_message()
-        ems_log.update({
-            'event-id': '0',
-            'event-description': 'OpenStack Manila connected to cluster node',
-        })
-        return ems_log
+        """Build event-0: JSON deployment info and feature flags."""
+        return netapp_ems.build_ems_log_message_0(self)
 
     @na_utils.trace
     def _build_ems_log_message_1(self):
-        """Construct EMS Autosupport log message with storage pool info."""
-
-        message = self._get_ems_pool_info()
-
-        ems_log = self._build_base_ems_log_message()
-        ems_log.update({
-            'event-id': '1',
-            'event-description': json.dumps(message),
-        })
-        return ems_log
+        """Build event-1: JSON pool catalog enriched with capacity stats."""
+        pool_info = self._get_ems_pool_info()
+        return netapp_ems.build_ems_log_message_1(self, pool_info)
 
     def _get_ems_pool_info(self):
         raise NotImplementedError()

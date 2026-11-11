@@ -972,15 +972,61 @@ SHARE_ACCESS = {
     'access_to': [LIF_ADDRESSES[0]]
 }
 
+EMS_POOL_INFO = {
+    'pools': {
+        'vserver': VSERVER1,
+        'aggregates': ['aggr1', 'aggr2'],
+        'flexgroup_aggregates': {},
+    },
+}
+
+EMS_DEPLOYMENT_PAYLOAD = {
+    'openstack': APP_VERSION,
+    'driver_name': DRIVER_NAME,
+    'driver_version': '1.0',
+    'backend_name': BACKEND_NAME,
+    'features': {
+        'driver_handles_share_servers': True,
+        'storage_protocol': 'NFS_CIFS',
+        'flexgroup_pools_configured': False,
+        'netapp_enable_flexgroup': False,
+        'flexgroup_pool_only': False,
+        'consistent_snapshot_support': 'host',
+        'ipv4_support': True,
+        'ipv6_support': False,
+        'netapp_enabled_share_protocols': ['nfs3', 'nfs4.0'],
+        'thin_provisioning': [True, False],
+        'dedupe': [True, False],
+        'compression': [True, False],
+        'qos_support': False,
+        'qos_type_support': False,
+        'netapp_flexvol_encryption': False,
+        'netapp_use_legacy_client': False,
+        'encryption_support': None,
+        'netapp_aggregate_encryption_support': False,
+        'netapp_transport_type': 'http',
+        'netapp_certificate_auth': False,
+        'netapp_certificate_host_validation': False,
+        'netapp_cifs_aes_encryption': False,
+        'netapp_cifs_smb_signing': False,
+        'netapp_enable_logical_space_reporting': False,
+        'netapp_restrict_lif_creation_per_ha_pair': False,
+        'backup_configured': False,
+        'replication_domain': None,
+        'replication_type': None,
+        'netapp_snapmirror_schedule': None,
+    },
+}
+
 EMS_MESSAGE_0 = {
     'computer-name': HOST_NAME,
     'event-id': '0',
     'event-source': 'Manila driver %s' % DRIVER_NAME,
     'app-version': APP_VERSION,
     'category': 'provisioning',
-    'event-description': 'OpenStack Manila connected to cluster node',
+    'event-description': '',
     'log-level': '5',
-    'auto-support': 'false'
+    'auto-support': 'false',
 }
 
 EMS_MESSAGE_1 = {
@@ -991,7 +1037,7 @@ EMS_MESSAGE_1 = {
     'category': 'provisioning',
     'event-description': '',
     'log-level': '5',
-    'auto-support': 'false'
+    'auto-support': 'false',
 }
 
 AGGREGATE_CAPACITIES = {

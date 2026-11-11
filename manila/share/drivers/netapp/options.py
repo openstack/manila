@@ -326,6 +326,15 @@ netapp_cluster_opts = [
                      'API call.')), ]
 
 netapp_support_opts = [
+    cfg.BoolOpt('netapp_enable_ems_autosupport',
+                default=True,
+                help=('When True (default), the driver periodically sends '
+                      'EMS (AutoSupport) telemetry to the ONTAP controller: '
+                      'event-0 (deployment identity and feature flags) every '
+                      'hour, and event-1 (pool capacity stats) once a day. '
+                      'Set to False to disable all EMS reporting, for '
+                      'example in air-gapped or privacy-restricted '
+                      'deployments.')),
     cfg.StrOpt('netapp_trace_flags',
                help=('Comma-separated list of options that control which '
                      'trace info is written to the debug logs.  Values '

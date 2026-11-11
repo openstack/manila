@@ -20,7 +20,6 @@ import copy
 from datetime import datetime as from_datetime
 import json
 import math
-import socket
 import time
 from unittest import mock
 
@@ -41,6 +40,7 @@ from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import performance
+from manila.share.drivers.netapp.dataontap import ems as netapp_ems
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
@@ -311,32 +311,62 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_update_ssc_info = self.mock_object(self.library,
                                                 '_update_ssc_info')
-        mock_handle_ems_logging = self.mock_object(self.library,
-                                                   '_handle_ems_logging')
+        mock_handle_ems_logging_0 = self.mock_object(self.library,
+                                                     '_handle_ems_logging_0')
+        mock_handle_ems_logging_1 = self.mock_object(self.library,
+                                                     '_handle_ems_logging_1')
         mock_handle_housekeeping_tasks = self.mock_object(
             self.library, '_handle_housekeeping_tasks')
         mock_ssc_periodic_task = mock.Mock()
-        mock_ems_periodic_task = mock.Mock()
+        mock_ems0_periodic_task = mock.Mock()
+        mock_ems1_periodic_task = mock.Mock()
         mock_housekeeping_periodic_task = mock.Mock()
         mock_loopingcall = self.mock_object(
             loopingcall,
             'FixedIntervalLoopingCall',
             mock.Mock(side_effect=[mock_ssc_periodic_task,
-                                   mock_ems_periodic_task,
+                                   mock_ems0_periodic_task,
+                                   mock_ems1_periodic_task,
                                    mock_housekeeping_periodic_task]))
+        self.library.configuration.safe_get = mock.Mock(
+            side_effect=lambda k: True if k == 'netapp_enable_ems_autosupport'
+            else None)
 
         self.library._start_periodic_tasks()
 
         self.assertTrue(mock_update_ssc_info.called)
-        self.assertFalse(mock_handle_ems_logging.called)
+        self.assertFalse(mock_handle_ems_logging_0.called)
+        self.assertFalse(mock_handle_ems_logging_1.called)
         self.assertFalse(mock_housekeeping_periodic_task.called)
         mock_loopingcall.assert_has_calls(
             [mock.call(mock_update_ssc_info),
-             mock.call(mock_handle_ems_logging),
+             mock.call(mock_handle_ems_logging_0),
+             mock.call(mock_handle_ems_logging_1),
              mock.call(mock_handle_housekeeping_tasks)])
         self.assertTrue(mock_ssc_periodic_task.start.called)
-        self.assertTrue(mock_ems_periodic_task.start.called)
+        self.assertTrue(mock_ems0_periodic_task.start.called)
+        self.assertTrue(mock_ems1_periodic_task.start.called)
         self.assertTrue(mock_housekeeping_periodic_task.start.called)
+
+    def test_start_periodic_tasks_ems_disabled(self):
+        self.mock_object(self.library, '_update_ssc_info')
+        self.mock_object(self.library, '_handle_housekeeping_tasks')
+        mock_ssc_task = mock.Mock()
+        mock_housekeeping_task = mock.Mock()
+        mock_loopingcall = self.mock_object(
+            loopingcall,
+            'FixedIntervalLoopingCall',
+            mock.Mock(side_effect=[mock_ssc_task, mock_housekeeping_task]))
+        self.library.configuration.safe_get = mock.Mock(
+            side_effect=lambda k: False
+            if k == 'netapp_enable_ems_autosupport' else None)
+
+        self.library._start_periodic_tasks()
+
+        # Only SSC and housekeeping tasks should have been created; no EMS.
+        self.assertEqual(2, mock_loopingcall.call_count)
+        self.assertTrue(mock_ssc_task.start.called)
+        self.assertTrue(mock_housekeeping_task.start.called)
 
     def test_get_backend_share_name(self):
 
@@ -693,52 +723,77 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertSetEqual(result, set(fake.FLEXGROUP_POOL_AGGR))
 
-    def test_handle_ems_logging(self):
-
+    def test_handle_ems_logging_0(self):
+        """event-0 is built and sent."""
         self.mock_object(self.library,
                          '_build_ems_log_message_0',
                          mock.Mock(return_value=fake.EMS_MESSAGE_0))
+
+        self.library._handle_ems_logging_0()
+
+        self.library._client.send_ems_log_message.assert_called_once_with(
+            fake.EMS_MESSAGE_0)
+
+    def test_handle_ems_logging_0_failure_is_tolerated(self):
+        """A failure in event-0 is caught and logged, not re-raised."""
+        self.mock_object(self.library,
+                         '_build_ems_log_message_0',
+                         mock.Mock(side_effect=Exception('boom')))
+
+        # Must not raise.
+        self.library._handle_ems_logging_0()
+
+        self.library._client.send_ems_log_message.assert_not_called()
+
+    def test_handle_ems_logging_1(self):
+        """event-1 is built and sent."""
         self.mock_object(self.library,
                          '_build_ems_log_message_1',
                          mock.Mock(return_value=fake.EMS_MESSAGE_1))
 
-        self.library._handle_ems_logging()
+        self.library._handle_ems_logging_1()
 
-        self.library._client.send_ems_log_message.assert_has_calls([
-            mock.call(fake.EMS_MESSAGE_0),
-            mock.call(fake.EMS_MESSAGE_1),
-        ])
+        self.library._client.send_ems_log_message.assert_called_once_with(
+            fake.EMS_MESSAGE_1)
+
+    def test_handle_ems_logging_1_failure_is_tolerated(self):
+        """A failure in event-1 is caught and logged, not re-raised."""
+        self.mock_object(self.library,
+                         '_build_ems_log_message_1',
+                         mock.Mock(side_effect=Exception('boom')))
+
+        # Must not raise.
+        self.library._handle_ems_logging_1()
+
+        self.library._client.send_ems_log_message.assert_not_called()
 
     def test_build_ems_log_message_0(self):
-
-        self.mock_object(socket,
-                         'gethostname',
-                         mock.Mock(return_value=fake.HOST_NAME))
+        """_build_ems_log_message_0 delegates to netapp_ems."""
+        self.mock_object(netapp_ems,
+                         'build_ems_log_message_0',
+                         mock.Mock(return_value=fake.EMS_MESSAGE_0))
 
         result = self.library._build_ems_log_message_0()
 
+        netapp_ems.build_ems_log_message_0.assert_called_once_with(
+            self.library)
         self.assertDictEqual(fake.EMS_MESSAGE_0, result)
 
     def test_build_ems_log_message_1(self):
-
-        pool_info = {
-            'pools': {
-                'vserver': 'fake_vserver',
-                'aggregates': ['aggr1', 'aggr2'],
-            },
-        }
-        self.mock_object(socket,
-                         'gethostname',
-                         mock.Mock(return_value=fake.HOST_NAME))
+        """_build_ems_log_message_1 fetches pool info then delegates."""
+        pool_info = copy.deepcopy(fake.EMS_POOL_INFO)
         self.mock_object(self.library,
                          '_get_ems_pool_info',
                          mock.Mock(return_value=pool_info))
+        self.mock_object(netapp_ems,
+                         'build_ems_log_message_1',
+                         mock.Mock(return_value=fake.EMS_MESSAGE_1))
 
         result = self.library._build_ems_log_message_1()
 
-        self.assertDictEqual(pool_info,
-                             json.loads(result['event-description']))
-        result['event-description'] = ''
+        self.library._get_ems_pool_info.assert_called_once_with()
+        netapp_ems.build_ems_log_message_1.assert_called_once_with(
+            self.library, pool_info)
         self.assertDictEqual(fake.EMS_MESSAGE_1, result)
 
     def test_get_ems_pool_info(self):
@@ -1605,7 +1660,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             mock_create_flexgroup.assert_called_once_with(
                 vserver_client, [fake.AGGREGATE], fake.SHARE_NAME,
                 fake.SHARE['size'], 8, mount_point_name=fake.MOUNT_POINT_NAME,
-                volume_tags=fake.VOLUME_TAGS,
+                volume_tags=fake.VOLUME_TAGS, replica=False,
                 **provisioning_options)
         else:
             mock_get_aggr_flexgroup.assert_not_called()
