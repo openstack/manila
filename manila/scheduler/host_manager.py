@@ -163,6 +163,8 @@ class HostState(object):
         self.share_replicas_migration_support = False
         self.encryption_support = None
         self.qos_type_support = None
+        self.goodness_function = None
+        self.filter_function = None
 
         # PoolState for all pools
         self.pools = {}
@@ -379,6 +381,12 @@ class HostState(object):
         if 'qos_type_support' not in pool_cap:
             pool_cap['qos_type_support'] = self.qos_type_support
 
+        if not pool_cap.get('goodness_function'):
+            pool_cap['goodness_function'] = self.goodness_function
+
+        if not pool_cap.get('filter_function'):
+            pool_cap['filter_function'] = self.filter_function
+
         if self.ipv4_support is not None:
             pool_cap['ipv4_support'] = self.ipv4_support
 
@@ -418,6 +426,8 @@ class HostState(object):
             'share_replicas_migration_support', False)
         self.encryption_support = capability.get('encryption_support', None)
         self.qos_type_support = capability.get('qos_type_support', False)
+        self.goodness_function = capability.get('goodness_function')
+        self.filter_function = capability.get('filter_function')
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
