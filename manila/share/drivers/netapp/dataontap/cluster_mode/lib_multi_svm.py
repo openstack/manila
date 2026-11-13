@@ -1606,6 +1606,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         network_info = {
             'network_allocations':
                 source_share_server['network_allocations'],
+            'neutron_net_id':
+                source_share_server['share_network_subnets'][0].get(
+                    'neutron_net_id'),
             'neutron_subnet_id':
                 source_share_server['share_network_subnets'][0].get(
                     'neutron_subnet_id')
@@ -1908,6 +1911,9 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         network_info = {
             'network_allocations':
                 share_server_network_info['network_allocations'],
+            'neutron_net_id':
+                share_server_network_info['share_network_subnets'][0].get(
+                    'neutron_net_id'),
             'neutron_subnet_id':
                 share_server_network_info['share_network_subnets'][0].get(
                     'neutron_subnet_id')

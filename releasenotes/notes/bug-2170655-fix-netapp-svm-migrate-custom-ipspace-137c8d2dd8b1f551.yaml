@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp driver: Fixed share server migration through SVM Migrate, which
+    placed a share server that uses a VLAN share network in the destination
+    cluster's Default IPspace instead of a custom IPspace named after its
+    Neutron network. The migration compatibility check could fail, and a
+    completed migration could leave the share server's network interfaces
+    unreachable. For more details, see
+    `Launchpad bug #2170655 <https://bugs.launchpad.net/manila/+bug/2170655>`_.
