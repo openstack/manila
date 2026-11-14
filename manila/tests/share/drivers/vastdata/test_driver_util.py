@@ -234,6 +234,63 @@ class TestGenerateIpRange(test.TestCase):
         self.assertEqual(len(ips), 65535)
 
 
+@ddt.ddt
+class TestExpandIpOrCidr(test.TestCase):
+
+    @ddt.data(
+        # Single IP addresses (and host routes) stay as a bare IP
+        ("10.0.0.1", ["10.0.0.1"]),
+        ("192.168.1.100", ["192.168.1.100"]),
+        ("10.0.0.1/32", ["10.0.0.1"]),
+        ("2001:db8::1", ["2001:db8::1"]),
+        ("2001:db8::1/128", ["2001:db8::1"]),
+
+        # Subnets are passed through as CIDR; VAST accepts them natively
+        ("10.0.0.0/31", ["10.0.0.0/31"]),
+        ("10.0.0.0/30", ["10.0.0.0/30"]),
+        ("10.0.0.0/29", ["10.0.0.0/29"]),
+        ("192.168.1.0/28", ["192.168.1.0/28"]),
+        ("10.0.0.0/24", ["10.0.0.0/24"]),
+        ("172.16.0.0/16", ["172.16.0.0/16"]),
+        ("2001:db8::/64", ["2001:db8::/64"]),
+
+        # Allow-all uses VAST's '*' wildcard instead of expanding hosts
+        ("0.0.0.0/0", ["*"]),
+        ("::/0", ["*"]),
+    )
+    @ddt.unpack
+    def test_expand_ip_or_cidr(self, input_cidr, expected):
+        result = driver_util.expand_ip_or_cidr(input_cidr)
+        self.assertEqual(result, expected)
+
+    def test_expand_ip_or_cidr_with_host_bits_set(self):
+        # Host bits are masked off to the network CIDR VAST expects
+        result = driver_util.expand_ip_or_cidr("10.0.0.5/30")
+        self.assertEqual(result, ["10.0.0.4/30"])
+
+    def test_expand_ip_or_cidr_preserves_string_format(self):
+        result = driver_util.expand_ip_or_cidr("10.0.0.0/29")
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], str)
+
+    @ddt.data(
+        "invalid_ip",
+        "999.999.999.999",
+        "10.0.0.256",
+        "10.0.0.1/33",  # Invalid prefix length
+        "10.0.0.1/",
+        "",
+    )
+    def test_expand_ip_or_cidr_invalid_input(self, invalid_input):
+        # Test that invalid inputs raise appropriate exceptions
+        import netaddr
+        self.assertRaises(
+            (netaddr.core.AddrFormatError, ValueError),
+            driver_util.expand_ip_or_cidr,
+            invalid_input
+        )
+
+
 class MockClass1:
     def method1(self):
         return 1
