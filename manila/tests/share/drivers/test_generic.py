@@ -1719,6 +1719,45 @@ class GenericShareDriverTestCase(test.TestCase):
             assert_called_once_with(srv_details, 'test_share'))
         self.assertTrue(self._driver._resize_filesystem.called)
 
+    @ddt.data('_detach_volume', '_extend_volume', '_attach_volume',
+              '_resize_filesystem')
+    def test_extend_share_error_restores_access(self, failed_step):
+        fake_volume = {"name": "fake", "size": 100}
+        fake_share = {
+            'id': 'fake',
+            'share_proto': 'NFS',
+            'name': 'test_share',
+        }
+        new_size = 123
+        srv_details = self.server['backend_details']
+        self.mock_object(
+            self._driver.service_instance_manager,
+            'get_common_server',
+            mock.Mock(return_value=self.server)
+        )
+        self.mock_object(
+            self._driver, '_get_volume',
+            mock.Mock(return_value=fake_volume)
+        )
+        self.mock_object(self._driver, '_detach_volume')
+        self.mock_object(self._driver, '_extend_volume')
+        self.mock_object(self._driver, '_attach_volume')
+        self.mock_object(self._driver, '_resize_filesystem')
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_mount_device')
+        self.mock_object(self._driver, failed_step,
+                         mock.Mock(
+                             side_effect=exception.ManilaException("fake")))
+        CONF.set_default('driver_handles_share_servers', False)
+
+        self.assertRaises(exception.ManilaException,
+                          self._driver.extend_share, fake_share, new_size)
+
+        (self._helper_nfs.restore_access_after_maintenance.
+            assert_called_once_with(srv_details, 'test_share'))
+        self._driver._mount_device.assert_called_once_with(
+            fake_share, srv_details, mock.ANY)
+
     def test_extend_volume(self):
         fake_volume = {'id': 'fake'}
         new_size = 123
