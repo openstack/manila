@@ -97,6 +97,10 @@ for the PowerScale driver:
 * emc_nas_login = <username>
 * emc_nas_password = <password>
 * emc_nas_root_dir = <root directory path to create shares (e.g./ifs/manila)>
+* emc_ssl_cert_verify = <True (default) to verify the PowerScale TLS
+  certificate, False to disable verification (not recommended)>
+* emc_ssl_cert_path = <path to CA bundle or certificate file used when
+  emc_ssl_cert_verify is True (optional)>
 
 Restart of :term:`manila-share` service is needed for the configuration changes
 to take effect.

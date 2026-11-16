@@ -1,0 +1,12 @@
+---
+security:
+  - |
+    Dell PowerScale: `bug #2163229
+    <https://bugs.launchpad.net/manila/+bug/2163229>`_:
+    The ``verify_ssl_cert`` argument of the ``PowerScaleApi`` client class now
+    defaults to ``True``, so TLS certificate verification is enabled unless it
+    is explicitly disabled by the caller. The PowerScale driver is not
+    affected by this change because it always passes the value of the
+    ``emc_ssl_cert_verify`` configuration option, which defaults to ``True``.
+    Deployments that set ``emc_ssl_cert_verify = False`` keep their current
+    behavior. Disabling certificate verification is not recommended.

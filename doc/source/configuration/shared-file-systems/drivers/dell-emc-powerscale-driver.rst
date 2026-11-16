@@ -117,6 +117,23 @@ Systems service configuration file for the PowerScale driver:
    emc_nas_login = <username>
    emc_nas_password = <password>
 
+SSL certificate verification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the driver verifies the TLS certificate presented by the
+PowerScale management API (``emc_ssl_cert_verify = True``). To verify a
+certificate that is not signed by a trusted CA, for example a self-signed
+certificate, provide the CA bundle or certificate path:
+
+.. code-block:: ini
+
+   emc_ssl_cert_verify = True
+   emc_ssl_cert_path = <path to CA bundle or certificate file>
+
+Setting ``emc_ssl_cert_verify = False`` disables certificate verification
+and is not recommended, because the connection is then open to
+man-in-the-middle attacks.
+
 Thin Provisioning
 ~~~~~~~~~~~~~~~~~
 
