@@ -5232,6 +5232,36 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         mock_sr.assert_called_once_with('/name-services/ldap', 'post',
                                         body=body)
 
+    def test__create_ldap_client_ad_with_preferred_servers(self):
+        mock_dns = self.mock_object(self.client, 'configure_dns')
+        mock_sr = self.mock_object(self.client, 'send_request')
+        security_service = {
+            'domain': 'fake_domain',
+            'server': '10.0.0.1, 10.0.0.2 ',
+            'user': 'fake_user',
+            'ou': 'fake_ou',
+            'dns_ip': 'fake_ip',
+            'password': 'fake_password'
+        }
+
+        ad_domain = security_service.get('domain')
+        body = {
+            'port': '389',
+            'schema': 'MS-AD-BIS',
+            'bind_dn': (security_service.get('user') + '@' + ad_domain),
+            'bind_password': security_service.get('password'),
+            'svm.name': fake.VSERVER_NAME,
+            'base_dn': security_service.get('ou'),
+            'ad_domain': security_service.get('domain'),
+            'preferred_ad_servers': ['10.0.0.1', '10.0.0.2'],
+        }
+
+        self.client._create_ldap_client(security_service,
+                                        vserver_name=fake.VSERVER_NAME)
+        mock_dns.assert_called_once_with(security_service)
+        mock_sr.assert_called_once_with('/name-services/ldap', 'post',
+                                        body=body)
+
     def test__create_ldap_client_linux(self):
         mock_dns = self.mock_object(self.client, 'configure_dns')
         mock_sr = self.mock_object(self.client, 'send_request')
@@ -5625,6 +5655,38 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
             'bind_password': security_service.get('password'),
             'base_dn': security_service.get('ou'),
             'ad_domain': security_service.get('domain'),
+            'preferred_ad_servers': [],
+        }
+
+        self.client.modify_ldap(security_service, None)
+        mock_svm_uuid.assert_called_once_with(None)
+        mock_sr.assert_called_once_with(f'/name-services/ldap/{fake_svm_uuid}',
+                                        'patch', body=body)
+
+    def test_modify_ldap_ad_with_preferred_servers(self):
+        fake_svm_uuid = fake.FAKE_UUID
+        mock_svm_uuid = self.mock_object(self.client,
+                                         '_get_unique_svm_by_name',
+                                         mock.Mock(return_value=fake_svm_uuid))
+        mock_sr = self.mock_object(self.client, 'send_request')
+        security_service = {
+            'domain': 'fake_domain',
+            'server': '10.0.0.1,10.0.0.2',
+            'user': 'fake_user',
+            'ou': 'fake_ou',
+            'dns_ip': 'fake_ip',
+            'password': 'fake_password'
+        }
+
+        ad_domain = security_service.get('domain')
+        body = {
+            'port': '389',
+            'schema': 'MS-AD-BIS',
+            'bind_dn': (security_service.get('user') + '@' + ad_domain),
+            'bind_password': security_service.get('password'),
+            'base_dn': security_service.get('ou'),
+            'ad_domain': security_service.get('domain'),
+            'preferred_ad_servers': ['10.0.0.1', '10.0.0.2'],
         }
 
         self.client.modify_ldap(security_service, None)
@@ -8526,12 +8588,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                           self.client.update_kerberos_realm,
                           fake.KERBEROS_SECURITY_SERVICE)
 
-    @ddt.data(('fake_domain', 'fake_server'), (None, None))
-    @ddt.unpack
-    def test_modify_ldap_error(self, domain, server):
+    def test_modify_ldap_error(self):
         security_service = {
-            'domain': domain,
-            'server': server,
+            'domain': None,
+            'server': None,
             'user': 'fake_user',
             'ou': 'fake_ou',
             'dns_ip': 'fake_ip',
@@ -8631,12 +8691,10 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
         expected = [fake.SHARE_AGGREGATE_NAME]
         self.assertEqual(expected, result)
 
-    @ddt.data(("fake_server", "fake_domain"), (None, None))
-    @ddt.unpack
-    def test__create_ldap_client_error(self, server, domain):
+    def test__create_ldap_client_error(self):
         security_service = {
-            'server': server,
-            'domain': domain,
+            'server': None,
+            'domain': None,
             'user': 'fake_user',
             'ou': 'fake_ou',
             'dns_ip': 'fake_ip',

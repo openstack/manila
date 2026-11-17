@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue on the ONTAP NetApp driver where configuring an LDAP
+    security service with both a ``server`` and a ``domain`` parameter would
+    raise an error instead of using the server addresses as preferred Active
+    Directory LDAP servers. For more details, please check
+    `Launchpad bug #2174724 <https://bugs.launchpad.net/manila/+bug/2174724>`_
