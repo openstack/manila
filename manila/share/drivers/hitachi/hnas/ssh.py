@@ -671,7 +671,8 @@ class HNASSSHBackend(object):
     @mutils.synchronized("hitachi_hnas_select_fs", external=True)
     def _locked_selectfs(self, op, path):
         if op == 'create':
-            command = ['selectfs', self.fs_name, '\n',
+            command = ['selectfs', self.fs_name,
+                       mutils.SSHCommandOperator('\n'),
                        'ssc', '127.0.0.1', 'console-context', '--evs',
                        self.evs_id, 'mkdir', '-p', path]
             try:
@@ -688,7 +689,8 @@ class HNASSSHBackend(object):
                     raise exception.HNASBackendException(msg=msg)
 
         if op == 'delete':
-            command = ['selectfs', self.fs_name, '\n',
+            command = ['selectfs', self.fs_name,
+                       mutils.SSHCommandOperator('\n'),
                        'ssc', '127.0.0.1', 'console-context', '--evs',
                        self.evs_id, 'rmdir', path]
             try:

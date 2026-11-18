@@ -661,9 +661,24 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._remove_mount_permanently(self.share.id, self.server)
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
-            ['sudo', 'sed', '-i', '\'/%s/d\'' % self.share.id,
+            ['sudo', 'sed', '-i', '/%s/d' % self.share.id,
              const.MOUNT_FILE],
         )
+
+    def test_ssh_exec_preserves_sed_expression(self):
+        ssh = mock.Mock()
+        ssh.get_transport().is_active.return_value = True
+        self._driver.ssh_connections = {
+            self.server['instance_id']: (mock.Mock(), ssh)}
+        self.mock_object(processutils, 'ssh_execute')
+
+        self._driver._ssh_exec(
+            self.server,
+            ['sudo', 'sed', '-i', '/share-id/d', const.MOUNT_FILE])
+
+        processutils.ssh_execute.assert_called_once_with(
+            ssh, 'sudo sed -i /share-id/d %s' % const.MOUNT_FILE,
+            check_exit_code=True)
 
     def test_remove_mount_permanently_raise_error_on_remove(self):
         self.mock_object(
@@ -677,7 +692,7 @@ class GenericShareDriverTestCase(test.TestCase):
         )
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
-            ['sudo', 'sed', '-i', '\'/%s/d\'' % self.share.id,
+            ['sudo', 'sed', '-i', '/%s/d' % self.share.id,
              const.MOUNT_FILE],
         )
 
@@ -1387,7 +1402,19 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._ssh_exec(self.server, cmd)
 
         processutils.ssh_execute.assert_called_once_with(
-            ssh, 'fake "command spaced"', check_exit_code=True)
+            ssh, "fake 'command spaced'", check_exit_code=True)
+
+    def test_ssh_exec_quotes_shell_metacharacters(self):
+        ssh = mock.Mock()
+        ssh.get_transport().is_active.return_value = True
+        self._driver.ssh_connections = {
+            self.server['instance_id']: (mock.Mock(), ssh)}
+        self.mock_object(processutils, 'ssh_execute')
+
+        self._driver._ssh_exec(self.server, ['fake', '$(unsafe)'])
+
+        processutils.ssh_execute.assert_called_once_with(
+            ssh, "fake '$(unsafe)'", check_exit_code=True)
 
     def test_get_share_stats_refresh_false(self):
         self._driver._stats = {'fake_key': 'fake_value'}

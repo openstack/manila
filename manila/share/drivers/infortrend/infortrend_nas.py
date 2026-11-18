@@ -56,8 +56,8 @@ class InfortrendNAS(object):
 
     def _execute(self, command_line):
         command_line.extend(['-z', self.location])
+        manila_utils.check_ssh_injection(command_line)
         commands = ' '.join(command_line)
-        manila_utils.check_ssh_injection(commands)
         LOG.debug('Executing: %(command)s', {'command': commands})
 
         cli_out = self._ssh_execute(commands)
