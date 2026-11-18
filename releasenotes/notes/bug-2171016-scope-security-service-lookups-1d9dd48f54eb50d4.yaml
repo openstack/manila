@@ -1,5 +1,5 @@
 ---
-fixes:
+security:
   - |
     Adding a security service to a share network, updating it, and
     checking an update now only accept security services that belong to
