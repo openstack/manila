@@ -1452,8 +1452,11 @@ class NetAppCmodeFileStorageLibrary(object):
                                            timeout)
 
         if volume_tags:
-            vserver_client.modify_volume(aggr_list, share_name,
-                                         volume_tags=volume_tags)
+            vserver_client.modify_volume(
+                aggr_list, share_name,
+                thin_provisioned=provisioning_options.get(
+                    'thin_provisioned', False),
+                volume_tags=volume_tags)
 
         if provisioning_options.get('volume_type') != 'dp':
             efficiency_policy = provisioning_options.get(

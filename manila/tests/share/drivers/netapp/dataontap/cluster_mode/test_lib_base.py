@@ -1730,6 +1730,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         else:
             self.assertFalse(vserver_client.set_volume_max_files.called)
 
+    @ddt.data(True, False)
+    def test_create_flexgroup_share_with_volume_tags(self, thin_provisioned):
+        self.library.configuration.netapp_flexgroup_volume_online_timeout = 2
+        vserver_client = mock.Mock()
+        vserver_client.get_job_state.return_value = "success"
+        self.mock_object(
+            self.library, 'wait_for_start_create_flexgroup',
+            mock.Mock(return_value={'jobid': fake.JOB_ID, 'error-code': None}))
+        self.mock_object(self.library, 'wait_for_flexgroup_deployment')
+        aggr_list = [fake.AGGREGATE]
+
+        self.library._create_flexgroup_share(
+            vserver_client, aggr_list, fake.SHARE_NAME, 100, 10,
+            volume_tags=fake.VOLUME_TAGS,
+            thin_provisioned=thin_provisioned)
+
+        # NOTE: the tag update must carry the same thin_provisioned value
+        # used at create time, otherwise it silently flips the volume's
+        # space guarantee (bug OPENSTACK-8401).
+        vserver_client.modify_volume.assert_called_once_with(
+            aggr_list, fake.SHARE_NAME,
+            thin_provisioned=thin_provisioned,
+            volume_tags=fake.VOLUME_TAGS)
+
     def test_create_flexgroup_share_dp_skips_efficiency(self):
         self.library.configuration.netapp_flexgroup_volume_online_timeout = 2
         vserver_client = mock.Mock()
