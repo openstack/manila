@@ -87,7 +87,7 @@ index_request_query = {
 }
 
 # >= v2.36: like filters for name~/description~
-index_request_query_v236 = copy.copy(index_request_query)
+index_request_query_v236 = copy.deepcopy(index_request_query)
 index_request_query_v236['properties'].update({
     'name~': parameter_types.single_param({
         'type': 'string',
@@ -102,7 +102,7 @@ index_request_query_v236['properties'].update({
 })
 
 # >= v2.73: metadata filter
-index_request_query_v273 = copy.copy(index_request_query_v236)
+index_request_query_v273 = copy.deepcopy(index_request_query_v236)
 index_request_query_v273['properties'].update({
     'metadata': parameter_types.single_param({
         'type': 'string',
@@ -112,7 +112,7 @@ index_request_query_v273['properties'].update({
 })
 
 # >= v2.79: with_count flag added on top
-index_request_query_v279 = copy.copy(index_request_query_v273)
+index_request_query_v279 = copy.deepcopy(index_request_query_v273)
 index_request_query_v279['properties'].update({
     'with_count': parameter_types.single_param({
         **parameter_types.boolean,
