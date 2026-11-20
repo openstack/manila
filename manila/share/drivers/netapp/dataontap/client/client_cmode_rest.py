@@ -322,43 +322,47 @@ class NetAppRestClient(object):
             'fields': 'version'
         }
 
+        # NOTE: Unlike collection endpoints such as /cluster/nodes, the
+        # /cluster endpoint returns a single object. SVM-scoped accounts
+        # can read it too, so there is no /private/cli fallback.
+        response = self.send_request('/cluster', 'get', query=query,
+                                     enable_tunneling=False)
         try:
-            # NOTE: Unlike collection endpoints such as /cluster/nodes, the
-            # /cluster endpoint returns a single object, so the version is
-            # read directly from the response instead of from 'records'. On
-            # the supported ONTAP releases (9.12.1+) this endpoint is also
-            # reachable by SVM-scoped accounts; the /private/cli fallback
-            # below covers older releases that deny SVM access to /cluster.
-            response = self.send_request('/cluster', 'get', query=query,
-                                         enable_tunneling=False)
+            return self._parse_cluster_version(response.get('version'))
+        except (KeyError, TypeError, IndexError, ValueError):
+            LOG.error('Failed to parse the ONTAP version from the '
+                      '/cluster response.')
+            msg = _('Failed to parse the ONTAP version from the '
+                    '/cluster response.')
+            raise na_utils.NetAppDriverException(msg)
 
-            return {
-                'version': response['version']['full'],
-                'version-tuple': (response['version']['generation'],
-                                  response['version']['major'],
-                                  response['version']['minor']),
-            }
-        except netapp_api.api.NaApiError as e:
-            if e.code != netapp_api.EREST_NOT_AUTHORIZED:
-                raise
+    def _parse_cluster_version(self, version_field):
+        """Normalize the /cluster ``version`` field.
 
-            # NOTE: Older ONTAP versions might not authorize an
-            # SVM scoped account to access the /cluster endpoint, that's why
-            # we keep /private/cli as a safety net fallback.
-
-            response = self.send_request('/private/cli/version', 'get',
-                                         query=query)
-            # Response is formatted as:
-            # 'NetApp Release 9.12.1: Wed Feb 01 01:10:18 UTC 2023'
-            version_full = response['records'][0]['version']['full']
-            version_parsed = re.findall(r'\d+\.\d+\.\d+', version_full)[0]
-            version_splited = version_parsed.split('.')
-            return {
-                'version': version_full,
-                'version-tuple': (int(version_splited[0]),
-                                  int(version_splited[1]),
-                                  int(version_splited[2])),
-            }
+        ONTAP may return a string such as
+        ``NetApp Release 9.12.1: ...`` or a dict with ``full``,
+        ``generation``, ``major`` and ``minor``. A version string is
+        parsed by :func:`na_utils.parse_ontap_version_tuple`.
+        """
+        if isinstance(version_field, dict):
+            version_full = version_field['full']
+            if all(key in version_field
+                   for key in ('generation', 'major', 'minor')):
+                version_tuple = (
+                    int(version_field['generation']),
+                    int(version_field['major']),
+                    int(version_field['minor']),
+                )
+            else:
+                version_tuple = na_utils.parse_ontap_version_tuple(
+                    version_full)
+        else:
+            version_full = version_field
+            version_tuple = na_utils.parse_ontap_version_tuple(version_full)
+        return {
+            'version': version_full,
+            'version-tuple': version_tuple,
+        }
 
     @na_utils.trace
     def get_job(self, job_uuid):
