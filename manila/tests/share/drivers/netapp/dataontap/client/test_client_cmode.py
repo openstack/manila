@@ -2775,8 +2775,34 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('ldap-client-create', ldap_client_create_args),
             mock.call('ldap-config-create', ldap_config_create_args)])
 
-    @ddt.data({'server': None, 'domain': None},
-              {'server': 'fake_server', 'domain': 'fake_domain'})
+    def test__create_ldap_client_ad_with_preferred_servers(self):
+        self.client.features.add_feature('LDAP_LDAP_SERVERS')
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'configure_dns')
+        sec_service = copy.deepcopy(fake.LDAP_AD_SECURITY_SERVICE)
+        sec_service['server'] = '10.0.0.1, 10.0.0.2 '
+
+        self.client._create_ldap_client(sec_service)
+
+        config_name = hashlib.md5(
+            sec_service['id'].encode("latin-1")).hexdigest()
+        ldap_client_create_args = {
+            'ldap-client-config': config_name,
+            'tcp-port': '389',
+            'schema': 'MS-AD-BIS',
+            'bind-dn': sec_service['user'] + '@' + sec_service['domain'],
+            'bind-password': sec_service['password'],
+            'base-dn': sec_service['ou'],
+            'ad-domain': sec_service['domain'],
+            'preferred-ad-servers': [
+                {'ip-address': '10.0.0.1'},
+                {'ip-address': '10.0.0.2'},
+            ],
+        }
+        self.client.send_request.assert_called_once_with(
+            'ldap-client-create', ldap_client_create_args)
+
+    @ddt.data({'server': None, 'domain': None})
     @ddt.unpack
     def test_configure_ldap_invalid_parameters(self, server, domain):
         fake_ldap_sec_service = copy.deepcopy(fake.LDAP_AD_SECURITY_SERVICE)

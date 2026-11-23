@@ -4501,6 +4501,21 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             new_sec_service, current_security_service=curr_sec_service)
 
     @ddt.data(
+        {'server': 'fake_server', 'domain': 'fake_domain', 'expected': True},
+        {'server': None, 'domain': None, 'expected': False},
+    )
+    @ddt.unpack
+    def test_is_security_service_valid_ldap_server_domain(self, server, domain,
+                                                          expected):
+        security_service = copy.deepcopy(fake.LDAP_AD_SECURITY_SERVICE)
+        security_service['server'] = server
+        security_service['domain'] = domain
+
+        result = self.library._is_security_service_valid(security_service)
+
+        self.assertEqual(expected, result)
+
+    @ddt.data(
         {'new': fake.LDAP_AD_SECURITY_SERVICE,
          'current': fake.LDAP_LINUX_SECURITY_SERVICE,
          'expected': True},

@@ -1840,13 +1840,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         ldap_schema = 'RFC-2307'
 
         if ad_domain:
-            if ldap_servers:
-                msg = _("LDAP client cannot be configured with both 'server' "
-                        "and 'domain' parameters. Use 'server' for Linux/Unix "
-                        "LDAP servers or 'domain' for Active Directory LDAP "
-                        "servers.")
-                LOG.exception(msg)
-                raise exception.NetAppException(msg)
             # RFC2307bis, for MS Active Directory LDAP server
             ldap_schema = 'MS-AD-BIS'
             bind_dn = (security_service.get('user') + '@' + ad_domain)
@@ -1878,6 +1871,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         if ad_domain:
             # Active Directory LDAP server
             api_args['ad-domain'] = ad_domain
+            if ldap_servers:
+                api_args['preferred-ad-servers'] = []
+                for server in ldap_servers.split(','):
+                    api_args['preferred-ad-servers'].append(
+                        {'ip-address': server.strip()})
         else:
             # Linux/Unix LDAP servers
             if self.features.LDAP_LDAP_SERVERS:
