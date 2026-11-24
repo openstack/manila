@@ -1,0 +1,24 @@
+---
+features:
+  - |
+    NetApp Driver: Enriched periodic EMS (AutoSupport) payloads for the ONTAP
+    cluster-mode driver.
+
+    - **Event-0** (hourly) — structured JSON with driver identity and dynamic
+      feature flags derived from driver configuration and live ONTAP state
+      (IP version support, QoS, encryption, replication, FlexGroup, DHSS).
+    - **Event-1** (daily) — pool catalog with per-pool capacity stats
+      (``total_capacity_gb``, ``free_capacity_gb``, ``utilization``).
+    - ``computer-name`` is sanitised to never expose IP addresses; a DNS
+      hostname or the placeholder ``Manila_node`` is used instead.
+    - **New: config snapshot in event-0.** A ``configs`` section is now
+      included in the event-0 payload sent to the ONTAP cluster. This is
+      net-new off-box data: non-sensitive NetApp driver configuration options
+      are transmitted to the cluster with each hourly EMS event. Known
+      sensitive options (credentials, certificates, DNS entries) are excluded
+      via the ``EMS_SECRET_OPTS`` denylist; options whose oslo.config
+      definition carries ``secret=True`` are also excluded.
+    - **Operators who wish to prevent any configuration data leaving the
+      host** should set ``netapp_enable_ems_autosupport = False`` in their
+      backend configuration. This toggle disables all EMS/AutoSupport
+      reporting for the affected backend.
