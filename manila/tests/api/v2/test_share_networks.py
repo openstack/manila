@@ -1006,7 +1006,7 @@ class ShareNetworkAPITest(test.TestCase):
         self.controller.add_security_service(req, share_network_id, body)
 
         db_api.security_service_get.assert_called_once_with(
-            context, security_service_id)
+            context, security_service_id, project_only=True)
         (self.controller._share_network_subnets_contain_share_servers.
          assert_called_once_with(share_network))
         db_api.share_network_get.assert_called_once_with(
@@ -1029,7 +1029,7 @@ class ShareNetworkAPITest(test.TestCase):
         )
 
         db_api.security_service_get.assert_called_once_with(
-            context, security_service_id)
+            context, security_service_id, project_only=True)
         (self.controller._share_network_subnets_contain_share_servers.
          assert_called_once_with(share_network))
         db_api.share_network_get.assert_called_once_with(
@@ -1060,7 +1060,7 @@ class ShareNetworkAPITest(test.TestCase):
         )
 
         db_api.security_service_get.assert_called_once_with(
-            context, security_service_id)
+            context, security_service_id, project_only=True)
         db_api.share_network_get.assert_called_once_with(
             context, share_network_id)
         (self.controller.share_api.update_share_network_security_service.
@@ -1108,7 +1108,8 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             request.environ['manila.context'], share_network['id'])
         db_api.security_service_get.assert_called_once_with(
-            request.environ['manila.context'], security_service['id'])
+            request.environ['manila.context'], security_service['id'],
+            project_only=True)
         share_networks.policy.check_policy.assert_called_once_with(
             request.environ['manila.context'],
             share_networks.RESOURCE_NAME,
@@ -1165,7 +1166,7 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             context, share_network['id'])
         db_api.security_service_get.assert_has_calls(
-            [mock.call(context, security_services[0]['id'])]
+            [mock.call(context, security_services[0]['id'], project_only=True)]
         )
 
     @ddt.data(
@@ -1193,8 +1194,8 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             context, share_network['id'])
         db_api.security_service_get.assert_has_calls(
-            [mock.call(context, security_services[0]['id']),
-             mock.call(context, security_services[1]['id'])]
+            [mock.call(context, security_services[0]['id'], project_only=True),
+             mock.call(context, security_services[1]['id'], project_only=True)]
         )
 
     def test_update_security_service(self):
@@ -1213,8 +1214,8 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             context, share_network['id'])
         db_api.security_service_get.assert_has_calls(
-            [mock.call(context, security_services[0]['id']),
-             mock.call(context, security_services[1]['id'])]
+            [mock.call(context, security_services[0]['id'], project_only=True),
+             mock.call(context, security_services[1]['id'], project_only=True)]
         )
         (self.controller.share_api.update_share_network_security_service.
             assert_called_once_with(
@@ -1430,7 +1431,7 @@ class ShareNetworkAPITest(test.TestCase):
             context, share_network['id']
         )
         db_api.security_service_get.assert_called_once_with(
-            context, security_services[0]['id'])
+            context, security_services[0]['id'], project_only=True)
 
     def test_check_update_security_service(self):
         security_services, share_network, body, request = (
@@ -1459,8 +1460,9 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             context, share_network['id'])
         db_api.security_service_get.assert_has_calls(
-            [mock.call(context, security_services[0]['id']),
-             mock.call(context, security_services[1]['id'])])
+            [mock.call(context, security_services[0]['id'], project_only=True),
+             mock.call(context, security_services[1]['id'],
+                       project_only=True)])
         (self.controller.share_api.check_share_network_security_service_update.
             assert_called_once_with(
                 context, share_network, security_services[1],
@@ -1502,8 +1504,9 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             context, share_network['id'])
         db_api.security_service_get.assert_has_calls(
-            [mock.call(context, security_services[0]['id']),
-             mock.call(context, security_services[1]['id'])])
+            [mock.call(context, security_services[0]['id'], project_only=True),
+             mock.call(context, security_services[1]['id'],
+                       project_only=True)])
         (self.controller.share_api.check_share_network_security_service_update.
             assert_called_once_with(
                 context, share_network, security_services[1],
@@ -1692,8 +1695,9 @@ class ShareNetworkAPITest(test.TestCase):
         db_api.share_network_get.assert_called_once_with(
             context, share_network['id'])
         db_api.security_service_get.assert_has_calls(
-            [mock.call(context, security_services[0]['id']),
-             mock.call(context, security_services[1]['id'])])
+            [mock.call(context, security_services[0]['id'], project_only=True),
+             mock.call(context, security_services[1]['id'],
+                       project_only=True)])
         (self.controller.share_api.update_share_network_security_service.
             assert_called_once_with(
                 context, share_network, security_services[1],
