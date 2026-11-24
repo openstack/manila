@@ -50,6 +50,13 @@ one of these supported replication types:
   a primary share. In readable and dr styles of replication, a secondary
   replica may be referred to as passive, non-active or simply replica.
 
+.. note::
+
+    Share replica APIs were introduced in API version 2.11 as experimental
+    APIs. From version 2.11 through 2.55, requests must include the
+    ``X-OpenStack-Manila-API-Experimental: True`` header. Share replica
+    APIs are no longer considered experimental since API version 2.56,
+    and the header is not required.
 
 Create share replica
 ~~~~~~~~~~~~~~~~~~~~
