@@ -300,6 +300,15 @@ FAKE_ACTIVE_IQ_WEIGHER_AGGREGATES_RESPONSE = {
     ]
 }
 
+FAKE_ACTIVE_IQ_WEIGHER_PSL_RESPONSE = {
+    "records": [
+        {
+            "name": "fake_psl_name",
+            "key": "fake_psl_key",
+        },
+    ],
+}
+
 FAKE_ACTIVE_IQ_WEIGHER_BALANCE_RESPONSE = [
     {
         "key": "fake_key_1",

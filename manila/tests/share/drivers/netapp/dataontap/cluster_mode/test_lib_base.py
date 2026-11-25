@@ -37,6 +37,7 @@ from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
 from manila.share.drivers.netapp.dataontap.client import rest_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
@@ -11066,4 +11067,1902 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library._get_dest_aggr_encryption_value(
             fake.BACKEND_NAME, fake.AGGREGATE)
+        self.assertFalse(result)
+
+    def test_do_setup_snaplock_compliance_clock_not_configured(self):
+        api_client = mock.Mock()
+        api_client.check_for_cluster_credentials.return_value = True
+        api_client.list_cluster_nodes.return_value = list(fake.CLUSTER_NODES)
+        api_client.is_snaplock_compliance_clock_configured.return_value = (
+            False)
+        self.mock_object(self.library, '_get_api_client',
+                         mock.Mock(return_value=api_client))
+        self.mock_object(self.library, '_set_cluster_info')
+        self.mock_object(performance, 'PerformanceLibrary')
+        self.mock_object(self.library, '_get_licenses',
+                         mock.Mock(return_value=fake.LICENSES))
+        self.mock_object(self.library, '_check_snaprestore_license',
+                         mock.Mock(return_value=True))
+
+        self.library.do_setup(self.context)
+
+        self.assertFalse(self.library._is_snaplock_compliance_configured)
+        (api_client.is_snaplock_compliance_clock_configured.
+         assert_called_once_with(fake.CLUSTER_NODES[0]))
+
+    def test_do_setup_without_transfer_limit_nfs_config(self):
+        api_client = mock.Mock()
+        api_client.check_for_cluster_credentials.return_value = False
+        api_client.features.TRANSFER_LIMIT_NFS_CONFIG = False
+        self.mock_object(self.library, '_get_api_client',
+                         mock.Mock(return_value=api_client))
+        self.mock_object(performance, 'PerformanceLibrary')
+        self.mock_object(self.library, '_get_licenses',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_check_snaprestore_license',
+                         mock.Mock(return_value=False))
+
+        self.library.do_setup(self.context)
+
+        self.assertFalse(self.library.is_nfs_config_supported)
+        self.assertIsNone(self.library._default_nfs_config)
+        api_client.get_nfs_config_default.assert_not_called()
+
+    def test_get_client_rest(self):
+        config = fake.get_config_cmode()
+        config.netapp_use_legacy_client = False
+        config.netapp_rest_operation_timeout = 42
+        config.netapp_zapi_fallback_enabled = False
+        mock_rest_client = self.mock_object(
+            client_cmode_rest, 'NetAppRestClient')
+
+        result = self.library._get_client(config, vserver=fake.VSERVER1)
+
+        self.assertEqual(mock_rest_client.return_value, result)
+        call_kwargs = mock_rest_client.call_args[1]
+        self.assertEqual(fake.VSERVER1, call_kwargs['vserver'])
+        self.assertEqual(42, call_kwargs['async_rest_timeout'])
+        self.assertFalse(call_kwargs['zapi_fallback_enabled'])
+
+    def test_get_api_client_for_backend_caches_client(self):
+        config = fake.get_config_cmode()
+        mock_get_backend_config = self.mock_object(
+            data_motion, 'get_backend_configuration',
+            mock.Mock(return_value=config))
+        mock_get_client = self.mock_object(
+            self.library, '_get_client',
+            mock.Mock(side_effect=['first_client', 'second_client']))
+
+        first = self.library._get_api_client_for_backend(
+            fake.BACKEND_NAME, vserver=fake.VSERVER1)
+        second = self.library._get_api_client_for_backend(
+            fake.BACKEND_NAME, vserver=fake.VSERVER1)
+
+        self.assertEqual('first_client', first)
+        self.assertEqual('first_client', second)
+        mock_get_backend_config.assert_called_once_with(fake.BACKEND_NAME)
+        mock_get_client.assert_called_once_with(
+            config, vserver=fake.VSERVER1)
+
+    def test_get_aggregate_node_with_cluster_client(self):
+        cluster_client = mock.Mock()
+        cluster_client.get_node_for_aggregate.return_value = {
+            'home_node': fake.CLUSTER_NODE}
+
+        result = self.library._get_aggregate_node(
+            fake.AGGREGATE, cluster_client=cluster_client)
+
+        self.assertEqual(fake.CLUSTER_NODE, result)
+        cluster_client.get_node_for_aggregate.assert_called_once_with(
+            fake.AGGREGATE)
+        self.library._client.get_node_for_aggregate.assert_not_called()
+
+    def test_get_aggregate_node_aggregate_not_found(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library._client, 'get_node_for_aggregate',
+                         mock.Mock(return_value=None))
+
+        result = self.library._get_aggregate_node(fake.AGGREGATE)
+
+        self.assertIsNone(result)
+
+    def test_get_share_server_pools_from_cache(self):
+        mock_get_pools = self.mock_object(self.library, '_get_pools')
+        self.library._cache_pool_status = na_utils.DataCache(60)
+        self.library._cache_pool_status.update_data(fake.POOLS)
+
+        result = self.library.get_share_server_pools(fake.SHARE_SERVER)
+
+        self.assertListEqual(fake.POOLS, result)
+        mock_get_pools.assert_not_called()
+
+    def test_get_pools_reuses_configured_cluster_name(self):
+        self.library._cluster_name = fake.CLUSTER_NAME
+        self.library._have_cluster_creds = True
+        self.library._cache_pool_status = na_utils.DataCache(60)
+        self.mock_object(self.library, '_find_matching_aggregates',
+                         mock.Mock(return_value=[fake.AGGREGATES[0]]))
+        self.mock_object(self.library, '_get_flexgroup_aggr_set',
+                         mock.Mock(return_value=set()))
+        self.mock_object(self.library, '_get_aggregate_pool_attributes',
+                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+        self.mock_object(self.library, '_get_flexvol_pool_space',
+                         mock.Mock(return_value=(1.0, 1.0, 1.0)))
+        self.mock_object(self.library, '_get_pool',
+                         mock.Mock(return_value=copy.deepcopy(fake.POOLS[0])))
+        mock_get_cluster_name = self.mock_object(self.library._client,
+                                                 'get_cluster_name')
+
+        result = self.library._get_pools()
+
+        self.assertEqual(1, len(result))
+        self.assertEqual(fake.CLUSTER_NAME, result[0]['netapp_cluster_name'])
+        mock_get_cluster_name.assert_not_called()
+        (self.library._perf_library.update_performance_cache.
+         assert_not_called())
+
+    def test_get_pool_unknown_capacity_and_no_ssc_stats(self):
+        self.library._have_cluster_creds = True
+        self.library._ssc_stats = {}
+        self.library._cluster_info = fake.CLUSTER_INFO
+        self.library._perf_library.get_node_utilization_for_pool = (
+            mock.Mock(return_value=30.0))
+
+        result = self.library._get_pool(fake.POOL_NAME, 0.0, 0.0, 0.0, True)
+
+        self.assertEqual('unknown', result['total_capacity_gb'])
+        self.assertNotIn('netapp_aggregate', result)
+        self.assertTrue(result['netapp_aggregate_encryption'])
+
+    def test_get_backup_vserver_not_implemented(self):
+        self.assertRaises(NotImplementedError,
+                          self.library._get_backup_vserver,
+                          fake.SHARE_BACKUP)
+
+    def test_delete_backup_vserver_not_implemented(self):
+        self.assertRaises(NotImplementedError,
+                          self.library._delete_backup_vserver,
+                          fake.SHARE_BACKUP, fake.VSERVER2)
+
+    def test_create_share_from_snapshot_parent_without_share_server(self):
+        self.library._have_cluster_creds = False
+        self._setup_mocks_for_create_share_from_snapshot()
+        self.parent_share['share_server'] = None
+
+        result = self.library.create_share_from_snapshot(
+            self.context, self.fake_share, fake.SNAPSHOT,
+            share_server=self.fake_share_server,
+            parent_share=self.parent_share)
+
+        self.assertEqual(
+            {'status': constants.STATUS_CREATING_FROM_SNAPSHOT}, result)
+        src_share = json.loads(
+            self.mock_storage_update.call_args[0][1]['source_share'])
+        self.assertIsNone(src_share['share_server'])
+
+    def test_create_share_from_snapshot_flexgroup_auto_skips_aggr_list(self):
+        self.library._have_cluster_creds = True
+        self.library._is_flexgroup_auto = True
+        self._setup_mocks_for_create_share_from_snapshot(is_flexgroup=True)
+
+        result = self.library.create_share_from_snapshot(
+            self.context, self.fake_share, fake.SNAPSHOT,
+            share_server=self.fake_share_server,
+            parent_share=self.parent_share)
+
+        self.assertEqual(
+            {'status': constants.STATUS_CREATING_FROM_SNAPSHOT}, result)
+        self.mock_get_flexgroup_aggregate_list.assert_not_called()
+
+    def test__create_from_snapshot_continue_flexgroup_auto_aggregates(self):
+        self.library._is_flexgroup_auto = True
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_MOVING_VOLUME,
+            is_flexgroup=True)
+        self.dest_vserver_client.get_aggregate_for_volume.return_value = [
+            fake.AGGREGATE]
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+        (self.dest_vserver_client.get_aggregate_for_volume.
+         assert_called_once_with(fake.SHARE_NAME))
+        self.mock_get_flexgroup_aggregate_list.assert_not_called()
+        self.assertEqual([fake.AGGREGATE],
+                         self.mock_modify_vol.call_args[0][0])
+
+    def test__create_from_snapshot_continue_split_not_completed(self):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_SPLITTING_VOLUME_CLONE,
+            split_completed_result=False)
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(
+            {'status': constants.STATUS_CREATING_FROM_SNAPSHOT}, result)
+        self.mock_rehost_vol.assert_not_called()
+        self.mock_move_vol.assert_not_called()
+        self.mock_pvt_storage_update.assert_called_once_with(
+            fake.SHARE['id'],
+            {'source_share': json.dumps(self.fake_src_share)})
+
+    def test__create_from_snapshot_continue_split_same_vserver(self):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_SPLITTING_VOLUME_CLONE)
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, self.dest_vserver_client)))
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+        self.mock_rehost_vol.assert_not_called()
+        self.mock_mark_qos_deletion.assert_not_called()
+        self.mock_modify_vol.assert_not_called()
+        self.mock_pvt_storage_delete.assert_called_once_with(fake.SHARE['id'])
+
+    def test__create_from_snapshot_continue_move_same_vserver(self):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_MOVING_VOLUME)
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, self.dest_vserver_client)))
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+        self.mock_modify_vol.assert_not_called()
+
+    @ddt.data(None, constants.STATUS_ERROR)
+    def test__create_from_snapshot_continue_replication_failed(
+            self, replica_state):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_SNAPMIRROR_DATA_COPYING,
+            replica_state=replica_state)
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._create_from_snapshot_continue,
+                          fake.SHARE, fake.SHARE_SERVER)
+
+        self.mock_update_snapmirror.assert_not_called()
+        self.mock_break_snapmirror.assert_not_called()
+
+    def test__create_from_snapshot_continue_source_unreachable(self):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_SNAPMIRROR_DATA_COPYING,
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+        self.mock_object(
+            self.mock_dm_session, 'update_snapmirror',
+            mock.Mock(side_effect=exception.StorageCommunicationException))
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+        self.mock_break_snapmirror.assert_called_once_with(
+            self.fake_src_share, fake.SHARE)
+
+    @ddt.data('fixed', 'adaptive')
+    def test__create_from_snapshot_continue_applies_qos_type(
+            self, policy_type):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_MOVING_VOLUME)
+        qos_type_specs = {'policy_type': policy_type}
+        self.mock_object(qos_types, 'get_specs_from_share',
+                         mock.Mock(return_value=qos_type_specs))
+        self.mock_object(self.library, '_get_normalized_qos_type_specs',
+                         mock.Mock(return_value=qos_type_specs))
+        mock_create_qos_type = self.mock_object(
+            self.library, '_create_qos_type_policy_group',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+        mock_create_qos_type.assert_called_once_with(
+            fake.SHARE, fake.VSERVER2, qos_type_specs,
+            self.dest_vserver_client)
+        self.mock_modify_create_qos.assert_not_called()
+        expected_key = ('qos_policy_group' if policy_type == 'fixed'
+                        else 'adaptive_qos_policy_group')
+        self.assertEqual(fake.QOS_POLICY_GROUP_NAME,
+                         self.mock_modify_vol.call_args[1][expected_key])
+
+    def test__create_from_snapshot_continue_without_qos_policy_group(self):
+        self._setup_mocks_for_create_from_snapshot_continue(
+            share_internal_state=self.library.STATE_MOVING_VOLUME)
+        self.mock_object(self.library,
+                         '_modify_or_create_qos_for_existing_share',
+                         mock.Mock(return_value=None))
+
+        result = self.library._create_from_snapshot_continue(
+            fake.SHARE, fake.SHARE_SERVER)
+
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+        self.assertNotIn('qos_policy_group',
+                         self.mock_modify_vol.call_args[1])
+
+    def _mock_flexgroup_creation(self):
+        self.library.configuration.netapp_flexgroup_volume_online_timeout = 2
+        self.mock_object(
+            self.library, 'wait_for_start_create_flexgroup',
+            mock.Mock(return_value={'jobid': fake.JOB_ID,
+                                    'error-code': None}))
+        self.mock_object(self.library, 'wait_for_flexgroup_deployment')
+
+    def test_create_flexgroup_share_replica_keeps_max_files(self):
+        self._mock_flexgroup_creation()
+        vserver_client = mock.Mock()
+
+        self.library._create_flexgroup_share(
+            vserver_client, [fake.AGGREGATE], fake.SHARE_NAME, 100, 10,
+            max_files=1000, replica=True)
+
+        vserver_client.set_volume_max_files.assert_not_called()
+
+    def test_create_flexgroup_share_with_max_files_multiplier(self):
+        self._mock_flexgroup_creation()
+        vserver_client = mock.Mock()
+        self.mock_object(na_utils, 'calculate_max_files',
+                         mock.Mock(return_value=9000))
+
+        self.library._create_flexgroup_share(
+            vserver_client, [fake.AGGREGATE], fake.SHARE_NAME, 100, 10,
+            max_files_multiplier='2')
+
+        na_utils.calculate_max_files.assert_called_once_with(100, '2', None)
+        vserver_client.set_volume_max_files.assert_called_once_with(
+            fake.SHARE_NAME, 9000)
+
+    def test_check_string_extra_specs_validity_max_files_multiplier(self):
+        mock_check = self.mock_object(
+            self.library, '_check_if_max_files_multiplier_is_valid')
+
+        self.library._check_string_extra_specs_validity(
+            fake.SHARE, {'netapp:max_files_multiplier': '2'})
+
+        mock_check.assert_called_once_with(fake.SHARE, '2')
+
+    @ddt.data('0', '-1', '9')
+    def test_check_if_max_files_multiplier_is_valid_out_of_range(self, value):
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_if_max_files_multiplier_is_valid,
+            fake.SHARE, value)
+
+    def test_check_if_max_files_multiplier_is_valid(self):
+        result = self.library._check_if_max_files_multiplier_is_valid(
+            fake.SHARE, '4')
+
+        self.assertIsNone(result)
+
+    def test_check_if_max_files_multiplier_is_valid_not_a_number(self):
+        self.assertRaises(
+            exception.InvalidInput,
+            self.library._check_if_max_files_multiplier_is_valid,
+            fake.SHARE, 'not-a-number')
+
+    def test_check_snaplock_attributes_unrelated_key(self):
+        result = self.library._check_snaplock_attributes(
+            fake.SHARE, 'netapp:snaplock_unknown_period', 'garbage')
+
+        self.assertIsNone(result)
+
+    def test_check_snaplock_compatibility_licensed(self):
+        self.library._have_cluster_creds = True
+        self.library._licenses = ['base', 'snaplock']
+        self.library._is_snaplock_compliance_configured = True
+
+        result = self.library._check_snaplock_compatibility()
+
+        self.assertIsNone(result)
+
+    def test_get_normalized_qos_type_specs_invalid_capacity_shared(self):
+        specs = {'policy_type': 'fixed',
+                 'max_throughput_iops': '3000',
+                 'capacity_shared': 'maybe'}
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_normalized_qos_type_specs,
+                          specs)
+
+    def test_get_normalized_qos_type_specs_fixed_without_throughput(self):
+        specs = {'policy_type': 'fixed', 'capacity_shared': 'true'}
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_normalized_qos_type_specs,
+                          specs)
+
+    def test_get_normalized_qos_type_specs_adaptive_optional_specs(self):
+        specs = {
+            'policy_type': 'adaptive',
+            'block_size': 'any',
+            'peak_iops_allocation': 'allocated_space',
+            'expected_iops': '1000',
+            'peak_iops': '3000',
+        }
+
+        result = self.library._get_normalized_qos_type_specs(specs)
+
+        self.assertEqual({'policy_type': 'adaptive',
+                          'block_size': 'any',
+                          'peak_iops_allocation': 'allocated_space',
+                          'expected_iops': 1000,
+                          'peak_iops': 3000}, result)
+
+    def test_get_normalized_qos_type_specs_invalid_block_size(self):
+        specs = {'policy_type': 'adaptive',
+                 'expected_iops': '1000',
+                 'peak_iops': '3000',
+                 'expected_iops_allocation': 'used_space',
+                 'block_size': '2k'}
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_normalized_qos_type_specs,
+                          specs)
+
+    def test_get_normalized_qos_type_specs_adaptive_missing_required(self):
+        specs = {'policy_type': 'adaptive', 'expected_iops': '1000'}
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_normalized_qos_type_specs,
+                          specs)
+
+    def test_modify_or_create_qos_policy_group_already_up_to_date(self):
+        vserver_client = mock.Mock()
+        qos_type_specs = {'max_throughput_iops': '3000'}
+        vserver_client.qos_policy_group_get.return_value = qos_type_specs
+
+        self.library._modify_or_create_qos_policy_group(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER1, qos_type_specs,
+            vserver_client=vserver_client)
+
+        vserver_client.qos_policy_group_modify.assert_not_called()
+        vserver_client.qos_policy_group_create.assert_not_called()
+
+    def test_modify_or_create_adaptive_qos_group_already_up_to_date(self):
+        vserver_client = mock.Mock()
+        qos_type_specs = {'expected_iops': 1000}
+        vserver_client.adaptive_qos_policy_group_get.return_value = (
+            qos_type_specs)
+
+        self.library._modify_or_create_adaptive_qos_policy_group(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER1, qos_type_specs,
+            vserver_client=vserver_client)
+
+        vserver_client.adaptive_qos_policy_group_modify.assert_not_called()
+        vserver_client.adaptive_qos_policy_group_create.assert_not_called()
+
+    def test_get_min_throughput_without_min_qos_specs(self):
+        result = self.library._get_min_throughput(10, {'maxiops': '3000'})
+
+        self.assertIsNone(result)
+
+    def test_get_max_throughput_without_max_qos_specs(self):
+        result = self.library._get_max_throughput(10, {'miniops': '3000'})
+
+        self.assertIsNone(result)
+
+    def test_create_qos_policy_group_with_min_throughput_only(self):
+        mock_qos_policy_create = self.mock_object(
+            self.library._client, 'qos_policy_group_create_legacy')
+
+        self.library._create_qos_policy_group(
+            fake.SHARE, fake.VSERVER1, {'minbpspergib': '100'})
+
+        expected_policy_name = 'qos_share_' + fake.SHARE['id'].replace(
+            '-', '_')
+        mock_qos_policy_create.assert_called_once_with(
+            expected_policy_name, fake.VSERVER1, max_throughput=None,
+            min_throughput='%sB/s' % (100 * fake.SHARE['size']))
+
+    def _mock_provisioning_options_for_share(self, provisioning_options=None,
+                                             pool_name=fake.POOL_NAME,
+                                             qos_specs=None,
+                                             qos_type_specs=None):
+        provisioning_options = ({} if provisioning_options is None
+                                else provisioning_options)
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=provisioning_options))
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(return_value=pool_name))
+        self.mock_object(self.library, '_is_nae_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_normalized_qos_specs',
+                         mock.Mock(return_value=qos_specs or {}))
+        self.mock_object(qos_types, 'get_specs_from_share',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        self.mock_object(self.library, '_get_normalized_qos_type_specs',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
+
+    def test_get_provisioning_options_for_share_without_pool(self):
+        self._mock_provisioning_options_for_share(pool_name=None)
+
+        self.assertRaises(
+            exception.InvalidHost,
+            self.library._get_provisioning_options_for_share,
+            fake.SHARE_INSTANCE, fake.VSERVER1)
+
+    def test_get_provisioning_options_for_share_qos_type_and_qos_specs(self):
+        self._mock_provisioning_options_for_share(
+            qos_specs={'maxiops': '3000'},
+            qos_type_specs={'policy_type': 'fixed'})
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._get_provisioning_options_for_share,
+            fake.SHARE_INSTANCE, fake.VSERVER1)
+
+    def test_get_provisioning_options_for_share_qos_type_and_adaptive(self):
+        self._mock_provisioning_options_for_share(
+            provisioning_options={
+                'adaptive_qos_policy_group': fake.QOS_POLICY_GROUP_NAME},
+            qos_type_specs={'policy_type': 'fixed'})
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._get_provisioning_options_for_share,
+            fake.SHARE_INSTANCE, fake.VSERVER1)
+
+    @ddt.data('fixed', 'adaptive')
+    def test_get_provisioning_options_for_share_with_qos_type(
+            self, policy_type):
+        vserver_client = mock.Mock()
+        qos_type_specs = {'policy_type': policy_type}
+        self._mock_provisioning_options_for_share(
+            qos_type_specs=qos_type_specs)
+        mock_create_qos_type = self.mock_object(
+            self.library, '_create_qos_type_policy_group',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_create_qos = self.mock_object(self.library,
+                                           '_create_qos_policy_group')
+
+        result = self.library._get_provisioning_options_for_share(
+            fake.SHARE_INSTANCE, fake.VSERVER1,
+            vserver_client=vserver_client)
+
+        mock_create_qos.assert_not_called()
+        mock_create_qos_type.assert_called_once_with(
+            fake.SHARE_INSTANCE, fake.VSERVER1, qos_type_specs,
+            vserver_client)
+        expected_key = ('qos_policy_group' if policy_type == 'fixed'
+                        else 'adaptive_qos_policy_group')
+        self.assertEqual(fake.QOS_POLICY_GROUP_NAME, result[expected_key])
+
+    def test_validate_provisioning_options_max_files_and_multiplier(self):
+        provisioning_options = {'max_files': 5000,
+                                'max_files_multiplier': '2'}
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.validate_provisioning_options_for_share,
+            provisioning_options)
+
+    def test_allocate_container_from_snapshot_max_files_multiplier(self):
+        vserver_client = mock.Mock()
+        provisioning_options = copy.deepcopy(fake.PROVISIONING_OPTIONS)
+        provisioning_options['max_files_multiplier'] = '2'
+        self.mock_object(self.library, '_get_provisioning_options_for_share',
+                         mock.Mock(return_value=provisioning_options))
+        self.mock_object(na_utils, 'calculate_max_files',
+                         mock.Mock(return_value=9000))
+        mock_create_fpolicy = self.mock_object(self.library,
+                                               '_create_fpolicy_for_share')
+        share = copy.deepcopy(fake.SHARE_INSTANCE)
+        share['size'] = 50
+        snapshot = copy.deepcopy(fake.SNAPSHOT)
+        snapshot['size'] = 20
+
+        self.library._allocate_container_from_snapshot(
+            share, snapshot, fake.VSERVER1, vserver_client)
+
+        na_utils.calculate_max_files.assert_called_once_with(50, '2')
+        vserver_client.set_volume_max_files.assert_called_once_with(
+            fake.SHARE_INSTANCE_NAME, 9000)
+        mock_create_fpolicy.assert_not_called()
+
+    def test_delete_share_stops_ongoing_clone_split(self):
+        vserver_client = mock.Mock()
+        vserver_client.volume_clone_split_status.return_value = (
+            na_utils.CLONE_SPLIT_STATUS_ONGOING)
+        self.mock_object(self.library, '_share_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_delete_fpolicy_for_share')
+        self.mock_object(self.library, '_remove_export')
+        self.mock_object(self.library, '_deallocate_container')
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+
+        self.library._delete_share(fake.SHARE, fake.VSERVER1, vserver_client)
+
+        vserver_client.volume_clone_split_stop.assert_called_once_with(
+            fake.SHARE_NAME)
+
+    def test_delete_share_private_storage_delete_fails(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_share_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_delete_fpolicy_for_share')
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library.private_storage, 'delete',
+                         mock.Mock(side_effect=Exception('boom')))
+
+        self.library._delete_share(fake.SHARE, fake.VSERVER1, vserver_client)
+
+        self.assertEqual(1, lib_base.LOG.warning.call_count)
+
+    def test_get_export_addresses_with_metadata_flexgroup_unknown_node(self):
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=list(fake.AGGREGATES)))
+        mock_get_node = self.mock_object(self.library, '_get_aggregate_node',
+                                         mock.Mock(return_value=None))
+        self.mock_object(self.library,
+                         '_get_admin_addresses_for_share_server',
+                         mock.Mock(return_value=[]))
+
+        result = self.library._get_export_addresses_with_metadata(
+            fake.SHARE, fake.SHARE_SERVER, fake.LIFS, fake.SHARE['host'])
+
+        self.assertEqual(len(fake.LIFS), len(result))
+        for metadata in result.values():
+            self.assertFalse(metadata['preferred'])
+        self.assertEqual(len(fake.AGGREGATES), mock_get_node.call_count)
+
+    def test_create_snapshot_not_found_after_creation(self):
+        vserver_client = mock.Mock()
+        vserver_client.snapshot_exists.return_value = False
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.assertRaises(exception.SnapshotResourceNotFound,
+                          self.library.create_snapshot,
+                          self.context, fake.SNAPSHOT,
+                          share_server=fake.SHARE_SERVER)
+
+    def test_delete_snapshot_share_not_found(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(
+            self.library, '_is_flexgroup_share',
+            mock.Mock(side_effect=exception.ShareNotFound(
+                share_id=fake.SHARE_ID)))
+        mock_delete_snapshot = self.mock_object(self.library,
+                                                '_delete_snapshot')
+
+        self.library.delete_snapshot(self.context, fake.SNAPSHOT,
+                                     share_server=fake.SHARE_SERVER)
+
+        self.assertFalse(mock_delete_snapshot.call_args[1]['is_flexgroup'])
+
+    def _setup_mocks_for_manage_container(self, vserver_client,
+                                          provisioning_options=None,
+                                          qos_type_specs=None,
+                                          is_flexgroup=False):
+        self.library._have_cluster_creds = True
+        provisioning_options = ({} if provisioning_options is None
+                                else provisioning_options)
+        protocol_helper = mock.Mock()
+        protocol_helper.get_share_name_for_share.return_value = (
+            fake.FLEXVOL_NAME)
+        self.mock_object(self.library, '_get_helper',
+                         mock.Mock(return_value=protocol_helper))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=is_flexgroup))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=is_flexgroup))
+        self.mock_object(self.library, '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=[fake.POOL_NAME]))
+        vserver_client.get_volume_to_manage.return_value = (
+            fake.FLEXVOL_TO_MANAGE)
+        vserver_client.get_volume_snapshot_attributes.return_value = {
+            'snapshot-policy': 'fake_policy'}
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_aggregate_extra_specs_validity')
+        self.mock_object(self.library, '_validate_volume_for_manage')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=provisioning_options))
+        self.mock_object(self.library, '_generate_volume_tags',
+                         mock.Mock(return_value=fake.VOLUME_TAGS))
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
+        self.mock_object(qos_types, 'get_specs_from_share',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        self.mock_object(self.library, '_get_normalized_qos_type_specs',
+                         mock.Mock(return_value=qos_type_specs or {}))
+
+    def test_manage_container_flexgroup_auto_provisioned(self):
+        vserver_client = mock.Mock()
+        self.library._is_flexgroup_auto = True
+        self._setup_mocks_for_manage_container(vserver_client,
+                                               is_flexgroup=True)
+        self.mock_object(self.library._client, 'get_aggregate_for_volume',
+                         mock.Mock(return_value=[fake.AGGREGATE]))
+
+        self.library._manage_container(fake.SHARE, fake.VSERVER1,
+                                       vserver_client)
+
+        (self.library._client.get_aggregate_for_volume.
+         assert_called_once_with(fake.FLEXVOL_NAME))
+        self.library._get_flexgroup_aggregate_list.assert_not_called()
+        vserver_client.get_volume_to_manage.assert_called_once_with(
+            [fake.AGGREGATE], fake.FLEXVOL_NAME)
+
+    def test_manage_container_qos_type_and_qos_specs_conflict(self):
+        vserver_client = mock.Mock()
+        self._setup_mocks_for_manage_container(
+            vserver_client, qos_type_specs={'policy_type': 'fixed'})
+        self.mock_object(self.library, '_get_normalized_qos_specs',
+                         mock.Mock(return_value={'maxiops': '3000'}))
+
+        self.assertRaises(exception.ManageExistingShareTypeMismatch,
+                          self.library._manage_container,
+                          fake.SHARE, fake.VSERVER1, vserver_client)
+
+    @ddt.data('fixed', 'adaptive')
+    def test_manage_container_with_qos_type(self, policy_type):
+        vserver_client = mock.Mock()
+        qos_type_specs = {'policy_type': policy_type}
+        self._setup_mocks_for_manage_container(
+            vserver_client, qos_type_specs=qos_type_specs)
+        mock_create_qos_type = self.mock_object(
+            self.library, '_create_qos_type_policy_group',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_modify_qos = self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share')
+
+        self.library._manage_container(fake.SHARE, fake.VSERVER1,
+                                       vserver_client)
+
+        mock_create_qos_type.assert_called_once_with(
+            fake.SHARE, fake.VSERVER1, qos_type_specs, vserver_client)
+        mock_modify_qos.assert_not_called()
+        expected_key = ('qos_policy_group' if policy_type == 'fixed'
+                        else 'adaptive_qos_policy_group')
+        self.assertEqual(
+            fake.QOS_POLICY_GROUP_NAME,
+            vserver_client.modify_volume.call_args[1][expected_key])
+
+    def test_manage_container_with_max_files_multiplier(self):
+        vserver_client = mock.Mock()
+        self._setup_mocks_for_manage_container(
+            vserver_client,
+            provisioning_options={'max_files_multiplier': '2'})
+        self.mock_object(na_utils, 'calculate_max_files',
+                         mock.Mock(return_value=9000))
+
+        volume_size, __ = self.library._manage_container(
+            fake.SHARE, fake.VSERVER1, vserver_client)
+
+        na_utils.calculate_max_files.assert_called_once_with(volume_size, '2')
+        vserver_client.set_volume_max_files.assert_called_once_with(
+            fake.SHARE_NAME, 9000, retry_allocated=True)
+
+    def test_get_provisioning_options_for_snap_attributes_exception(self):
+        vserver_client = mock.Mock()
+        (self.library.configuration.
+         netapp_volume_snapshot_policy_exceptions) = ['none']
+        vserver_client.get_volume_snapshot_attributes.return_value = {
+            'snapshot-policy': 'None',
+            'snapdir-access-enabled': 'false',
+        }
+
+        result = self.library._get_provisioning_options_for_snap_attributes(
+            vserver_client, fake.SHARE_NAME)
+
+        self.assertEqual({'snapshot_policy': 'None', 'hide_snapdir': True},
+                         result)
+
+    def test_manage_existing_snapshot_backend_snapshot_missing(self):
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.return_value = None
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.library.manage_existing_snapshot,
+                          fake.SNAPSHOT_TO_MANAGE, {},
+                          share_server=fake.SHARE_SERVER)
+
+    def test_extend_share_with_max_files_multiplier(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={'max_files_multiplier': '2'}))
+        self.mock_object(na_utils, 'calculate_max_files',
+                         mock.Mock(return_value=9000))
+        self.mock_object(self.library,
+                         '_adjust_qos_policy_with_volume_resize')
+
+        self.library.extend_share(fake.SHARE, 20)
+
+        na_utils.calculate_max_files.assert_called_once_with(20, '2')
+        vserver_client.set_volume_max_files.assert_called_once_with(
+            fake.SHARE_NAME, 9000)
+
+    def test_shrink_share_with_max_files_multiplier(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={'max_files_multiplier': '2'}))
+        self.mock_object(na_utils, 'calculate_max_files',
+                         mock.Mock(return_value=9000))
+        self.mock_object(self.library,
+                         '_adjust_qos_policy_with_volume_resize')
+
+        self.library.shrink_share(fake.SHARE, 5)
+
+        na_utils.calculate_max_files.assert_called_once_with(5, '2')
+        vserver_client.set_volume_max_files.assert_called_once_with(
+            fake.SHARE_NAME, 9000, retry_allocated=True)
+
+    def test_shrink_share_ignores_unrelated_api_error(self):
+        vserver_client = mock.Mock()
+        vserver_client.set_volume_size.side_effect = netapp_api.NaApiError(
+            code=netapp_api.EAPIERROR)
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value={}))
+        mock_adjust_qos = self.mock_object(
+            self.library, '_adjust_qos_policy_with_volume_resize')
+
+        self.library.shrink_share(fake.SHARE, 5)
+
+        mock_adjust_qos.assert_called_once_with(fake.SHARE, 5, vserver_client)
+
+    def test_update_ssc_info_preserves_existing_entries(self):
+        self.library._flexgroup_pools = fake.FLEXGROUP_POOL_OPT
+        self.library._have_cluster_creds = False
+        self.library._client.features.UNIFIED_AGGR = True
+        self.library._ssc_stats = {
+            fake.AGGREGATES[0]: {'netapp_aggregate': fake.AGGREGATES[0],
+                                 'netapp_flexgroup': False,
+                                 'fake_key': 'fake_value'},
+            fake.FLEXGROUP_POOL_NAME: {'netapp_flexgroup': True,
+                                       'fake_key': 'fake_value'},
+        }
+        self.mock_object(self.library, '_find_matching_aggregates',
+                         mock.Mock(return_value=[fake.AGGREGATES[0]]))
+
+        self.library._update_ssc_info()
+
+        self.assertEqual(
+            'fake_value',
+            self.library._ssc_stats[fake.AGGREGATES[0]]['fake_key'])
+        self.assertEqual(
+            'fake_value',
+            self.library._ssc_stats[fake.FLEXGROUP_POOL_NAME]['fake_key'])
+
+    def test_find_active_replica_none_active(self):
+        replicas = [
+            {'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC},
+            {'replica_state': constants.REPLICA_STATE_IN_SYNC},
+        ]
+
+        result = self.library.find_active_replica(replicas)
+
+        self.assertIsNone(result)
+
+    @ddt.data((3600, ''), (3600, '10d20d30d'), (604800, 'weekly'),
+              (1872000, 'monthly'))
+    @ddt.unpack
+    def test__convert_schedule_to_seconds_other_schedules(self, seconds,
+                                                          schedule):
+        result = self.library._convert_schedule_to_seconds(schedule=schedule)
+
+        self.assertEqual(seconds, result)
+
+    def _setup_mocks_for_create_replica(self, is_flexgroup=False,
+                                        is_readable=False, fan_out=True):
+        mock_dm_session = mock.Mock()
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm_session))
+        mock_dm_session.get_backend_info_for_share.return_value = (
+            fake.SHARE_NAME, fake.VSERVER1, fake.BACKEND_NAME)
+        mock_dm_session.get_vserver_from_share.return_value = fake.VSERVER1
+        (mock_dm_session.get_policy_from_share_replica_metadata.
+         return_value) = ('MirrorAllSnapshots', False)
+        self.src_client = mock.Mock()
+        self.src_client.is_flexgroup_fan_out_supported.return_value = fan_out
+        self.replica_client = mock.Mock()
+        self.mock_object(
+            data_motion, 'get_client_for_backend',
+            mock.Mock(side_effect=[self.src_client, self.replica_client,
+                                   self.replica_client]))
+        self.mock_object(self.library._client,
+                         'is_flexgroup_fan_out_supported',
+                         mock.Mock(return_value=fan_out))
+        self.mock_object(self.library, '_is_flexgroup_share',
+                         mock.Mock(return_value=is_flexgroup))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=is_flexgroup))
+        self.mock_object(
+            na_utils, 'get_relationship_type',
+            mock.Mock(return_value=na_utils.EXTENDED_DATA_PROTECTION_TYPE))
+        self.mock_object(self.library, '_allocate_container')
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=is_readable))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value=[]))
+        return mock_dm_session
+
+    def test_create_replica_flexgroup_with_fan_out_support(self):
+        self._setup_mocks_for_create_replica(is_flexgroup=True, fan_out=True)
+
+        model_update = self.library.create_replica(
+            None, [fake.SHARE, fake.SHARE, fake.SHARE], fake.SHARE, [], [],
+            share_server=None)
+
+        self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC,
+                         model_update['replica_state'])
+        self.src_client.is_flexgroup_fan_out_supported.assert_called_once_with(
+        )
+        self.library._allocate_container.assert_called_once_with(
+            fake.SHARE, fake.VSERVER1, self.replica_client, replica=True,
+            create_fpolicy=False, set_qos=False)
+
+    def test_create_replica_readable_without_access_rules(self):
+        self._setup_mocks_for_create_replica(is_readable=True)
+        mock_get_helper = self.mock_object(self.library, '_get_helper')
+
+        model_update = self.library.create_replica(
+            None, [fake.SHARE], fake.SHARE, [], [], share_server=None)
+
+        self.assertEqual(constants.STATUS_ACTIVE,
+                         model_update['access_rules_status'])
+        self.library._create_export.assert_called_once_with(
+            fake.SHARE, None, fake.VSERVER1, self.replica_client,
+            replica=True)
+        mock_get_helper.assert_not_called()
+
+    def test_update_replica_state_with_last_transfer_error(self):
+        fake_snapmirror = {
+            'mirror-state': 'snapmirrored',
+            'schedule': self.library.configuration.netapp_snapmirror_schedule,
+            'source-vserver': 'fake_source_vserver',
+            'source-volume': 'fake_source_volume',
+            'policy-type': 'async',
+            'relationship-status': 'idle',
+            'last-transfer-end-timestamp': '%s' % float(time.time()),
+            'last-transfer-error': 'transfer aborted',
+        }
+        vserver_client = mock.Mock()
+        vserver_client.volume_exists.return_value = True
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_dm_session.get_snapmirrors = mock.Mock(
+            return_value=[fake_snapmirror])
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=False))
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=fake.get_config_cmode()))
+        self.mock_object(
+            self.mock_dm_session, 'get_policy_from_share_replica_metadata',
+            mock.Mock(return_value=('MirrorAllSnapshots', False)))
+
+        result = self.library.update_replica_state(
+            None, [fake.SHARE], fake.SHARE, None, [], share_server=None)
+
+        self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC, result)
+        vserver_client.snapshot_exists.assert_not_called()
+
+    def test_promote_replica_with_max_files_multiplier(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library, '_get_helper',
+                         mock.Mock(return_value=mock.Mock()))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library, '_unmount_orig_active_replica')
+        self.mock_object(self.library, '_handle_qos_on_replication_change')
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=True))
+        self.mock_object(
+            self.library,
+            '_update_autosize_attributes_after_promote_replica')
+        self.mock_object(share_types, 'get_extra_specs_from_share')
+        self.mock_object(
+            self.library, '_get_provisioning_options',
+            mock.Mock(return_value={'max_files_multiplier': '2'}))
+        self.mock_object(na_utils, 'calculate_max_files',
+                         mock.Mock(return_value=9000))
+        mock_dm_session = mock.Mock()
+        mock_dm_session.change_snapmirror_source.return_value = False
+        mock_dm_session.get_backend_info_for_share.return_value = (
+            fake.SHARE_NAME, fake.VSERVER1, fake.BACKEND_NAME)
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=mock_dm_session))
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=fake.get_config_cmode()))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock.Mock()))
+
+        self.library.promote_replica(
+            None, [self.fake_replica, self.fake_replica_2],
+            self.fake_replica_2, [], share_server=None)
+
+        expected_name = self.library._get_backend_share_name(
+            self.fake_replica_2['id'])
+        na_utils.calculate_max_files.assert_called_once_with(
+            self.fake_replica_2['size'], '2')
+        vserver_client.set_volume_max_files.assert_called_once_with(
+            expected_name, 9000)
+
+    def test_unmount_orig_active_replica_unreachable_backend(self):
+        replica_client = mock.Mock()
+        replica_client.unmount_volume.side_effect = (
+            exception.StorageCommunicationException)
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=replica_client))
+
+        self.library._unmount_orig_active_replica(self.fake_replica,
+                                                  fake.VSERVER1)
+
+        replica_client.unmount_volume.assert_called_once_with(
+            fake.SHARE_NAME, force=True)
+        lib_base.LOG.info.assert_not_called()
+
+    @ddt.data(True, False)
+    def test__get_replica_info(self, is_flexgroup):
+        dm_session = mock.Mock()
+        dm_session.get_vserver_from_share.return_value = fake.VSERVER1
+        replica_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=replica_client))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC))
+        provisioning_options = copy.deepcopy(fake.PROVISIONING_OPTIONS)
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=provisioning_options))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=is_flexgroup))
+        self.mock_object(self.library, '_get_flexgroup_aggregate_list',
+                         mock.Mock(return_value=[fake.AGGREGATE]))
+
+        result = self.library._get_replica_info(self.fake_replica, dm_session)
+
+        expected_backend = share_utils.extract_host(
+            self.fake_replica['host'], level='backend_name')
+        data_motion.get_client_for_backend.assert_called_once_with(
+            expected_backend, vserver_name=fake.VSERVER1)
+        self.assertEqual(replica_client, result['client'])
+        self.assertEqual(fake.SHARE_NAME, result['name'])
+        self.assertEqual(provisioning_options,
+                         result['provisioning_options'])
+        expected_aggr = [fake.AGGREGATE] if is_flexgroup else fake.POOL_NAME
+        self.assertEqual(expected_aggr, result['aggregate'])
+
+    def test__update_autosize_attributes_after_promote_replica(self):
+        dm_session = mock.Mock()
+        orig_client = mock.Mock()
+        new_client = mock.Mock()
+        orig_info = {'client': orig_client, 'aggregate': fake.POOL_NAME,
+                     'name': fake.SHARE_NAME,
+                     'provisioning_options': {'encrypt': False}}
+        new_info = {'client': new_client, 'aggregate': fake.POOL_NAME_2,
+                    'name': fake.SHARE_NAME2,
+                    'provisioning_options': {'encrypt': True}}
+        self.mock_object(self.library, '_get_replica_info',
+                         mock.Mock(side_effect=[orig_info, new_info]))
+
+        self.library._update_autosize_attributes_after_promote_replica(
+            self.fake_replica, self.fake_replica_2, dm_session)
+
+        orig_client.modify_volume.assert_called_once_with(
+            fake.POOL_NAME, fake.SHARE_NAME, encrypt=False,
+            autosize_attributes={'reset': 'true'})
+        new_client.modify_volume.assert_called_once_with(
+            fake.POOL_NAME_2, fake.SHARE_NAME2, encrypt=True,
+            autosize_attributes={'reset': 'true'})
+
+    @ddt.data(exception.StorageCommunicationException,
+              netapp_api.NaApiError)
+    def test_safe_change_replica_source_readable_error(self, side_effect):
+        dm_session = mock.Mock()
+        dm_session.change_snapmirror_source.side_effect = side_effect
+        replica = copy.deepcopy(self.fake_replica_2)
+        replica['export_locations'] = ['fake_export_location']
+
+        result = self.library._safe_change_replica_source(
+            dm_session, replica, self.fake_replica, self.fake_replica_2,
+            [self.fake_replica, self.fake_replica_2], False, [])
+
+        self.assertEqual(constants.STATUS_ERROR, result['replica_state'])
+        self.assertEqual(['fake_export_location'],
+                         result['export_locations'])
+
+    def test_safe_change_replica_source_update_access_error(self):
+        protocol_helper = mock.Mock()
+        protocol_helper.update_access.side_effect = Exception
+        self.mock_object(self.library, '_get_helper',
+                         mock.Mock(return_value=protocol_helper))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value='fake_export_location'))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock.Mock()))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock.Mock()))
+        backend_config = fake.get_config_cmode()
+        backend_config.netapp_mount_replica_timeout = 30
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=backend_config))
+        dm_session = mock.Mock()
+        dm_session.change_snapmirror_source.return_value = False
+        dm_session.get_backend_info_for_share.return_value = (
+            fake.SHARE_NAME, fake.VSERVER1, fake.BACKEND_NAME)
+
+        result = self.library._safe_change_replica_source(
+            dm_session, self.fake_replica_2, self.fake_replica,
+            self.fake_replica_2,
+            [self.fake_replica, self.fake_replica_2], False,
+            [fake.SHARE_ACCESS])
+
+        self.assertEqual(constants.SHARE_INSTANCE_RULES_ERROR,
+                         result['access_rules_status'])
+        self.assertEqual(constants.STATUS_AVAILABLE, result['status'])
+
+    def test_update_replicated_snapshot_volume_offline(self):
+        vserver_client = mock.Mock()
+        vserver_client.snapshot_exists.side_effect = (
+            exception.SnapshotUnavailable(name=fake.SNAPSHOT_NAME))
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        snapshot = copy.deepcopy(fake.SNAPSHOT)
+        snapshot['provider_location'] = fake.SNAPSHOT_NAME
+        snapshot['share_id'] = self.fake_replica_2['id']
+
+        result = self.library.update_replicated_snapshot(
+            [self.fake_replica, self.fake_replica_2], self.fake_replica_2,
+            [snapshot], snapshot)
+
+        self.assertIsNone(result)
+
+    def _setup_mocks_for_migration_compatibility(
+            self, provisioning_options=None, qos_specs=None,
+            qos_type_specs=None, dest_client=None):
+        self.library._have_cluster_creds = True
+        self.mock_object(data_motion, 'DataMotionSession')
+        self.mock_object(self.library, 'is_flexgroup_destination_host',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_is_flexgroup_pool',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration')
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            side_effect=['destination_backend', 'destination_pool',
+                         'source_pool']))
+        self.mock_object(self.library, '_get_dest_flexvol_encryption_value',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_get_dest_aggr_encryption_value',
+                         mock.Mock(return_value=False))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library,
+                         '_check_aggregate_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=provisioning_options or {}))
+        self.mock_object(self.library, '_get_normalized_qos_specs',
+                         mock.Mock(return_value=qos_specs or {}))
+        self.mock_object(qos_types, 'get_specs_from_share',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        self.mock_object(self.library, '_get_normalized_qos_type_specs',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        self.mock_object(self.library,
+                         '_check_destination_vserver_for_vol_move')
+        get_vserver_side_effect = (
+            [(mock.Mock(), dest_client), (fake.VSERVER1, mock.Mock())]
+            if dest_client else [(fake.VSERVER1, mock.Mock())])
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(side_effect=get_vserver_side_effect))
+
+    def test_migration_check_compatibility_qos_type_and_qos_specs(self):
+        self._setup_mocks_for_migration_compatibility(
+            qos_specs={'maxiops': '3000'},
+            qos_type_specs={'policy_type': 'fixed'})
+        mock_validate = self.mock_object(
+            self.library, 'validate_provisioning_options_for_share')
+
+        result = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(),
+            share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        self.assertFalse(result['compatible'])
+        mock_validate.assert_not_called()
+
+    def test_migration_check_compatibility_fpolicy_below_limit(self):
+        dest_client = mock.Mock()
+        dest_client.get_fpolicy_policies_status.return_value = [1, 2]
+        self._setup_mocks_for_migration_compatibility(
+            provisioning_options=copy.deepcopy(
+                fake.PROVISIONING_OPTIONS_WITH_FPOLICY),
+            dest_client=dest_client)
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
+        mock_reusable = self.mock_object(self.library,
+                                         '_find_reusable_fpolicy_scope')
+
+        result = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(),
+            share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        self.assertTrue(result['compatible'])
+        dest_client.get_fpolicy_policies_status.assert_called_once_with()
+        mock_reusable.assert_not_called()
+
+    def test_migration_check_compatibility_no_reusable_fpolicy(self):
+        dest_client = mock.Mock()
+        dest_client.get_fpolicy_policies_status.return_value = list(
+            range(self.library.FPOLICY_MAX_VSERVER_POLICIES))
+        self._setup_mocks_for_migration_compatibility(
+            provisioning_options=copy.deepcopy(
+                fake.PROVISIONING_OPTIONS_WITH_FPOLICY),
+            dest_client=dest_client)
+        self.mock_object(self.library,
+                         'validate_provisioning_options_for_share')
+        mock_reusable = self.mock_object(
+            self.library, '_find_reusable_fpolicy_scope',
+            mock.Mock(return_value=None))
+
+        result = self.library.migration_check_compatibility(
+            self.context, fake_share.fake_share_instance(),
+            fake_share.fake_share_instance(),
+            share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        self.assertFalse(result['compatible'])
+        mock_reusable.assert_called_once()
+
+    def _setup_mocks_for_migration_complete(self, vserver_client,
+                                            qos_type_specs=None,
+                                            provisioning_options=None):
+        self.library.configuration.netapp_volume_move_cutover_timeout = 15
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(side_effect=[fake.SHARE_NAME,
+                                                'new_share_name']))
+        self.mock_object(self.library, '_get_volume_move_status',
+                         mock.Mock(return_value={'phase': 'completed'}))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library,
+                         '_remap_standard_boolean_extra_specs',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options',
+                         mock.Mock(return_value=provisioning_options
+                                   if provisioning_options is not None
+                                   else {}))
+        self.mock_object(qos_types, 'get_specs_from_share',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        self.mock_object(self.library, '_get_normalized_qos_type_specs',
+                         mock.Mock(return_value=qos_type_specs or {}))
+        vserver_client.get_volume_snapshot_attributes.return_value = {
+            'snapshot-policy': 'fake_policy'}
+        self.mock_object(self.library, '_delete_fpolicy_for_share')
+
+    @ddt.data('fixed', 'adaptive')
+    def test_migration_complete_with_qos_type(self, policy_type):
+        vserver_client = mock.Mock()
+        qos_type_specs = {'policy_type': policy_type}
+        self._setup_mocks_for_migration_complete(
+            vserver_client, qos_type_specs=qos_type_specs)
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value=fake.NFS_EXPORTS))
+        mock_create_qos_type = self.mock_object(
+            self.library, '_create_qos_type_policy_group',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_modify_qos = self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share')
+        src_share = fake_share.fake_share_instance(id='source-share-instance')
+        dest_share = fake_share.fake_share_instance(id='dest-share-instance')
+
+        self.library.migration_complete(
+            self.context, src_share, dest_share, [], {},
+            share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        mock_create_qos_type.assert_called_once_with(
+            dest_share, fake.VSERVER1, qos_type_specs, vserver_client)
+        mock_modify_qos.assert_not_called()
+        expected_key = ('qos_policy_group' if policy_type == 'fixed'
+                        else 'adaptive_qos_policy_group')
+        self.assertEqual(
+            fake.QOS_POLICY_GROUP_NAME,
+            vserver_client.modify_volume.call_args[1][expected_key])
+
+    def test_migration_complete_cifs_keeps_source_export_locations(self):
+        vserver_client = mock.Mock()
+        self._setup_mocks_for_migration_complete(vserver_client)
+        self.mock_object(
+            self.library, '_modify_or_create_qos_for_existing_share',
+            mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        mock_create_export = self.mock_object(self.library, '_create_export')
+        src_share = fake_share.fake_share_instance(
+            id='source-share-instance', share_proto='CIFS',
+            export_locations=[{'path': fake.EXPORT_LOCATION,
+                               'is_admin_only': False,
+                               'el_metadata': {'preferred': True}}])
+        dest_share = fake_share.fake_share_instance(id='dest-share-instance')
+
+        data_updates = self.library.migration_complete(
+            self.context, src_share, dest_share, [], {},
+            share_server=fake.SHARE_SERVER,
+            destination_share_server='dst_srv')
+
+        mock_create_export.assert_not_called()
+        self.assertEqual(
+            [{'path': fake.EXPORT_LOCATION, 'is_admin_only': False,
+              'metadata': {'preferred': True}}],
+            data_updates['export_locations'])
+
+    def _setup_mocks_for_update_share(self, vserver_client):
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library, '_get_backend_share_name',
+                         mock.Mock(return_value=fake.SHARE_NAME))
+        self.mock_object(self.library, '_generate_volume_tags',
+                         mock.Mock(return_value=fake.VOLUME_TAGS))
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(return_value=fake.POOL_NAME))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_get_provisioning_options_for_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(qos_types, 'get_specs_from_share',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_get_normalized_qos_type_specs',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value='fake_export_location'))
+
+    def test_update_share_without_qos_policy_group(self):
+        vserver_client = mock.Mock()
+        share = fake_share.fake_share_instance(id='s-1',
+                                               share_server=fake.VSERVER1)
+        self._setup_mocks_for_update_share(vserver_client)
+        self.mock_object(self.library,
+                         '_modify_or_create_qos_for_existing_share',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=False))
+
+        result = self.library.update_share(share, share_server=fake.VSERVER1)
+
+        self.assertEqual('fake_export_location', result)
+        vserver_client.modify_volume.assert_called_once_with(
+            fake.POOL_NAME, fake.SHARE_NAME, volume_tags=fake.VOLUME_TAGS)
+
+    def test_update_share_logs_modify_volume_error(self):
+        vserver_client = mock.Mock()
+        vserver_client.modify_volume.side_effect = netapp_api.NaApiError()
+        share = fake_share.fake_share_instance(id='s-1',
+                                               share_server=fake.VSERVER1)
+        self._setup_mocks_for_update_share(vserver_client)
+        self.mock_object(self.library,
+                         '_modify_or_create_qos_for_existing_share',
+                         mock.Mock(return_value=fake.QOS_POLICY_GROUP_NAME))
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=False))
+
+        result = self.library.update_share(share, share_server=fake.VSERVER1)
+
+        self.assertEqual('fake_export_location', result)
+        self.assertEqual(1, lib_base.LOG.warning.call_count)
+
+    def test_update_share_skips_non_active_dr_replica(self):
+        vserver_client = mock.Mock()
+        share = fake_share.fake_share_instance(
+            id='s-1', share_server=fake.VSERVER1,
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC)
+        self._setup_mocks_for_update_share(vserver_client)
+        self.mock_object(self.library,
+                         '_modify_or_create_qos_for_existing_share',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=False))
+
+        result = self.library.update_share(share, share_server=fake.VSERVER1)
+
+        self.assertEqual([], result)
+        self.library._create_export.assert_not_called()
+
+    def test_update_share_mounts_unmounted_readable_replica(self):
+        vserver_client = mock.Mock()
+        vserver_client.get_volume_junction_path.return_value = None
+        share = fake_share.fake_share_instance(id='s-1',
+                                               share_server=fake.VSERVER1)
+        self._setup_mocks_for_update_share(vserver_client)
+        self.mock_object(self.library,
+                         '_modify_or_create_qos_for_existing_share',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.library, '_is_readable_replica',
+                         mock.Mock(return_value=True))
+
+        self.library.update_share(share, share_server=fake.VSERVER1)
+
+        vserver_client.mount_volume.assert_called_once_with(fake.SHARE_NAME)
+
+    def test_check_capacity_compatibility_thin_low_oversubscription(self):
+        pools = [{
+            'free_capacity_gb': 100.0,
+            'total_capacity_gb': 100.0,
+            'reserved_percentage': 0,
+            'max_over_subscription_ratio': 0.5,
+        }]
+
+        result = self.library._check_capacity_compatibility(pools, True, 100)
+
+        self.assertTrue(result)
+
+    def test_find_reusable_fpolicy_scope_default_file_operations(self):
+        vserver_client = mock.Mock()
+        (self.library.configuration.
+         netapp_fpolicy_default_file_operations) = ['create', 'write']
+        scopes = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'file-extensions-to-include': [],
+            'file-extensions-to-exclude': [],
+            'shares-to-include': [],
+        }]
+        vserver_client.get_fpolicy_scopes.return_value = scopes
+        vserver_client.get_fpolicy_policies.return_value = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'events': [fake.FPOLICY_EVENT_NAME],
+        }]
+        vserver_client.get_fpolicy_events.return_value = [
+            {'protocol': 'nfsv3', 'file-operations': ['create', 'write']},
+            {'protocol': 'nfsv4', 'file-operations': ['create', 'write']},
+        ]
+        share = copy.deepcopy(fake.SHARE)
+        share['share_proto'] = 'NFS'
+
+        result = self.library._find_reusable_fpolicy_scope(
+            share, vserver_client)
+
+        self.assertEqual(scopes[0], result)
+
+    def test_find_reusable_fpolicy_scope_extensions_mismatch(self):
+        vserver_client = mock.Mock()
+        scopes = [
+            {'policy-name': 'policy_include_mismatch',
+             'file-extensions-to-include': ['mp4'],
+             'file-extensions-to-exclude': fake.FPOLICY_EXT_TO_EXCLUDE_LIST},
+            {'policy-name': 'policy_exclude_mismatch',
+             'file-extensions-to-include': fake.FPOLICY_EXT_TO_INCLUDE_LIST,
+             'file-extensions-to-exclude': ['txt']},
+        ]
+        vserver_client.get_fpolicy_scopes.return_value = scopes
+
+        result = self.library._find_reusable_fpolicy_scope(
+            fake.SHARE, vserver_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        self.assertIsNone(result)
+        vserver_client.get_fpolicy_policies.assert_not_called()
+
+    def test_find_reusable_fpolicy_scope_file_operations_mismatch(self):
+        vserver_client = mock.Mock()
+        vserver_client.get_fpolicy_scopes.return_value = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'file-extensions-to-include': fake.FPOLICY_EXT_TO_INCLUDE_LIST,
+            'file-extensions-to-exclude': fake.FPOLICY_EXT_TO_EXCLUDE_LIST,
+            'shares-to-include': [],
+        }]
+        vserver_client.get_fpolicy_policies.return_value = [{
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'events': [fake.FPOLICY_EVENT_NAME],
+        }]
+        vserver_client.get_fpolicy_events.return_value = [
+            {'protocol': 'cifs', 'file-operations': ['read']},
+        ]
+
+        result = self.library._find_reusable_fpolicy_scope(
+            fake.SHARE, vserver_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            fpolicy_extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE,
+            fpolicy_file_operations=fake.FPOLICY_FILE_OPERATIONS)
+
+        self.assertIsNone(result)
+
+    def test_create_fpolicy_for_share_default_file_operations(self):
+        vserver_client = mock.Mock()
+        (self.library.configuration.
+         netapp_fpolicy_default_file_operations) = ['create', 'write']
+        self.mock_object(self.library, '_find_reusable_fpolicy_scope',
+                         mock.Mock(return_value=None))
+        vserver_client.get_fpolicy_policies_status.return_value = [
+            {'sequence-number': '1'}]
+
+        self.library._create_fpolicy_for_share(
+            fake.SHARE, fake.VSERVER1, vserver_client,
+            fpolicy_extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE)
+
+        vserver_client.create_fpolicy_event.assert_called_once_with(
+            fake.SHARE_NAME, mock.ANY, 'cifs', ['create', 'write'])
+        vserver_client.enable_fpolicy_policy.assert_called_once_with(
+            fake.SHARE_NAME, mock.ANY, 2)
+
+    def test_delete_fpolicy_for_share_without_scopes(self):
+        vserver_client = mock.Mock()
+        vserver_client.get_fpolicy_scopes.return_value = []
+
+        self.library._delete_fpolicy_for_share(fake.SHARE, fake.VSERVER1,
+                                               vserver_client)
+
+        vserver_client.modify_fpolicy_scope.assert_not_called()
+        vserver_client.disable_fpolicy_policy.assert_not_called()
+
+    def test_create_backup_same_cluster_skips_peer_check(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        vserver_client.get_cluster_name.return_value = fake.CLUSTER_NAME
+        vserver_client.get_snapmirror_destinations.return_value = [
+            fake.SNAP_MIRROR_INFO]
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.library.create_backup(self.context, fake.SHARE_INSTANCE,
+                                   fake.SHARE_BACKUP)
+
+        self.library._client.get_cluster_peers.assert_not_called()
+        mock_dest_client.update_snapmirror_vol.assert_called_once_with(
+            fake.VSERVER1, fake.SHARE_NAME, fake.VSERVER2,
+            fake.FLEXVOL_NAME)
+
+    def test_create_backup_volume_failure_deletes_backup_vserver(self):
+        mock_src_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_dest_client)
+        self.mock_object(self.library, '_get_vserver_for_backup',
+                         mock.Mock(return_value=fake.VSERVER2))
+        self.mock_object(self.library, '_get_volume_for_backup',
+                         mock.Mock(side_effect=exception.NetAppException))
+        mock_delete_vserver = self.mock_object(self.library,
+                                               '_delete_backup_vserver')
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.create_backup,
+                          self.context, fake.SHARE_INSTANCE,
+                          fake.SHARE_BACKUP,
+                          share_server=fake.SHARE_SERVER)
+
+        mock_delete_vserver.assert_called_once_with(fake.SHARE_BACKUP,
+                                                    fake.VSERVER2)
+
+    def test_create_backup_same_cluster_skips_vserver_peer_accept(self):
+        mock_src_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_dest_client)
+        mock_src_client.get_cluster_name.return_value = fake.CLUSTER_NAME
+        mock_src_client.get_vserver_peers.return_value = []
+        self.mock_object(self.library, '_get_vserver_for_backup',
+                         mock.Mock(return_value=fake.VSERVER2))
+        self.mock_object(self.library, '_get_volume_for_backup',
+                         mock.Mock(return_value=fake.FLEXVOL_NAME))
+
+        self.library.create_backup(self.context, fake.SHARE_INSTANCE,
+                                   fake.SHARE_BACKUP)
+
+        mock_src_client.create_vserver_peer.assert_called_once_with(
+            fake.VSERVER1, fake.VSERVER2,
+            peer_cluster_name=fake.CLUSTER_NAME)
+        mock_dest_client.accept_vserver_peer.assert_not_called()
+
+    def test_create_backup_detects_previous_backup_snapshot(self):
+        mock_src_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method_for_negative(mock_src_client,
+                                                     mock_dest_client)
+        mock_dest_client.list_volume_snapshots.return_value = [
+            'backup_leftover_snap', 'snap2']
+        self.mock_object(self.library, '_get_vserver_for_backup',
+                         mock.Mock(return_value=fake.VSERVER2))
+        self.mock_object(self.library, '_get_volume_for_backup',
+                         mock.Mock(return_value=fake.FLEXVOL_NAME))
+
+        self.library.create_backup(self.context, fake.SHARE_INSTANCE,
+                                   fake.SHARE_BACKUP)
+
+        self.assertTrue(self.library.is_volume_backup_before)
+
+    def test_create_backup_continue_without_destination_volume_config(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        backup_config = mock.Mock()
+        backup_config.get.return_value = None
+        self.mock_object(data_motion, 'get_backup_configuration',
+                         mock.Mock(return_value=backup_config))
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_snapmirror_destinations.return_value = [
+            fake.SNAP_MIRROR_INFO]
+        mock_dest_client.get_snapmirrors.return_value = [
+            fake.SNAP_MIRROR_INFO]
+        mock_get_snapshots = self.mock_object(
+            self.library, '_get_des_volume_backup_snapshots')
+
+        result = self.library.create_backup_continue(
+            self.context, fake.SHARE_INSTANCE, fake.SHARE_BACKUP)
+
+        self.assertEqual(
+            {'total_progress': lib_base.Backup.
+             TOTAL_PROGRESS_HUNDRED.value}, result)
+        mock_get_snapshots.assert_not_called()
+
+    def test_create_backup_continue_deletes_leftover_second_snapshot(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_snapmirror_destinations.return_value = [
+            fake.SNAP_MIRROR_INFO]
+        mock_dest_client.get_snapmirrors.return_value = [
+            fake.SNAP_MIRROR_INFO]
+        self.mock_object(self.library, '_get_backup_snapshot_name',
+                         mock.Mock(return_value='backup_snap_new'))
+        self.mock_object(self.library, '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=['backup_snap_new',
+                                                 'backup_snap_old']))
+        self.library.is_volume_backup_before = True
+
+        self.library.create_backup_continue(
+            self.context, fake.SHARE_INSTANCE, fake.SHARE_BACKUP)
+
+        mock_dest_client.delete_snapshot.assert_called_once_with(
+            fake.FLEXVOL_NAME, 'backup_snap_old', True)
+        self.assertFalse(self.library.is_volume_backup_before)
+
+    def test_restore_backup_with_rest_client(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        backend_config = _get_config()
+        backend_config.netapp_use_legacy_client = False
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=backend_config))
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.library.restore_backup(self.context, fake.SHARE_BACKUP,
+                                    fake.SHARE_INSTANCE)
+
+        vserver_client.snapmirror_restore_vol.assert_not_called()
+        mock_dest_client.snapmirror_restore_vol.assert_called_once_with(
+            source_path=f'{fake.VSERVER2}:{fake.FLEXVOL_NAME}',
+            dest_path=f'{fake.VSERVER1}:{fake.SHARE_NAME}',
+            source_snapshot=mock.ANY,
+            des_cluster=vserver_client.get_cluster_name.return_value)
+
+    def test_delete_backup_vserver_not_found(self):
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(side_effect=exception.VserverNotFound(
+                vserver=fake.VSERVER1)))
+        mock_get_backend = self.mock_object(self.library, '_get_backend')
+
+        result = self.library.delete_backup(
+            self.context, fake.SHARE_BACKUP, fake.SHARE_INSTANCE)
+
+        self.assertIsNone(result)
+        mock_get_backend.assert_not_called()
+
+    def test_delete_backup_without_backend_name(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        self.mock_object(self.library, '_get_backend',
+                         mock.Mock(return_value=None))
+        mock_get_dest = self.mock_object(
+            self.library, '_get_destination_vserver_and_vol')
+
+        result = self.library.delete_backup(
+            self.context, fake.SHARE_BACKUP, fake.SHARE_INSTANCE)
+
+        self.assertIsNone(result)
+        mock_get_dest.assert_not_called()
+
+    def test_delete_backup_single_snapshot_without_relationship(self):
+        vserver_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self._backup_mock_common_method(mock_dest_client)
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        mock_dest_client.get_snapmirrors.return_value = []
+        self.mock_object(self.library, '_get_des_volume_backup_snapshots',
+                         mock.Mock(return_value=['backup_snap']))
+        mock_cleanup = self.mock_object(self.library,
+                                        '_resource_cleanup_for_backup')
+
+        self.library.delete_backup(self.context, fake.SHARE_BACKUP,
+                                   fake.SHARE_INSTANCE)
+
+        mock_cleanup.assert_not_called()
+        mock_dest_client.delete_snapshot.assert_not_called()
+
+    def test__get_backend_with_invalid_backup_type(self):
+        self.mock_object(data_motion, 'get_backup_configuration',
+                         mock.Mock(side_effect=Exception))
+
+        result = self.library._get_backend(fake.SHARE_BACKUP)
+
+        self.assertIsNone(result)
+
+    def test__get_vserver_for_backup_creates_new_vserver(self):
+        backup_config = mock.Mock()
+        backup_config.get.return_value = None
+        self.mock_object(data_motion, 'get_backup_configuration',
+                         mock.Mock(return_value=backup_config))
+        mock_get_backup_vserver = self.mock_object(
+            self.library, '_get_backup_vserver',
+            mock.Mock(return_value=fake.VSERVER2))
+
+        result = self.library._get_vserver_for_backup(
+            fake.SHARE_BACKUP, share_server=fake.SHARE_SERVER)
+
+        self.assertEqual(fake.VSERVER2, result)
+        mock_get_backup_vserver.assert_called_once_with(
+            fake.SHARE_BACKUP, share_server=fake.SHARE_SERVER)
+
+    def test__get_destination_vserver_and_vol_without_relationship(self):
+        src_vserver_client = mock.Mock()
+        src_vserver_client.get_snapmirror_destinations.return_value = []
+
+        des_vserver, des_vol = (
+            self.library._get_destination_vserver_and_vol(
+                src_vserver_client, 'fake_vserver:fake_volume', False))
+
+        self.assertIsNone(des_vserver)
+        self.assertIsNone(des_vol)
+
+    def test__resource_cleanup_for_backup_same_vserver(self):
+        mock_src_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 mock_src_client)))
+        self.mock_object(data_motion, 'get_backup_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+
+        self.library._resource_cleanup_for_backup(
+            fake.SHARE_BACKUP, fake.SHARE_INSTANCE, fake.VSERVER1,
+            fake.FLEXVOL_NAME)
+
+        mock_src_client.delete_vserver_peer.assert_not_called()
+        mock_dest_client.delete_volume.assert_not_called()
+
+    def test_update_volume_snapshot_policy(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.library.update_volume_snapshot_policy(
+            fake.SHARE, 'daily', share_server=fake.SHARE_SERVER)
+
+        (vserver_client.update_volume_snapshot_policy.
+         assert_called_once_with(fake.SHARE_NAME, 'daily'))
+
+    def test_update_showmount(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.library.update_showmount('TRUE',
+                                      share_server=fake.SHARE_SERVER)
+
+        vserver_client.update_showmount.assert_called_once_with('true')
+
+    def test_update_showmount_invalid_value(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library.update_showmount, 'maybe')
+
+    def test_update_pnfs(self):
+        vserver_client = mock.Mock()
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+
+        self.library.update_pnfs('False', share_server=fake.SHARE_SERVER)
+
+        vserver_client.update_pnfs.assert_called_once_with('false')
+
+    def test_update_pnfs_invalid_value(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library.update_pnfs, 'maybe')
+
+    def test_update_share_from_metadata_unsupported_key(self):
+        mock_update_policy = self.mock_object(
+            self.library, 'update_volume_snapshot_policy')
+
+        self.library.update_share_from_metadata(
+            self.context, fake.SHARE_INSTANCE, {'unsupported_key': 'value'})
+
+        mock_update_policy.assert_not_called()
+
+    def test_update_share_network_subnet_from_metadata_unsupported_key(self):
+        mock_update_showmount = self.mock_object(self.library,
+                                                 'update_showmount')
+
+        self.library.update_share_network_subnet_from_metadata(
+            self.context, 'fake_network', 'fake_subnet', fake.SHARE_SERVER,
+            {'unsupported_key': 'value'})
+
+        mock_update_showmount.assert_not_called()
+
+    def test__is_snaplock_compatible_for_migration_different_types(self):
+        self.library._client.features.UNIFIED_AGGR = False
+        self.library._client.features.SNAPLOCK = True
+        self.library.configuration.netapp_use_legacy_client = True
+        self.library._ssc_stats = {
+            fake.AGGREGATES[0]: {'netapp_snaplock_type': 'compliance'},
+            fake.AGGREGATES[1]: {'netapp_snaplock_type': 'enterprise'},
+        }
+
+        result = self.library._is_snaplock_compatible_for_migration(
+            fake.AGGREGATES[0], fake.AGGREGATES[1])
+
         self.assertFalse(result)

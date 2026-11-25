@@ -22,6 +22,7 @@ from unittest import mock
 import ddt
 from oslo_concurrency import processutils as putils
 from oslo_log import log
+from oslo_utils import units
 
 from manila import exception
 from manila.share.drivers.netapp import utils as na_utils
@@ -238,6 +239,37 @@ class NetAppDriverUtilsTestCase(test.TestCase):
                           check=True)
 
 
+@ddt.ddt
+class CalculateMaxFilesTestCase(test.TestCase):
+
+    @ddt.data(
+        {'size': None, 'multiplier': '2'},
+        {'size': 10, 'multiplier': None},
+        {'size': None, 'multiplier': None},
+    )
+    @ddt.unpack
+    def test_calculate_max_files_not_applicable(self, size, multiplier):
+        self.assertIsNone(na_utils.calculate_max_files(size, multiplier))
+
+    def test_calculate_max_files(self):
+        # 1 GiB at the default multiplier, per TR-4617.
+        expected = int(1 * units.Mi * 1.0 / 33.6925)
+
+        result = na_utils.calculate_max_files(1, '1')
+
+        self.assertEqual(expected, result)
+
+    def test_calculate_max_files_capped_at_absolute_maximum(self):
+        result = na_utils.calculate_max_files(1000000, '10')
+
+        self.assertEqual(na_utils.ABSOLUTE_MAX_INODES, result)
+
+    def test_calculate_max_files_with_max_files_also_set(self):
+        """The extra spec validation must reject this combination earlier."""
+        self.assertRaises(exception.NetAppException,
+                          na_utils.calculate_max_files, 10, '2', max_files=100)
+
+
 class OpenstackInfoTestCase(test.TestCase):
 
     UNKNOWN_VERSION = 'unknown version'
@@ -257,6 +289,7 @@ class OpenstackInfoTestCase(test.TestCase):
     PUTILS_DPKG_RET_VAL = ('epoch:upstream_version-debian_revision', '')
     DEB_RLS = 'upstream_version-debian_revision'
     DEB_VENDOR = 'debian_revision'
+    DEB_PLAIN_VERSION = 'upstream_version'
 
     def test_openstack_info_init(self):
         info = na_utils.OpenStackInfo()
@@ -371,6 +404,31 @@ class OpenstackInfoTestCase(test.TestCase):
         self.assertEqual(self.UNKNOWN_VENDOR, info._vendor)
         self.assertEqual(self.UNKNOWN_PLATFORM, info._platform)
 
+    @mock.patch.object(na_utils.OpenStackInfo, '_get_version_info_version',
+                       mock.Mock(side_effect=Exception))
+    @mock.patch.object(na_utils.OpenStackInfo, '_get_version_info_release',
+                       mock.Mock(return_value=VERSION_INFO_RELEASE))
+    def test_exception_in_version_from_version_info(self):
+        """A failure reading the version must not hide the release."""
+        info = na_utils.OpenStackInfo()
+        info._update_info_from_version_info()
+
+        self.assertEqual(self.UNKNOWN_VERSION, info._version)
+        self.assertEqual(self.VERSION_INFO_RELEASE, info._release)
+        self.assertEqual(self.UNKNOWN_VENDOR, info._vendor)
+        self.assertEqual(self.UNKNOWN_PLATFORM, info._platform)
+
+    @mock.patch.object(version.version_info, 'version', VERSION_INFO_VERSION)
+    def test_get_version_info_version(self):
+        self.assertEqual(self.VERSION_INFO_VERSION,
+                         na_utils.OpenStackInfo._get_version_info_version())
+
+    @mock.patch.object(version.version_info, 'release_string',
+                       mock.Mock(return_value=VERSION_INFO_RELEASE))
+    def test_get_version_info_release(self):
+        self.assertEqual(self.VERSION_INFO_RELEASE,
+                         na_utils.OpenStackInfo._get_version_info_release())
+
     @mock.patch.object(putils, 'execute',
                        mock.Mock(return_value=PUTILS_RPM_RET_VAL))
     def test_update_info_from_rpm(self):
@@ -416,6 +474,19 @@ class OpenstackInfoTestCase(test.TestCase):
         self.assertEqual(self.UNKNOWN_VERSION, info._version)
         self.assertEqual(self.DEB_RLS, info._release)
         self.assertEqual(self.DEB_VENDOR, info._vendor)
+        self.assertEqual(self.UNKNOWN_PLATFORM, info._platform)
+        self.assertTrue(found_package)
+
+    @mock.patch.object(putils, 'execute',
+                       mock.Mock(return_value=(DEB_PLAIN_VERSION, '')))
+    def test_update_info_from_dpkg_without_epoch_or_revision(self):
+        """A bare upstream version yields no vendor and no epoch stripping."""
+        info = na_utils.OpenStackInfo()
+        found_package = info._update_info_from_dpkg()
+
+        self.assertEqual(self.UNKNOWN_VERSION, info._version)
+        self.assertEqual(self.DEB_PLAIN_VERSION, info._release)
+        self.assertEqual(self.UNKNOWN_VENDOR, info._vendor)
         self.assertEqual(self.UNKNOWN_PLATFORM, info._platform)
         self.assertTrue(found_package)
 
@@ -479,6 +550,19 @@ class OpenstackInfoTestCase(test.TestCase):
         info._update_openstack_info()
 
         self.assertTrue(mock_updt_from_dpkg.called)
+
+    @mock.patch.object(na_utils.OpenStackInfo, '_update_openstack_info',
+                       mock.Mock())
+    def test_info(self):
+        """The EMS log entry is a pipe-separated field list."""
+        info = na_utils.OpenStackInfo()
+
+        result = info.info()
+
+        expected = '|'.join([self.UNKNOWN_VERSION, self.UNKNOWN_RELEASE,
+                             self.UNKNOWN_VENDOR, self.UNKNOWN_PLATFORM])
+        self.assertEqual(expected, result)
+        info._update_openstack_info.assert_called_once_with()
 
 
 @ddt.ddt

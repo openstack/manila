@@ -291,6 +291,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertListEqual([], result)
 
+    def test_find_matching_aggregates_with_aggregate_names(self):
+        """Passing names in skips the query for the vserver aggregates."""
+        self.mock_object(self.library,
+                         'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
+        self.library._have_cluster_creds = True
+        mock_get_api_client = self.mock_object(self.library, '_get_api_client')
+        mock_client = mock.Mock()
+        mock_client.list_root_aggregates.return_value = fake.ROOT_AGGREGATES
+        self.library._client = mock_client
+        self.library.configuration.netapp_aggregate_name_search_pattern = (
+            '.*_aggr_1')
+
+        result = self.library._find_matching_aggregates(
+            aggregate_names=fake.AGGREGATES + fake.ROOT_AGGREGATES)
+
+        self.assertListEqual([fake.AGGREGATES[0]], result)
+        mock_get_api_client.assert_not_called()
+
     def test_get_network_allocations_number(self):
         self.assertEqual(0, self.library.get_network_allocations_number())
 
@@ -299,6 +318,28 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.get_admin_network_allocations_number()
 
         self.assertEqual(0, result)
+
+    @ddt.data(
+        {'addresses': [], 'expected': []},
+        {'addresses': ['10.10.10.10'], 'expected': [4]},
+        {'addresses': ['fc00::1'], 'expected': [6]},
+        {'addresses': ['10.10.10.10', 'fc00::1'], 'expected': [4, 6]},
+    )
+    @ddt.unpack
+    def test_get_configured_ip_versions(self, addresses, expected):
+
+        vserver_client = mock.Mock()
+        vserver_client.get_network_interfaces.return_value = [
+            {'address': address} for address in addresses]
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=vserver_client))
+
+        result = self.library.get_configured_ip_versions()
+
+        self.assertEqual(expected, result)
+        self.library._get_api_client.assert_called_once_with(
+            vserver=fake.VSERVER1)
 
     def test__get_backup_vserver(self):
         self.mock_object(self.library,

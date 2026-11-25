@@ -75,9 +75,19 @@ class NetAppRestApiServerTests(test.TestCase):
 
         self.assertEqual(expected_port, self.rest_client._port)
 
+    def test_get_port(self):
+        self.rest_client._port = '8080'
+
+        self.assertEqual('8080', self.rest_client.get_port())
+
     @ddt.data('!&', '80na', '')
     def test_set_timeout_value_error(self, timeout):
         self.assertRaises(ValueError, self.rest_client.set_timeout, timeout)
+
+    def test_get_timeout(self):
+        self.rest_client.set_timeout('25')
+
+        self.assertEqual(25, self.rest_client.get_timeout())
 
     @ddt.data({'params': {'major': 1, 'minor': '20a'}},
               {'params': {'major': '20a', 'minor': 1}},
@@ -215,6 +225,55 @@ class NetAppRestApiServerTests(test.TestCase):
         else:
             mock_post.assert_called_once_with(fake.FAKE_ACTION_URL,
                                               data=expected_data)
+
+    @ddt.data(fake.VSERVER_NAME, None)
+    def test_send_http_request_with_tracing(self, svm):
+        """With tracing on, both the request and the response are logged."""
+        self.rest_client._trace = True
+        mock_log = self.mock_object(netapp_api, 'LOG')
+        self.mock_object(self.rest_client, '_build_session')
+        self.rest_client._session = mock.Mock()
+        response = mock.Mock()
+        response.content = 'fake_content'
+        response.status_code = 200
+        self.mock_object(self.rest_client, '_get_request_method',
+                         mock.Mock(return_value=mock.Mock(
+                             return_value=response)))
+        self.mock_object(jsonutils, 'loads',
+                         mock.Mock(return_value='fake_loads_response'))
+        headers = ({netapp_api.RestNaServer.TUNNELING_HEADER_KEY: svm}
+                   if svm else {})
+
+        code, res = self.rest_client.send_http_request(
+            'get', fake.FAKE_ACTION_URL, fake.FAKE_HTTP_BODY, headers)
+
+        self.assertEqual(200, code)
+        self.assertEqual('fake_loads_response', res)
+        self.assertEqual(2, mock_log.debug.call_count)
+        request_msg_args = mock_log.debug.call_args_list[0][0][1]
+        self.assertEqual('GET', request_msg_args['method'])
+        self.assertEqual(headers, request_msg_args['header'])
+        response_msg_args = mock_log.debug.call_args_list[1][0][1]
+        self.assertEqual(200, response_msg_args['code'])
+        self.assertEqual('fake_loads_response', response_msg_args['body'])
+
+    def test_send_http_request_not_traced_when_url_does_not_match(self):
+        self.rest_client._trace = True
+        self.rest_client._api_trace_pattern = '^/never-matches$'
+        mock_log = self.mock_object(netapp_api, 'LOG')
+        self.mock_object(self.rest_client, '_build_session')
+        self.rest_client._session = mock.Mock()
+        response = mock.Mock()
+        response.content = None
+        response.status_code = 200
+        self.mock_object(self.rest_client, '_get_request_method',
+                         mock.Mock(return_value=mock.Mock(
+                             return_value=response)))
+
+        self.rest_client.send_http_request(
+            'get', fake.FAKE_ACTION_URL, None, fake.FAKE_HTTP_HEADER)
+
+        mock_log.debug.assert_not_called()
 
     @ddt.data(
         {'host': '192.168.1.0', 'port': '80', 'protocol': 'http'},
@@ -387,6 +446,18 @@ class NetAppRestApiServerTests(test.TestCase):
         res = self.rest_client._create_certificate_auth_handler()
         self.assertEqual(res,
                          (cert, self.rest_client._certificate_host_validation))
+
+    def test__create_certificate_auth_handler_without_certificate_files(self):
+        """Without both files the session keeps the cert it already had."""
+        self.rest_client._private_key_file = None
+        self.rest_client._certificate_file = 'fake_cert.pem'
+        self.rest_client._certificate_host_validation = False
+        self.rest_client._session = mock.Mock()
+        self.rest_client._session.cert = None
+
+        res = self.rest_client._create_certificate_auth_handler()
+
+        self.assertEqual((None, False), res)
 
     def test__create_certificate_auth_handler_with_host_validation(self):
         """Test whether create certificate auth handler """

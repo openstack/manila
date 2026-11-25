@@ -21,6 +21,7 @@ from unittest import mock
 
 import ddt
 from oslo_log import log
+from oslo_utils import units
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -75,6 +76,25 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def _mock_api_error(self, code='fake', message='fake'):
         return mock.Mock(side_effect=netapp_api.NaApiError(code=code,
                                                            message=message))
+
+    def _build_response(self, structure):
+        response = netapp_api.NaElement('results')
+        response.translate_struct(structure)
+        return response
+
+    def _unparsable_iter_response(self):
+        """Build an iterator result whose records cannot be parsed.
+
+        The result claims to hold one record, but the record is not an
+        NaElement, so any attempt to read a child of it raises
+        AttributeError.
+        """
+        attributes_list = mock.Mock()
+        attributes_list.get_children.return_value = [None]
+        result = mock.Mock()
+        result.get_child_content.return_value = '1'
+        result.get_child_by_name.return_value = attributes_list
+        return result
 
     def test_init_features_ontapi_1_21(self):
 
@@ -10454,3 +10474,2446 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_iter_request.assert_has_calls([
             mock.call('data-lif-capacity-details', api_args)])
         self.assertEqual(expected_result, result)
+
+    def _security_cert_response(self, serial_number):
+        return self._build_response({
+            'attributes-list': {
+                'certificate-info': {
+                    'vserver': fake.VSERVER_NAME,
+                    'serial-number': serial_number,
+                },
+            },
+            'num-records': '1',
+        })
+
+    def test__modify_security_cert_default_expire_days(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'send_iter_request')
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_DEFAULT_EXPIRE_DAYS)
+
+        self.client.send_iter_request.assert_not_called()
+        self.client.send_request.assert_not_called()
+
+    def test__modify_security_cert_no_existing_certificates(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=None))
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        self.client.send_request.assert_not_called()
+
+    def test__modify_security_cert_create_failure(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=(
+                             self._security_cert_response('12345'))))
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        certificate_create_args = {
+            'vserver': fake.VSERVER_NAME,
+            'common-name': fake.VSERVER_NAME,
+            'type': 'server',
+            'expire-days': fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
+        }
+        self.client.send_request.assert_called_once_with(
+            'security-certificate-create', certificate_create_args)
+
+    def test__modify_security_cert_no_new_certificates(self):
+        self.mock_object(
+            self.client, 'send_iter_request',
+            mock.Mock(side_effect=[self._security_cert_response('12345'),
+                                   None]))
+        self.mock_object(self.client, 'send_request')
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        self.client.send_request.assert_called_once_with(
+            'security-certificate-create', mock.ANY)
+
+    def test__modify_security_cert_modifies_ssl_for_new_certificate(self):
+        self.mock_object(
+            self.client, 'send_iter_request',
+            mock.Mock(side_effect=[self._security_cert_response('12345'),
+                                   self._security_cert_response('67890')]))
+        self.mock_object(self.client, 'send_request')
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        ssl_modify_args = {
+            'certificate-authority': fake.VSERVER_NAME,
+            'common-name': fake.VSERVER_NAME,
+            'certificate-serial-number': '67890',
+            'vserver': fake.VSERVER_NAME,
+            'client-authentication-enabled': 'false',
+            'server-authentication-enabled': 'true',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('security-ssl-modify', ssl_modify_args)])
+
+    def test__modify_security_cert_ssl_modify_failure(self):
+        self.mock_object(
+            self.client, 'send_iter_request',
+            mock.Mock(side_effect=[self._security_cert_response('12345'),
+                                   self._security_cert_response('67890')]))
+
+        def _fake_send_request(api_name, *args, **kwargs):
+            if api_name == 'security-ssl-modify':
+                raise netapp_api.NaApiError(code='fake', message='fake')
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=_fake_send_request))
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        certificate_delete_args = {
+            'certificate-authority': fake.VSERVER_NAME,
+            'common-name': fake.VSERVER_NAME,
+            'serial-number': '12345',
+            'type': 'server',
+            'vserver': fake.VSERVER_NAME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('security-certificate-delete',
+                      certificate_delete_args)])
+
+    def test__modify_security_cert_delete_failure(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=(
+                             self._security_cert_response('12345'))))
+
+        def _fake_send_request(api_name, *args, **kwargs):
+            if api_name == 'security-certificate-delete':
+                raise netapp_api.NaApiError(code='fake', message='fake')
+
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=_fake_send_request))
+
+        self.client._modify_security_cert(
+            fake.VSERVER_NAME, fake.SECURITY_CERT_LARGE_EXPIRE_DAYS)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('security-certificate-delete', mock.ANY)])
+
+    def test_get_vserver_info_missing_vserver_info(self):
+        api_response = self._build_response({
+            'attributes-list': {},
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_vserver_info,
+                          fake.VSERVER_NAME)
+
+    def test_vserver_exists_vserver_not_found_error(self):
+        self.mock_object(
+            self.client, 'send_iter_request',
+            self._mock_api_error(code=netapp_api.EVSERVERNOTFOUND))
+
+        result = self.client.vserver_exists(fake.VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_vserver_exists_api_error(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.vserver_exists,
+                          fake.VSERVER_NAME)
+
+    def test_terminate_vserver_services_kerberos(self):
+        self.mock_object(self.vserver_client, 'disable_kerberos')
+
+        self.client._terminate_vserver_services(
+            fake.VSERVER_NAME, self.vserver_client,
+            [fake.KERBEROS_SECURITY_SERVICE])
+
+        self.vserver_client.disable_kerberos.assert_called_once_with(
+            fake.KERBEROS_SECURITY_SERVICE)
+
+    def test_is_nve_supported_no_cluster_credentials(self):
+        system_version = {'version-tuple': (9, 1, 0), 'version': fake.VERSION}
+        self.mock_object(client_base.NetAppBaseClient,
+                         'get_system_version',
+                         mock.Mock(return_value=system_version))
+        self.mock_object(self.client, 'list_cluster_nodes',
+                         mock.Mock(return_value=None))
+        mock_key_manager = self.mock_object(
+            self.client, 'get_security_key_manager_nve_support')
+
+        result = self.client.is_nve_supported()
+
+        self.assertFalse(result)
+        mock_key_manager.assert_not_called()
+
+    def test_get_node_data_ports_skips_interface_group_members(self):
+        api_response = self._build_response({
+            'attributes-list': [
+                {'net-port-info': {
+                    'node': fake.NODE_NAME,
+                    'port': 'e0a',
+                    'operational-speed': '10000',
+                    'ifgrp-port': 'a0a',
+                }},
+                {'net-port-info': {
+                    'node': fake.NODE_NAME,
+                    'port': 'a0a',
+                    'operational-speed': '10000',
+                }},
+            ],
+            'num-records': '2',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_node_data_ports(fake.NODE_NAME)
+
+        expected = [{'node': fake.NODE_NAME, 'port': 'a0a',
+                     'speed': '10000'}]
+        self.assertEqual(expected, result)
+
+    def test_sort_data_ports_by_speed_unrecognized_speed(self):
+        ports = [
+            {'node': fake.NODE_NAME, 'port': 'e0a', 'speed': 'unknown'},
+            {'node': fake.NODE_NAME, 'port': 'e0b', 'speed': 'undef'},
+            {'node': fake.NODE_NAME, 'port': 'e0c', 'speed': '100'},
+        ]
+
+        result = self.client._sort_data_ports_by_speed(ports)
+
+        self.assertEqual(['e0c', 'e0b', 'e0a'],
+                         [port['port'] for port in result])
+
+    def test_get_degraded_ports(self):
+        api_response = self._build_response({
+            'attributes-list': [
+                {'net-port-info': {'node': fake.NODE_NAME,
+                                   'port': fake.VLAN_PORT}},
+            ],
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_degraded_ports(
+            [fake.BROADCAST_DOMAIN, 'unmanaged_domain'], fake.IPSPACE_NAME)
+
+        net_port_get_iter_args = {
+            'query': {
+                'net-port-info': {
+                    'broadcast-domain': fake.BROADCAST_DOMAIN,
+                    'health-degraded-reasons': {
+                        'netport-degraded-reason': 'l2_reachability'
+                    },
+                    'health-status': 'degraded',
+                    'ipspace': fake.IPSPACE_NAME,
+                    'port-type': 'vlan',
+                },
+            },
+            'desired-attributes': {
+                'net-port-info': {
+                    'port': None,
+                    'node': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'net-port-get-iter', net_port_get_iter_args)
+        self.assertEqual(fake.NETWORK_QUALIFIED_PORTS, result)
+
+    def test_get_degraded_ports_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_degraded_ports([fake.BROADCAST_DOMAIN],
+                                                fake.IPSPACE_NAME)
+
+        self.assertEqual([], result)
+
+    @ddt.data(('OpenStack', True), ('Default', True),
+              (fake.BROADCAST_DOMAIN, True), ('unmanaged_domain', False))
+    @ddt.unpack
+    def test_get_valid_broadcast_domains(self, domain, is_valid):
+        result = self.client._get_valid_broadcast_domains([domain])
+
+        self.assertEqual([domain] if is_valid else [], result)
+
+    def test_get_ipspaces_mutually_exclusive_parameters(self):
+        self.assertRaises(exception.InvalidInput,
+                          self.client.get_ipspaces,
+                          ipspace_name=fake.IPSPACE_NAME,
+                          vserver_name=fake.VSERVER_NAME)
+
+    def test_get_ipspaces_filtered_by_vserver(self):
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(
+            fake.NET_IPSPACES_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_ipspaces(vserver_name=fake.VSERVER_NAME)
+
+        net_ipspaces_get_iter_args = {
+            'query': {
+                'net-ipspaces-info': {
+                    'vservers': {
+                        'vserver_name': fake.VSERVER_NAME,
+                    }
+                }
+            }
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'net-ipspaces-get-iter', net_ipspaces_get_iter_args)
+        self.assertEqual(fake.IPSPACES, result)
+
+    def test_delete_ipspace_not_supported(self):
+        result = self.client.delete_ipspace(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
+
+    def test_delete_ipspace_no_ipspace_name(self):
+        self.client.features.add_feature('IPSPACES')
+
+        result = self.client.delete_ipspace(None)
+
+        self.assertFalse(result)
+
+    @ddt.data('Cluster', 'Default')
+    def test_delete_ipspace_cluster_ipspace(self, ipspace_name):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.delete_ipspace(ipspace_name)
+
+        self.assertFalse(result)
+        self.client.send_request.assert_not_called()
+
+    def test_delete_ipspace_in_use_by_data_vservers(self):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client, 'ipspace_has_data_vservers',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.delete_ipspace(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
+        self.client.send_request.assert_not_called()
+
+    def test_delete_ipspace_broadcast_domain_delete_failure(self):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client, 'ipspace_has_data_vservers',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.client, '_delete_broadcast_domains_for_ipspace',
+                         self._mock_api_error())
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.delete_ipspace(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
+        self.client.send_request.assert_not_called()
+
+    def test_delete_ipspace_destroy_failure(self):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client, 'ipspace_has_data_vservers',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.client, '_delete_broadcast_domains_for_ipspace')
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        result = self.client.delete_ipspace(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
+
+    def test_delete_ipspace_returns_true_on_success(self):
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client, 'ipspace_has_data_vservers',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.client, '_delete_broadcast_domains_for_ipspace')
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.delete_ipspace(fake.IPSPACE_NAME)
+
+        self.assertTrue(result)
+
+    def test_get_cluster_aggregate_attributes_without_raid_attributes(self):
+        api_response = self._build_response({
+            'attributes-list': {
+                'aggr-attributes': {
+                    'aggregate-name': fake.SHARE_AGGREGATE_NAME,
+                    'aggr-space-attributes': {
+                        'size-available': '45011200',
+                        'size-total': '54831616',
+                        'size-used': '9820416',
+                    },
+                },
+            },
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cluster_aggregate_attributes(
+            [fake.SHARE_AGGREGATE_NAME])
+
+        expected = {
+            fake.SHARE_AGGREGATE_NAME: {
+                'available': 45011200,
+                'total': 54831616,
+                'used': 9820416,
+                'encryption_enabled': False,
+            },
+        }
+        self.assertEqual(expected, result)
+
+    def test_update_pnfs(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_pnfs('true')
+
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-modify', {'is-nfsv41-pnfs-enabled': 'true'})
+
+    def test_configure_ldap_linux_servers_without_ldap_servers_support(self):
+        self.client.features.add_feature('LDAP_LDAP_SERVERS',
+                                         supported=False)
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_enable_ldap_client')
+
+        self.client.configure_ldap(fake.LDAP_LINUX_SECURITY_SERVICE)
+
+        config_name = hashlib.md5(
+            fake.LDAP_LINUX_SECURITY_SERVICE['id'].encode('latin-1'),
+            usedforsecurity=False).hexdigest()
+        ldap_client_create_args = {
+            'ldap-client-config': config_name,
+            'tcp-port': '389',
+            'schema': 'RFC-2307',
+            'bind-dn': fake.LDAP_LINUX_SECURITY_SERVICE['user'],
+            'bind-password': fake.LDAP_LINUX_SECURITY_SERVICE['password'],
+            'base-dn': fake.LDAP_LINUX_SECURITY_SERVICE['ou'],
+            'servers': [
+                {'ip-address': fake.LDAP_LINUX_SECURITY_SERVICE['server']},
+            ],
+        }
+        self.client.send_request.assert_called_once_with(
+            'ldap-client-create', ldap_client_create_args)
+
+    def test__delete_ldap_client(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client._delete_ldap_client(fake.LDAP_LINUX_SECURITY_SERVICE)
+
+        config_name = hashlib.md5(
+            fake.LDAP_LINUX_SECURITY_SERVICE['id'].encode('latin-1'),
+            usedforsecurity=False).hexdigest()
+        self.client.send_request.assert_called_once_with(
+            'ldap-client-delete', {'ldap-client-config': config_name})
+
+    def test_modify_ldap_original_config_not_found(self):
+        new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
+        current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
+        mock_create_client = self.mock_object(
+            self.client, '_create_ldap_client')
+        mock_send_request = self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(side_effect=[
+                netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND),
+                None]))
+        mock_delete_client = self.mock_object(
+            self.client, '_delete_ldap_client')
+
+        self.client.modify_ldap(new_ldap_service, current_ldap_service)
+
+        config_name = hashlib.md5(
+            new_ldap_service['id'].encode('latin-1'),
+            usedforsecurity=False).hexdigest()
+        mock_create_client.assert_called_once_with(new_ldap_service)
+        mock_send_request.assert_has_calls([
+            mock.call('ldap-config-delete'),
+            mock.call('ldap-config-create',
+                      {'client-config': config_name,
+                       'client-enabled': 'true'})])
+        mock_delete_client.assert_called_once_with(current_ldap_service)
+
+    def test_modify_ldap_current_client_not_found(self):
+        new_ldap_service = fake.LDAP_LINUX_SECURITY_SERVICE
+        current_ldap_service = fake.LDAP_AD_SECURITY_SERVICE
+        self.mock_object(self.client, '_create_ldap_client')
+        self.mock_object(self.client, 'send_request')
+        mock_delete_client = self.mock_object(
+            self.client, '_delete_ldap_client',
+            self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND))
+
+        self.client.modify_ldap(new_ldap_service, current_ldap_service)
+
+        mock_delete_client.assert_called_once_with(current_ldap_service)
+
+    def test_configure_active_directory_smb_signing_timeout(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(
+            self.client, 'wait_for_cifs_server',
+            mock.Mock(side_effect=exception.NetAppException(message='fake')))
+        mock_configure_signing = self.mock_object(self.client,
+                                                  'configure_cifs_signing')
+
+        self.client.configure_active_directory(fake.CIFS_SECURITY_SERVICE,
+                                               fake.VSERVER_NAME,
+                                               False,
+                                               True)
+
+        mock_configure_signing.assert_not_called()
+
+    def test_configure_active_directory_generic_api_error(self):
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EAPIERROR,
+                                 message='unexpected failure'))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.configure_active_directory,
+                          fake.CIFS_SECURITY_SERVICE,
+                          fake.VSERVER_NAME,
+                          False,
+                          False)
+
+    def test_modify_active_directory_default_ad_site_failure(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.modify_active_directory_security_service,
+            fake.VSERVER_NAME,
+            ['default_ad_site'],
+            fake.CIFS_SECURITY_SERVICE_3,
+            fake.CIFS_SECURITY_SERVICE_4)
+
+    @ddt.data('create_kerberos_realm', 'update_kerberos_realm')
+    def test_kerberos_realm_not_supported(self, method_name):
+        self.client.features.add_feature('KERBEROS_VSERVER', supported=False)
+
+        self.assertRaises(exception.NetAppException,
+                          getattr(self.client, method_name),
+                          fake.KERBEROS_SECURITY_SERVICE)
+
+    def test_configure_kerberos_not_supported(self):
+        self.client.features.add_feature('KERBEROS_VSERVER', supported=False)
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.configure_kerberos,
+                          fake.KERBEROS_SECURITY_SERVICE,
+                          fake.VSERVER_NAME)
+
+    def test_disable_kerberos_api_error(self):
+        self.mock_object(self.client, 'list_network_interfaces',
+                         mock.Mock(return_value=[fake.LIF_NAME]))
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.disable_kerberos,
+                          fake.KERBEROS_SECURITY_SERVICE)
+
+    def test_is_kerberos_enabled_not_supported(self):
+        self.client.features.add_feature('KERBEROS_VSERVER', supported=False)
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.is_kerberos_enabled)
+
+    def test_is_kerberos_enabled_no_network_interfaces(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        self.mock_object(self.client, 'get_network_interfaces',
+                         mock.Mock(return_value=[]))
+
+        result = self.client.is_kerberos_enabled()
+
+        self.assertFalse(result)
+
+    def test_is_kerberos_enabled_disabled_on_interface(self):
+        self.client.features.add_feature('KERBEROS_VSERVER')
+        self.mock_object(
+            self.client, 'get_network_interfaces',
+            mock.Mock(return_value=[{'interface-name': fake.LIF_NAME}]))
+        api_response = self._build_response({
+            'attributes': {
+                'kerberos-config-info': {
+                    'interface-name': fake.LIF_NAME,
+                    'is-kerberos-enabled': 'false',
+                },
+            },
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.is_kerberos_enabled()
+
+        self.assertFalse(result)
+
+    def test_get_dns_config_not_configured(self):
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND))
+
+        result = self.client.get_dns_config()
+
+        self.assertEqual({}, result)
+
+    def test_get_dns_config_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_dns_config)
+
+    def test_update_dns_configuration_modifies_existing_config(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={'dns-state': 'enabled'}))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_dns_configuration(['fake_dns_ip'],
+                                             ['fake_domain'])
+
+        net_dns_modify_args = {
+            'domains': [{'string': 'fake_domain'}],
+            'name-servers': [{'ip-address': 'fake_dns_ip'}],
+            'dns-state': 'enabled',
+        }
+        self.client.send_request.assert_called_once_with(
+            'net-dns-modify', net_dns_modify_args)
+
+    def test_update_dns_configuration_creates_config(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_dns_configuration(['fake_dns_ip'],
+                                             ['fake_domain'])
+
+        net_dns_create_args = {
+            'domains': [{'string': 'fake_domain'}],
+            'name-servers': [{'ip-address': 'fake_dns_ip'}],
+            'dns-state': 'enabled',
+        }
+        self.client.send_request.assert_called_once_with(
+            'net-dns-create', net_dns_create_args)
+
+    def test_update_dns_configuration_destroys_empty_config(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={'dns-state': 'enabled'}))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_dns_configuration([], [])
+
+        self.client.send_request.assert_called_once_with('net-dns-destroy', {})
+
+    def test_update_dns_configuration_api_error(self):
+        self.mock_object(self.client, 'get_dns_config',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.update_dns_configuration,
+                          ['fake_dns_ip'], ['fake_domain'])
+
+    @ddt.data(({'server': 'fake_server'}, 'none'),
+              ({'default_ad_site': 'fake_site'}, 'site'),
+              ({}, 'all'))
+    @ddt.unpack
+    def test_configure_cifs_options(self, security_service, expected_mode):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.configure_cifs_options(security_service)
+
+        self.client.send_request.assert_called_once_with(
+            'cifs-domain-server-discovery-mode-modify',
+            {'mode': expected_mode})
+
+    def test_configure_cifs_options_api_error_is_logged(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.client.configure_cifs_options({})
+
+        self.client.send_request.assert_called_once_with(
+            'cifs-domain-server-discovery-mode-modify', {'mode': 'all'})
+
+    def test_cifs_server_exists(self):
+        api_response = self._build_response({
+            'attributes-list': {
+                'cifs-server-config': {
+                    'cifs-server': 'FAKE-VSE-SERVER',
+                },
+            },
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.cifs_server_exists(fake.VSERVER_NAME)
+
+        cifs_server_get_iter_args = {
+            'query': {
+                'cifs-server-config': {
+                    'cifs-server': 'FAKE-VSE-SERVER',
+                },
+            },
+            'desired-attributes': {
+                'cifs-server-config': {
+                    'cifs-server': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'cifs-server-get-iter', cifs_server_get_iter_args)
+        self.assertTrue(result)
+
+    def test_cifs_server_exists_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.cifs_server_exists(fake.VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_configure_cifs_signing_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.configure_cifs_signing)
+
+    def test_wait_for_cifs_server(self):
+        self.mock_object(self.client, 'cifs_server_exists',
+                         mock.Mock(return_value=True))
+
+        self.assertIsNone(self.client.wait_for_cifs_server(fake.VSERVER_NAME))
+
+    def test_wait_for_cifs_server_not_found(self):
+        self.mock_object(self.client, 'cifs_server_exists',
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.wait_for_cifs_server,
+                          fake.VSERVER_NAME)
+
+    def test_create_volume_with_max_files_multiplier(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+        mock_set_max_files = self.mock_object(
+            self.client, 'set_volume_max_files')
+
+        self.client.create_volume(fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME,
+                                  1, max_files_multiplier='2')
+
+        expected_max_files = int(1 * units.Mi * 2.0 / 33.6925)
+        mock_set_max_files.assert_called_once_with(fake.SHARE_NAME,
+                                                   expected_max_files)
+
+    def test_create_volume_with_volume_tags(self):
+        self.client.features.add_feature('VOLUME_TAGS')
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+        mock_set_tags = self.mock_object(self.client, 'set_volume_tags')
+
+        self.client.create_volume(fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME,
+                                  100, volume_tags=fake.VOLUME_TAGS)
+
+        mock_set_tags.assert_called_once_with(fake.SHARE_NAME,
+                                              fake.VOLUME_TAGS)
+
+    @ddt.data('enable_dedup', 'disable_dedup')
+    def test_dedup_operation_reraises_unexpected_api_error(self, method_name):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          getattr(self.client, method_name),
+                          fake.SHARE_NAME)
+
+    def test_get_volume_efficiency_status_iter_request_failure(self):
+        self.mock_object(
+            self.client, 'send_iter_request',
+            mock.Mock(side_effect=exception.NetAppException(message='fake')))
+
+        result = self.client.get_volume_efficiency_status(fake.SHARE_NAME)
+
+        self.assertEqual({'dedupe': False, 'compression': False}, result)
+
+    def test_set_volume_max_files_without_failure_details(self):
+        api_response = self._build_response({
+            'num-failed': '1',
+            'failure-list': {},
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertIsNone(
+            self.client.set_volume_max_files(fake.SHARE_NAME,
+                                             fake.MAX_FILES))
+
+    def test_set_volume_max_files_api_error(self):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_volume_max_files,
+                          fake.SHARE_NAME, fake.MAX_FILES)
+
+    def test_set_volume_max_files_retries_with_allocated_files(self):
+        error_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        ok_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(side_effect=[error_response, ok_response]))
+        self.mock_object(self.client, 'get_volume_allocated_files',
+                         mock.Mock(return_value={'used': '8000',
+                                                 'max': '5000'}))
+
+        self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES,
+                                         retry_allocated=True)
+
+        self.assertEqual(2, self.client.send_request.call_count)
+        self.assertEqual(
+            '8000',
+            self.client.send_request.call_args[0][1]['attributes'][
+                'volume-attributes']['volume-inode-attributes'][
+                'files-total'])
+
+    def test_set_volume_max_files_already_at_allocated_files(self):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(self.client, 'get_volume_allocated_files',
+                         mock.Mock(return_value={'used': '5000',
+                                                 'max': '5000'}))
+
+        self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES,
+                                         retry_allocated=True)
+
+        self.assertEqual(1, self.client.send_request.call_count)
+
+    def test_set_volume_max_files_retry_ignores_other_errors(self):
+        api_response = self._build_response({
+            'num-failed': '1',
+            'failure-list': {
+                'volume-modify-iter-info': {
+                    'error-code': netapp_api.EAPIERROR,
+                    'error-message': 'fake_message',
+                },
+            },
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        mock_allocated_files = self.mock_object(
+            self.client, 'get_volume_allocated_files')
+
+        self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES,
+                                         retry_allocated=True)
+
+        mock_allocated_files.assert_not_called()
+
+    def test_set_volume_snapdir_access_failure_list(self):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_volume_snapdir_access,
+                          fake.SHARE_NAME, True)
+
+    def test_set_volume_filesys_size_fixed_failure_list(self):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_volume_filesys_size_fixed,
+                          fake.SHARE_NAME, True)
+
+    def test_modify_volume_adaptive_qos_not_supported(self):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=False)
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.modify_volume,
+            fake.SHARE_AGGREGATE_NAME,
+            fake.SHARE_NAME,
+            adaptive_qos_policy_group=fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+    def test_modify_volume_with_volume_tags(self):
+        self.client.features.add_feature('VOLUME_TAGS')
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'update_volume_efficiency_attributes')
+        self.mock_object(self.client, '_is_snaplock_enabled_volume',
+                         mock.Mock(return_value=False))
+        mock_set_tags = self.mock_object(self.client, 'set_volume_tags')
+
+        self.client.modify_volume(fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME,
+                                  volume_tags=fake.VOLUME_TAGS)
+
+        mock_set_tags.assert_called_once_with(fake.SHARE_NAME,
+                                              fake.VOLUME_TAGS)
+
+    def test_get_volume_snapshot_attributes_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.StorageResourceNotFound,
+                          self.client.get_volume_snapshot_attributes,
+                          fake.SHARE_NAME)
+
+    def test_get_volume_snapshot_attributes_not_unique(self):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_NOT_UNIQUE_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_volume_snapshot_attributes,
+                          fake.SHARE_NAME)
+
+    def test_get_volume_allocated_files(self):
+        api_response = self._build_response({
+            'attributes-list': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {
+                        'inodefile-public-capacity': '8000',
+                        'files-total': '5000',
+                    },
+                },
+            },
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_allocated_files(fake.SHARE_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {
+                        'inodefile-public-capacity': None,
+                        'files-total': None,
+                    },
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+        self.assertEqual({'used': '8000', 'max': '5000'}, result)
+
+    def test_get_volume_allocated_files_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_allocated_files(fake.SHARE_NAME)
+
+        self.assertIsNone(result)
+
+    @ddt.data(netapp_api.EVOLOPNOTUNDERWAY, netapp_api.EVOLUMENOTONLINE,
+              netapp_api.EPARENTNOTONLINE)
+    def test_volume_clone_split_status_cannot_be_determined(self, code):
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(code=code))
+
+        result = self.client.volume_clone_split_status(fake.SHARE_NAME)
+
+        self.assertEqual(na_utils.CLONE_SPLIT_STATUS_UNKNOWN, result)
+
+    def test_volume_clone_split_status_no_longer_a_clone(self):
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EVOLNOTCLONE))
+
+        result = self.client.volume_clone_split_status(fake.SHARE_NAME)
+
+        self.assertEqual(na_utils.CLONE_SPLIT_STATUS_FINISHED, result)
+
+    def test_volume_clone_split_status_unexpected_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        result = self.client.volume_clone_split_status(fake.SHARE_NAME)
+
+        self.assertEqual(na_utils.CLONE_SPLIT_STATUS_UNKNOWN, result)
+
+    @ddt.data(('50', na_utils.CLONE_SPLIT_STATUS_ONGOING),
+              ('100', na_utils.CLONE_SPLIT_STATUS_FINISHED),
+              ('not_a_number', na_utils.CLONE_SPLIT_STATUS_UNKNOWN))
+    @ddt.unpack
+    def test_volume_clone_split_status(self, percentage, expected):
+        api_response = self._build_response({
+            'clone-split-details': {
+                'clone-split-detail-info': {
+                    'block-percentage-complete': percentage,
+                },
+            },
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.volume_clone_split_status(fake.SHARE_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'volume-clone-split-status', {'volume': fake.SHARE_NAME})
+        self.assertEqual(expected, result)
+
+    def test_volume_clone_split_status_no_details(self):
+        api_response = netapp_api.NaElement(fake.PASSED_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.volume_clone_split_status(fake.SHARE_NAME)
+
+        self.assertEqual(na_utils.CLONE_SPLIT_STATUS_UNKNOWN, result)
+
+    def test_volume_clone_split_stop_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.volume_clone_split_stop,
+                          fake.SHARE_NAME)
+
+    def test_get_clones_of_parent_volume(self):
+        api_response = self._build_response({
+            'attributes-list': [
+                {'volume-clone-info': {'volume': fake.CDOT_CLONE_CHILD_1}},
+                {'volume-clone-info': {'volume': fake.CDOT_CLONE_CHILD_2}},
+            ],
+            'num-records': '2',
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_clones_of_parent_volume(
+            fake.VSERVER_NAME, fake.PARENT_SHARE_NAME)
+
+        volume_clone_get_iter_args = {
+            'query': {
+                'volume-clone-info': {
+                    'parent-vserver': fake.VSERVER_NAME,
+                    'parent-volume': fake.PARENT_SHARE_NAME,
+                }
+            },
+            'desired-attributes': {
+                'volume-clone-info': {
+                    'volume': None,
+                },
+            }
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-clone-get-iter', volume_clone_get_iter_args)
+        self.assertEqual([fake.CDOT_CLONE_CHILD_1, fake.CDOT_CLONE_CHILD_2],
+                         result)
+
+    def test_get_clones_of_parent_volume_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_clones_of_parent_volume(
+            fake.VSERVER_NAME, fake.PARENT_SHARE_NAME)
+
+        self.assertEqual([], result)
+
+    def test_force_delete_volume(self):
+        self.mock_object(
+            self.client, 'get_volume',
+            mock.Mock(return_value={'instance-uuid': fake.FAKE_UUID}))
+        self.mock_object(self.client, 'send_request')
+
+        self.client.force_delete_volume(fake.SHARE_NAME)
+
+        expected_api_args = {
+            'body': {},
+            'headers': {},
+            'query': {'return_timeout': 120, 'force': 'true'},
+            'url_params': {'volume_uuid': fake.FAKE_UUID},
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-destroy', api_args=expected_api_args, use_zapi=False)
+
+    def test_force_delete_volume_api_error(self):
+        self.mock_object(
+            self.client, 'get_volume',
+            mock.Mock(return_value={'instance-uuid': fake.FAKE_UUID}))
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.force_delete_volume,
+                          fake.SHARE_NAME)
+
+    def _deleted_volumes_response(self, state):
+        return self._build_response({
+            'attributes-list': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': 'deleted_manila_' + fake.SHARE_NAME,
+                        'owning-vserver-name': fake.VSERVER_NAME,
+                    },
+                    'volume-state-attributes': {
+                        'state': state,
+                    },
+                },
+            },
+            'num-records': '1',
+        })
+
+    def _mock_prune_deleted_volumes(self, state):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=(
+                             self._deleted_volumes_response(state))))
+        pruning_client = mock.Mock()
+        self.mock_object(copy, 'deepcopy',
+                         mock.Mock(return_value=pruning_client))
+        return pruning_client
+
+    def test_prune_deleted_volumes_no_records(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        mock_get_clones = self.mock_object(self.client,
+                                           'get_clones_of_parent_volume')
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_not_called()
+
+    def test_prune_deleted_volumes_no_attributes_list(self):
+        api_response = self._build_response({'num-records': '1'})
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        mock_get_clones = self.mock_object(self.client,
+                                           'get_clones_of_parent_volume')
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_not_called()
+
+    def test_prune_deleted_volumes_offline_parent_online_failure(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        pruning_client.volume_online.side_effect = [Exception, None]
+        self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[fake.CDOT_CLONE_CHILD_1]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.set_vserver.assert_called_once_with(fake.VSERVER_NAME)
+        pruning_client.volume_online.assert_has_calls([
+            mock.call('deleted_manila_' + fake.SHARE_NAME),
+            mock.call(fake.CDOT_CLONE_CHILD_1)])
+
+    def test_prune_deleted_volumes_offline_clone_online_failure(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        pruning_client.volume_online.side_effect = [None, Exception]
+        self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[fake.CDOT_CLONE_CHILD_1]))
+
+        self.client.prune_deleted_volumes()
+
+        self.assertEqual(2, pruning_client.volume_online.call_count)
+
+    def test_prune_deleted_volumes_offline_without_clones(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        self.mock_object(self.client, 'get_clones_of_parent_volume',
+                         mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.send_request.assert_called_once_with(
+            'volume-destroy',
+            {'name': 'deleted_manila_' + fake.SHARE_NAME})
+
+    def test_prune_deleted_volumes_offline_destroy_starts_clone_split(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        pruning_client.send_request.side_effect = netapp_api.NaApiError(
+            code=netapp_api.EVOLDEL_NOT_ALLOW_BY_CLONE)
+        pruning_client.volume_clone_split_status.return_value = (
+            na_utils.CLONE_SPLIT_STATUS_UNKNOWN)
+        self.mock_object(self.client, 'get_clones_of_parent_volume',
+                         mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_start.assert_called_once_with(
+            'deleted_manila_' + fake.SHARE_NAME)
+
+    def test_prune_deleted_volumes_offline_destroy_split_already_running(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        pruning_client.send_request.side_effect = netapp_api.NaApiError(
+            code=netapp_api.EVOLDEL_NOT_ALLOW_BY_CLONE)
+        pruning_client.volume_clone_split_status.return_value = (
+            na_utils.CLONE_SPLIT_STATUS_ONGOING)
+        self.mock_object(self.client, 'get_clones_of_parent_volume',
+                         mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_start.assert_not_called()
+
+    def test_prune_deleted_volumes_offline_destroy_split_status_failure(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        pruning_client.send_request.side_effect = netapp_api.NaApiError(
+            code=netapp_api.EVOLDEL_NOT_ALLOW_BY_CLONE)
+        pruning_client.volume_clone_split_status.side_effect = Exception
+        self.mock_object(self.client, 'get_clones_of_parent_volume',
+                         mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_start.assert_not_called()
+
+    def test_prune_deleted_volumes_offline_destroy_other_api_error(self):
+        pruning_client = self._mock_prune_deleted_volumes('offline')
+        pruning_client.send_request.side_effect = netapp_api.NaApiError(
+            code=netapp_api.EAPIERROR)
+        self.mock_object(self.client, 'get_clones_of_parent_volume',
+                         mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_status.assert_not_called()
+
+    @ddt.data(None, Exception)
+    def test_prune_deleted_volumes_online_without_clones(self, side_effect):
+        pruning_client = self._mock_prune_deleted_volumes('online')
+        pruning_client.volume_offline.side_effect = side_effect
+        self.mock_object(self.client, 'get_clones_of_parent_volume',
+                         mock.Mock(return_value=[]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_offline.assert_called_once_with(
+            'deleted_manila_' + fake.SHARE_NAME)
+
+    def test_prune_deleted_volumes_online_starts_clone_split(self):
+        pruning_client = self._mock_prune_deleted_volumes('online')
+        pruning_client.volume_clone_split_status.return_value = (
+            na_utils.CLONE_SPLIT_STATUS_UNKNOWN)
+        self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[fake.CDOT_CLONE_CHILD_1]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_start.assert_called_once_with(
+            fake.CDOT_CLONE_CHILD_1)
+
+    def test_prune_deleted_volumes_online_split_already_running(self):
+        pruning_client = self._mock_prune_deleted_volumes('online')
+        pruning_client.volume_clone_split_status.return_value = (
+            na_utils.CLONE_SPLIT_STATUS_ONGOING)
+        self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[fake.CDOT_CLONE_CHILD_1]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_start.assert_not_called()
+
+    def test_prune_deleted_volumes_online_split_status_failure(self):
+        pruning_client = self._mock_prune_deleted_volumes('online')
+        pruning_client.volume_clone_split_status.side_effect = Exception
+        self.mock_object(
+            self.client, 'get_clones_of_parent_volume',
+            mock.Mock(return_value=[fake.CDOT_CLONE_CHILD_1]))
+
+        self.client.prune_deleted_volumes()
+
+        pruning_client.volume_clone_split_start.assert_not_called()
+
+    def test_create_snapshot_with_snapmirror_label(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME,
+                                    snapmirror_label='fake_label')
+
+        snapshot_create_args = {
+            'volume': fake.SHARE_NAME,
+            'snapshot': fake.SNAPSHOT_NAME,
+            'snapmirror-label': 'fake_label',
+        }
+        self.client.send_request.assert_called_once_with(
+            'snapshot-create', snapshot_create_args)
+
+    def test_rename_snapshot_and_split_clones_snapshot_not_found(self):
+        self.mock_object(
+            self.client, 'rename_snapshot',
+            self._mock_api_error(code=netapp_api.EAPINOTFOUND))
+        mock_get_children = self.mock_object(
+            self.client, 'get_clone_children_for_snapshot')
+
+        self.client.rename_snapshot_and_split_clones(fake.SHARE_NAME,
+                                                     fake.SNAPSHOT_NAME)
+
+        mock_get_children.assert_not_called()
+
+    def test_rename_snapshot_and_split_clones_api_error(self):
+        self.mock_object(self.client, 'rename_snapshot',
+                         self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.rename_snapshot_and_split_clones,
+                          fake.SHARE_NAME, fake.SNAPSHOT_NAME)
+
+    def test_add_cifs_share_access_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.add_cifs_share_access,
+                          fake.SHARE_NAME, fake.USER_NAME, False)
+
+    def test_remove_cifs_share_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.remove_cifs_share,
+                          fake.SHARE_NAME)
+
+    def test__add_nfs_export_rule_with_anonymous_user_id(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client._add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                         fake.NFS_EXPORT_RULES[0],
+                                         False, ['sys'],
+                                         anon_user_id='65534')
+
+        export_rule_create_args = {
+            'policy-name': fake.EXPORT_POLICY_NAME,
+            'client-match': fake.NFS_EXPORT_RULES[0],
+            'ro-rule': [{'security-flavor': 'sys'}],
+            'rw-rule': [{'security-flavor': 'sys'}],
+            'super-user-security': [{'security-flavor': 'sys'}],
+            'anonymous-user-id': '65534',
+        }
+        self.client.send_request.assert_called_once_with(
+            'export-rule-create', export_rule_create_args)
+
+    def test__update_nfs_export_rule_with_anonymous_user_id(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client._update_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                            fake.NFS_EXPORT_RULES[0],
+                                            False, '1', ['sys'],
+                                            anon_user_id='65534')
+
+        export_rule_modify_args = {
+            'policy-name': fake.EXPORT_POLICY_NAME,
+            'rule-index': '1',
+            'client-match': fake.NFS_EXPORT_RULES[0],
+            'ro-rule': [{'security-flavor': 'sys'}],
+            'rw-rule': [{'security-flavor': 'sys'}],
+            'super-user-security': [{'security-flavor': 'sys'}],
+            'anonymous-user-id': '65534',
+        }
+        self.client.send_request.assert_called_once_with(
+            'export-rule-modify', export_rule_modify_args)
+
+    def test_set_pcuser_for_volume_api_error(self):
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_pcuser_for_volume,
+                          fake.SHARE_NAME)
+
+    def test_set_qos_adaptive_policy_group_for_volume_not_supported(self):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=False)
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.client.set_qos_adaptive_policy_group_for_volume,
+            fake.SHARE_NAME, fake.ADAPTIVE_QOS_POLICY_GROUP_NAME)
+
+    def test__snapmirror_path_without_vserver(self):
+        self.assertIsNone(self.client._snapmirror_path(None))
+
+    def test_break_snapmirror_already_breaking(self):
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(
+                code=netapp_api.ESVMDR_CANNOT_PERFORM_OP_FOR_STATUS,
+                message='SnapMirror operation status is "Breaking"'))
+
+        self.assertIsNone(self.client.break_snapmirror_vol(
+            fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
+            fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME))
+
+    def test_break_snapmirror_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.break_snapmirror_vol,
+                          fake.SM_SOURCE_VSERVER, fake.SM_SOURCE_VOLUME,
+                          fake.SM_DEST_VSERVER, fake.SM_DEST_VOLUME)
+
+    def test_get_snapmirror_destinations_with_desired_attributes(self):
+        api_response = self._build_response({
+            'attributes-list': {
+                'snapmirror-destination-info': {
+                    'relationship-id': 'fake_relationship_id',
+                },
+            },
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_snapmirror_destinations(
+            source_vserver=fake.SM_SOURCE_VSERVER,
+            desired_attributes=['relationship-id'])
+
+        snapmirror_get_destination_iter_args = {
+            'query': {
+                'snapmirror-destination-info': {
+                    'source-vserver': fake.SM_SOURCE_VSERVER,
+                },
+            },
+            'desired-attributes': {
+                'snapmirror-destination-info': {
+                    'relationship-id': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'snapmirror-get-destination-iter',
+            snapmirror_get_destination_iter_args)
+        self.assertEqual([{'relationship-id': 'fake_relationship_id'}],
+                         result)
+
+    def test_delete_snapmirror_policy_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.delete_snapmirror_policy,
+                          fake.SNAPMIRROR_POLICY_NAME)
+
+    def test_send_volume_move_request_flexvol_encryption_unsupported(self):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(FLEXVOL_ENCRYPTION=False,
+                                   NAE_SUPPORT=False))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client._send_volume_move_request,
+                          fake.ROOT_VOLUME_NAME,
+                          fake.NODE_VSERVER_NAME,
+                          fake.SHARE_AGGREGATE_NAME,
+                          encrypt_destination=True)
+
+    def test_send_volume_move_request_aggregate_encryption_disabled(self):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(FLEXVOL_ENCRYPTION=True,
+                                   NAE_SUPPORT=True))
+        self.mock_object(self.client, 'send_request')
+
+        self.client._send_volume_move_request(fake.ROOT_VOLUME_NAME,
+                                              fake.NODE_VSERVER_NAME,
+                                              fake.SHARE_AGGREGATE_NAME,
+                                              dest_aggr_encryption=False)
+
+        volume_move_start_args = {
+            'source-volume': fake.ROOT_VOLUME_NAME,
+            'vserver': fake.NODE_VSERVER_NAME,
+            'dest-aggr': fake.SHARE_AGGREGATE_NAME,
+            'cutover-action': 'wait',
+            'encrypt-destination': 'false',
+            'encrypt-with-aggr-key': 'false',
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-move-start', volume_move_start_args)
+
+    def test_send_volume_move_request_flexvol_encryption_not_requested(self):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(FLEXVOL_ENCRYPTION=True,
+                                   NAE_SUPPORT=False))
+        self.mock_object(self.client, 'send_request')
+
+        self.client._send_volume_move_request(fake.ROOT_VOLUME_NAME,
+                                              fake.NODE_VSERVER_NAME,
+                                              fake.SHARE_AGGREGATE_NAME)
+
+        volume_move_start_args = {
+            'source-volume': fake.ROOT_VOLUME_NAME,
+            'vserver': fake.NODE_VSERVER_NAME,
+            'dest-aggr': fake.SHARE_AGGREGATE_NAME,
+            'cutover-action': 'wait',
+            'encrypt-destination': 'false',
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-move-start', volume_move_start_args)
+
+    def test__get_optional_adaptive_qos_policy_specs(self):
+        qos_type_specs = {
+            'absolute_min_iops': fake.ADAPTIVE_ABSOLUTE_MIN_IOPS,
+            'block_size': fake.ADAPTIVE_QOS_BLOCK_SIZE,
+            'expected_iops_allocation': (
+                fake.ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION),
+            'peak_iops_allocation': fake.ADAPTIVE_QOS_PEAK_IOPS_ALLOCATION,
+        }
+
+        result = self.client._get_optional_adaptive_qos_policy_specs(
+            {}, qos_type_specs)
+
+        expected = {
+            'absolute-min-iops': fake.ADAPTIVE_ABSOLUTE_MIN_IOPS,
+            'block-size': fake.ADAPTIVE_QOS_BLOCK_SIZE,
+            'expected-iops-allocation': (
+                fake.ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION),
+            'peak-iops-allocation': fake.ADAPTIVE_QOS_PEAK_IOPS_ALLOCATION,
+        }
+        self.assertEqual(expected, result)
+
+    def test_adaptive_qos_policy_group_modify_iops(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.adaptive_qos_policy_group_modify(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            {'peak_iops': fake.ADAPTIVE_QOS_PEAK_IOPS,
+             'expected_iops': fake.ADAPTIVE_QOS_EXPECTED_IOPS})
+
+        adaptive_qos_policy_group_modify_args = {
+            'policy-group': fake.ADAPTIVE_QOS_POLICY_GROUP_NAME,
+            'peak-iops': fake.ADAPTIVE_QOS_PEAK_IOPS,
+            'expected-iops': fake.ADAPTIVE_QOS_EXPECTED_IOPS,
+        }
+        self.client.send_request.assert_called_once_with(
+            'qos-adaptive-policy-group-modify',
+            adaptive_qos_policy_group_modify_args, False)
+
+    @ddt.data((100.0, None, '100MB/s'), (None, 200.0, '200iops'),
+              (100.0, 200.0, '100MB/s,200iops'))
+    @ddt.unpack
+    def test__generate_qos_policy_throughput_integral_floats(self, mbps, iops,
+                                                             expected):
+        result = self.client._generate_qos_policy_throughput(mbps, iops)
+
+        self.assertEqual(expected, result)
+
+    def test_qos_policy_group_create_shared(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.qos_policy_group_create(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
+            {'max_throughput_iops': fake.QOS_MAX_THROUGHPUT_IOPS_NO_UNIT,
+             'capacity_shared': 'true'})
+
+        qos_policy_group_create_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'max-throughput': fake.QOS_MAX_THROUGHPUT_IOPS,
+            'is-shared': 'true',
+        }
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-create', qos_policy_group_create_args, False)
+
+    def test_qos_policy_group_modify(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.qos_policy_group_modify(
+            fake.QOS_POLICY_GROUP_NAME,
+            {'max_throughput_iops': fake.QOS_MAX_THROUGHPUT_IOPS_NO_UNIT,
+             'min_throughput_iops': fake.QOS_MIN_THROUGHPUT_IOPS_NO_UNIT})
+
+        qos_policy_group_modify_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'max-throughput': fake.QOS_MAX_THROUGHPUT_IOPS,
+            'min-throughput': fake.QOS_MIN_THROUGHPUT_IOPS,
+        }
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-modify', qos_policy_group_modify_args, False)
+
+    def test_qos_policy_group_modify_without_throughput(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.qos_policy_group_modify(fake.QOS_POLICY_GROUP_NAME, {})
+
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-modify',
+            {'policy-group': fake.QOS_POLICY_GROUP_NAME}, False)
+
+    def _qos_policy_group_response(self, max_throughput=None,
+                                   min_throughput=None):
+        policy_group_info = {
+            'num-workloads': '1',
+            'is-shared': 'true',
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+        }
+        if max_throughput:
+            policy_group_info['max-throughput'] = max_throughput
+        if min_throughput:
+            policy_group_info['min-throughput'] = min_throughput
+        return self._build_response({
+            'attributes-list': {
+                'qos-policy-group-info': policy_group_info,
+            },
+            'num-records': '1',
+        })
+
+    def test_qos_policy_group_get(self):
+        api_response = self._qos_policy_group_response(
+            max_throughput='5000MB/s,6000iops',
+            min_throughput='1000MB/s,2000iops')
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.qos_policy_group_get(fake.QOS_POLICY_GROUP_NAME)
+
+        qos_policy_group_get_iter_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': fake.QOS_POLICY_GROUP_NAME,
+                },
+            },
+            'desired-attributes': {
+                'qos-policy-group-info': {
+                    'policy-group': None,
+                    'vserver': None,
+                    'max-throughput': None,
+                    'min-throughput': None,
+                    'is-shared': None,
+                    'num-workloads': None
+                },
+            },
+        }
+        expected = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'num-workloads': 1,
+            'capacity_shared': 'true',
+            'max_throughput_mbps': 5000,
+            'max_throughput_iops': 6000,
+            'min_throughput_mbps': 1000,
+            'min_throughput_iops': 2000,
+        }
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-get-iter', qos_policy_group_get_iter_args,
+            False)
+        self.assertEqual(expected, result)
+
+    def test_qos_policy_group_get_single_throughput_unit(self):
+        api_response = self._qos_policy_group_response(
+            max_throughput='6000iops', min_throughput='1000MB/s')
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.qos_policy_group_get(fake.QOS_POLICY_GROUP_NAME)
+
+        expected = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'num-workloads': 1,
+            'capacity_shared': 'true',
+            'max_throughput_iops': 6000,
+            'min_throughput_mbps': 1000,
+        }
+        self.assertEqual(expected, result)
+
+    def test_qos_policy_group_get_without_throughput(self):
+        self.mock_object(
+            self.client, 'send_request',
+            mock.Mock(return_value=self._qos_policy_group_response()))
+
+        result = self.client.qos_policy_group_get(fake.QOS_POLICY_GROUP_NAME)
+
+        expected = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'num-workloads': 1,
+            'capacity_shared': 'true',
+        }
+        self.assertEqual(expected, result)
+
+    def test_qos_policy_group_get_no_permission_to_execute_zapi(self):
+        self.mock_object(
+            self.client, 'send_request',
+            self._mock_api_error(code=netapp_api.EAPINOTFOUND))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.qos_policy_group_get,
+                          fake.QOS_POLICY_GROUP_NAME)
+
+    def test_qos_policy_group_get_other_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.qos_policy_group_get,
+                          fake.QOS_POLICY_GROUP_NAME)
+
+    def test_qos_policy_group_get_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.qos_policy_group_get,
+                          fake.QOS_POLICY_GROUP_NAME)
+
+    @ddt.data(('true', True), ('false', False))
+    @ddt.unpack
+    def test_get_net_options(self, enabled, expected):
+        api_response = self._build_response({
+            'net-options': {
+                'ipv6-options-info': {'enabled': enabled},
+            },
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_net_options()
+
+        self.client.send_request.assert_called_once_with(
+            'net-options-get', None, False)
+        self.assertEqual({'ipv6-enabled': expected}, result)
+
+    def test_get_net_options_without_ipv6_info(self):
+        api_response = self._build_response({'net-options': {}})
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_net_options()
+
+        self.assertEqual({'ipv6-enabled': False}, result)
+
+    def test_start_vserver_api_error(self):
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.start_vserver,
+                          fake.VSERVER_NAME)
+
+    def test_get_fpolicy_events_unparsable_response(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(
+                             return_value=self._unparsable_iter_response()))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_fpolicy_events,
+                          event_name=fake.FPOLICY_EVENT_NAME)
+
+    def test_get_fpolicy_policies_unparsable_response(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(
+                             return_value=self._unparsable_iter_response()))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_fpolicy_policies,
+                          fake.SHARE_NAME,
+                          policy_name=fake.FPOLICY_POLICY_NAME)
+
+    def test_get_fpolicy_scopes_unparsable_response(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(
+                             return_value=self._unparsable_iter_response()))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_fpolicy_scopes,
+                          fake.SHARE_NAME,
+                          policy_name=fake.FPOLICY_POLICY_NAME)
+
+    def test_get_fpolicy_policies_status_unparsable_response(self):
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(
+                             return_value=self._unparsable_iter_response()))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_fpolicy_policies_status,
+                          fake.SHARE_NAME,
+                          policy_name=fake.FPOLICY_POLICY_NAME)
+
+    def test_create_fpolicy_policy_with_scope(self):
+        mock_create_policy = self.mock_object(self.client,
+                                              'create_fpolicy_policy')
+        mock_create_scope = self.mock_object(self.client,
+                                             'create_fpolicy_scope')
+
+        self.client.create_fpolicy_policy_with_scope(
+            fake.FPOLICY_POLICY_NAME, fake.SHARE_NAME,
+            [fake.FPOLICY_EVENT_NAME],
+            engine=fake.FPOLICY_ENGINE,
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE,
+            extensions_to_exclude=fake.FPOLICY_EXT_TO_EXCLUDE)
+
+        mock_create_policy.assert_called_once_with(
+            fake.FPOLICY_POLICY_NAME, fake.SHARE_NAME,
+            [fake.FPOLICY_EVENT_NAME], engine='native')
+        mock_create_scope.assert_called_once_with(
+            fake.FPOLICY_POLICY_NAME, fake.SHARE_NAME,
+            fake.FPOLICY_EXT_TO_INCLUDE, fake.FPOLICY_EXT_TO_EXCLUDE)
+
+    def test_get_migration_check_job_state_unexpected_error(self):
+        self.mock_object(self.client, 'get_job', self._mock_api_error())
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_migration_check_job_state,
+                          fake.JOB_ID)
+
+    def test_get_svm_volumes_total_size_no_volumes(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value={'records': []}))
+
+        result = self.client.get_svm_volumes_total_size(fake.VSERVER_NAME)
+
+        self.assertEqual(0, result)
+
+    def test_get_desired_sync_snapmirror_state(self):
+        self.assertEqual(na_utils.SM_SNAPMIRRORED_STATE,
+                         self.client.get_desired_sync_snapmirror_state())
+
+    def test_create_vserver_without_delete_retention_hours(self):
+        self.client.features.add_feature('DELETE_RETENTION_HOURS',
+                                         supported=False)
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, '_modify_security_cert')
+
+        self.client.create_vserver(fake.VSERVER_NAME,
+                                   fake.ROOT_VOLUME_AGGREGATE_NAME,
+                                   fake.ROOT_VOLUME_NAME,
+                                   fake.SHARE_AGGREGATE_NAMES,
+                                   None,
+                                   fake.SECURITY_CERT_LARGE_EXPIRE_DAYS,
+                                   fake.DELETE_RETENTION_HOURS,
+                                   False)
+
+        vserver_modify_args = {
+            'aggr-list': [{'aggr-name': aggr_name} for aggr_name
+                          in fake.SHARE_AGGREGATE_NAMES],
+            'vserver-name': fake.VSERVER_NAME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-modify', vserver_modify_args)])
+
+    def test_list_vservers_without_vserver_type(self):
+        api_response = netapp_api.NaElement(
+            fake.VSERVER_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.list_vservers(vserver_type=None)
+
+        vserver_get_iter_args = {
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'vserver-get-iter', vserver_get_iter_args)
+        self.assertListEqual([fake.VSERVER_NAME], result)
+
+    def test_terminate_vserver_services_unrelated_service_type(self):
+        self.mock_object(self.vserver_client, 'disable_kerberos')
+
+        self.mock_object(self.vserver_client, 'send_request')
+
+        self.client._terminate_vserver_services(
+            fake.VSERVER_NAME, self.vserver_client,
+            [fake.LDAP_LINUX_SECURITY_SERVICE])
+
+        self.vserver_client.disable_kerberos.assert_not_called()
+        self.vserver_client.send_request.assert_not_called()
+
+    def test_network_interface_exists_with_home_port(self):
+        api_response = netapp_api.NaElement(
+            fake.NET_INTERFACE_GET_ONE_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.network_interface_exists(
+            fake.VSERVER_NAME, fake.NODE_NAME, fake.PORT, fake.IP_ADDRESS,
+            fake.NETMASK, fake.VLAN, home_port=fake.VLAN_PORT)
+
+        net_interface_get_args = {
+            'query': {
+                'net-interface-info': {
+                    'address': fake.IP_ADDRESS,
+                    'home-node': fake.NODE_NAME,
+                    'home-port': fake.VLAN_PORT,
+                    'netmask': fake.NETMASK,
+                    'vserver': fake.VSERVER_NAME}
+            },
+            'desired-attributes': {
+                'net-interface-info': {
+                    'interface-name': None,
+                }
+            }
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'net-interface-get-iter', net_interface_get_args)
+        self.assertTrue(result)
+
+    def test__create_ldap_client_without_organizational_unit(self):
+        security_service = copy.deepcopy(fake.LDAP_LINUX_SECURITY_SERVICE)
+        security_service['ou'] = None
+        self.mock_object(self.client, 'send_request')
+
+        self.client._create_ldap_client(security_service)
+
+        config_name = hashlib.md5(
+            security_service['id'].encode('latin-1'),
+            usedforsecurity=False).hexdigest()
+        ldap_client_create_args = {
+            'ldap-client-config': config_name,
+            'tcp-port': '389',
+            'schema': 'RFC-2307',
+            'bind-dn': security_service['user'],
+            'bind-password': security_service['password'],
+            'servers': [
+                {'ip-address': security_service['server']},
+            ],
+        }
+        self.client.send_request.assert_called_once_with(
+            'ldap-client-create', ldap_client_create_args)
+
+    def test_configure_active_directory_without_organizational_unit(self):
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        security_service['ou'] = None
+        self.mock_object(self.client, 'configure_dns')
+        self.mock_object(self.client, 'configure_cifs_aes_encryption')
+        self.mock_object(self.client, 'set_preferred_dc')
+        self.mock_object(self.client, 'wait_for_cifs_server')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.configure_active_directory(security_service,
+                                               fake.VSERVER_NAME,
+                                               False,
+                                               False)
+
+        cifs_server_create_args = {
+            'admin-username': security_service['user'],
+            'admin-password': security_service['password'],
+            'force-account-overwrite': 'true',
+            'cifs-server': self.client._get_cifs_server_name(
+                fake.VSERVER_NAME),
+            'domain': security_service['domain'],
+        }
+        self.client.send_request.assert_called_once_with(
+            'cifs-server-create', cifs_server_create_args)
+
+    def test_modify_active_directory_only_default_ad_site(self):
+        self.mock_object(self.client, 'send_request')
+        self.mock_object(self.client, 'configure_cifs_options')
+        mock_remove_dcs = self.mock_object(self.client, 'remove_preferred_dcs')
+
+        self.client.modify_active_directory_security_service(
+            fake.VSERVER_NAME, ['default_ad_site'],
+            fake.CIFS_SECURITY_SERVICE_4, fake.CIFS_SECURITY_SERVICE_3)
+
+        self.client.send_request.assert_called_once_with(
+            'cifs-server-modify', mock.ANY)
+        mock_remove_dcs.assert_not_called()
+
+    def test_modify_active_directory_only_server_unset_on_both_sides(self):
+        self.mock_object(self.client, 'send_request')
+        mock_remove_dcs = self.mock_object(self.client, 'remove_preferred_dcs')
+        mock_set_dc = self.mock_object(self.client, 'set_preferred_dc')
+
+        self.client.modify_active_directory_security_service(
+            fake.VSERVER_NAME, ['server'],
+            fake.CIFS_SECURITY_SERVICE_4, fake.CIFS_SECURITY_SERVICE_3)
+
+        mock_remove_dcs.assert_not_called()
+        mock_set_dc.assert_not_called()
+
+    @ddt.data(('set_volume_size', (10,)),
+              ('set_volume_snapdir_access', (True,)),
+              ('set_volume_filesys_size_fixed', (True,)),
+              ('set_volume_security_style', ('unix',)),
+              ('set_pcuser_for_volume', ()))
+    @ddt.unpack
+    def test_volume_modify_iter_failure_without_error_details(self, method,
+                                                              args):
+        api_response = self._build_response({
+            'num-failed': '1',
+            'failure-list': {},
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertIsNone(
+            getattr(self.client, method)(fake.SHARE_NAME, *args))
+
+    def test_modify_volume_without_aggregate_name(self):
+        """A missing aggregate leaves the FlexGroup flag unset.
+
+        ONTAP volume modification derives the FlexGroup flag from the
+        aggregate argument, so omitting it entirely leaves the driver
+        unable to update the efficiency attributes.
+        """
+        self.mock_object(self.client, 'send_request')
+
+        self.assertRaises(UnboundLocalError,
+                          self.client.modify_volume,
+                          None, fake.SHARE_NAME)
+
+    def test_is_flexvol_encrypted_no_records(self):
+        self.client.features.add_feature('FLEXVOL_ENCRYPTION')
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.is_flexvol_encrypted(fake.SHARE_NAME,
+                                                  fake.VSERVER_NAME)
+
+        self.assertFalse(result)
+
+    def test_get_volume_to_manage_without_aggregate_name(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_to_manage(None, fake.SHARE_NAME)
+
+        volume_id_attributes = (
+            self.client.send_iter_request.call_args[0][1]['query'][
+                'volume-attributes']['volume-id-attributes'])
+        self.assertNotIn('containing-aggregate-name', volume_id_attributes)
+        self.assertNotIn('aggr-list', volume_id_attributes)
+        self.assertIsNone(result)
+
+    def test_volume_clone_split_status_percentage_above_completion(self):
+        api_response = self._build_response({
+            'clone-split-details': {
+                'clone-split-detail-info': {
+                    'block-percentage-complete': '150',
+                },
+            },
+        })
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.volume_clone_split_status(fake.SHARE_NAME)
+
+        self.assertEqual(na_utils.CLONE_SPLIT_STATUS_UNKNOWN, result)
+
+    def test_soft_delete_volume_ignores_other_api_errors(self):
+        self.mock_object(self.client, 'send_request',
+                         self._mock_api_error(code=netapp_api.EAPIERROR))
+        mock_rename = self.mock_object(self.client, 'rename_volume')
+
+        self.assertIsNone(self.client.soft_delete_volume(fake.SHARE_NAME))
+
+        mock_rename.assert_not_called()
+
+    def test_prune_deleted_volumes_skips_other_volume_states(self):
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=(
+                             self._deleted_volumes_response('restricted'))))
+        mock_get_clones = self.mock_object(self.client,
+                                           'get_clones_of_parent_volume')
+
+        self.client.prune_deleted_volumes()
+
+        mock_get_clones.assert_not_called()
+
+    def test__get_aggregate_disk_types_without_effective_disk_type(self):
+        api_response = self._build_response({
+            'attributes-list': {
+                'storage-disk-info': {
+                    'disk-raid-info': {},
+                },
+            },
+            'num-records': '1',
+        })
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertEqual(set(), result)
+
+    def test_create_cluster_peer_without_credentials(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_cluster_peer([fake.CLUSTER_ADDRESS_1])
+
+        cluster_peer_create_args = {
+            'peer-addresses': [
+                {'remote-inet-address': fake.CLUSTER_ADDRESS_1},
+            ],
+        }
+        self.client.send_request.assert_called_once_with(
+            'cluster-peer-create', cluster_peer_create_args,
+            enable_tunneling=False)
+
+    def test_get_cluster_peer_policy_without_attributes(self):
+        self.client.features.add_feature('CLUSTER_PEER_POLICY')
+        api_response = netapp_api.NaElement(fake.PASSED_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cluster_peer_policy()
+
+        expected = {
+            'is-unauthenticated-access-permitted': None,
+            'passphrase-minimum-length': None,
+        }
+        self.assertEqual(expected, result)
+
+    @ddt.data(
+        ({'is_unauthenticated_access_permitted': 'true'},
+         {'is-unauthenticated-access-permitted': 'true'}),
+        ({'passphrase_minimum_length': 12},
+         {'passphrase-minlength': '12'}))
+    @ddt.unpack
+    def test_set_cluster_peer_policy_single_attribute(self, kwargs,
+                                                      expected_args):
+        self.client.features.add_feature('CLUSTER_PEER_POLICY')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_cluster_peer_policy(**kwargs)
+
+        self.client.send_request.assert_called_once_with(
+            'cluster-peer-policy-modify', expected_args)
+
+    @ddt.data({}, {'vserver_name': fake.VSERVER_NAME},
+              {'peer_vserver_name': fake.VSERVER_PEER_NAME})
+    def test_get_vserver_peers_partial_query(self, kwargs):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_vserver_peers(**kwargs)
+
+        expected_args = None
+        if kwargs:
+            peer_info = {}
+            if 'vserver_name' in kwargs:
+                peer_info['vserver'] = kwargs['vserver_name']
+            if 'peer_vserver_name' in kwargs:
+                peer_info['peer-vserver'] = kwargs['peer_vserver_name']
+            expected_args = {'query': {'vserver-peer-info': peer_info}}
+        self.client.send_iter_request.assert_called_once_with(
+            'vserver-peer-get-iter', expected_args)
+        self.assertEqual([], result)
+
+    def test_get_snapmirrors_without_desired_attributes(self):
+        self.mock_object(self.client, '_ensure_snapmirror_v2')
+        mock_get_snapmirrors = self.mock_object(
+            self.client, '_get_snapmirrors', mock.Mock(return_value=[]))
+
+        result = self.client.get_snapmirrors(
+            source_vserver=fake.SM_SOURCE_VSERVER)
+
+        mock_get_snapmirrors.assert_called_once_with(
+            source_path=None, dest_path=None,
+            source_vserver=fake.SM_SOURCE_VSERVER, source_volume=None,
+            dest_vserver=None, dest_volume=None, desired_attributes=None)
+        self.assertEqual([], result)
+
+    def test_get_snapmirror_destinations_without_query(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_snapmirror_destinations()
+
+        self.client.send_iter_request.assert_called_once_with(
+            'snapmirror-get-destination-iter', {})
+        self.assertEqual([], result)
+
+    def test_send_volume_move_request_without_aggregate_encryption(self):
+        self.mock_object(self.client, 'features',
+                         mock.Mock(FLEXVOL_ENCRYPTION=True,
+                                   NAE_SUPPORT=True))
+        self.mock_object(self.client, 'send_request')
+
+        self.client._send_volume_move_request(fake.ROOT_VOLUME_NAME,
+                                              fake.NODE_VSERVER_NAME,
+                                              fake.SHARE_AGGREGATE_NAME)
+
+        volume_move_start_args = {
+            'source-volume': fake.ROOT_VOLUME_NAME,
+            'vserver': fake.NODE_VSERVER_NAME,
+            'dest-aggr': fake.SHARE_AGGREGATE_NAME,
+            'cutover-action': 'wait',
+        }
+        self.client.send_request.assert_called_once_with(
+            'volume-move-start', volume_move_start_args)
+
+    def test_qos_policy_group_modify_legacy_without_throughput(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.qos_policy_group_modify_legacy(
+            fake.QOS_POLICY_GROUP_NAME, None, None)
+
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-modify',
+            {'policy-group': fake.QOS_POLICY_GROUP_NAME}, False)
+
+    def test_qos_policy_group_create_without_max_throughput(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.qos_policy_group_create(
+            fake.QOS_POLICY_GROUP_NAME, fake.VSERVER_NAME,
+            {'min_throughput_iops': fake.QOS_MIN_THROUGHPUT_IOPS_NO_UNIT})
+
+        qos_policy_group_create_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'min-throughput': fake.QOS_MIN_THROUGHPUT_IOPS,
+            'is-shared': 'false',
+        }
+        self.client.send_request.assert_called_once_with(
+            'qos-policy-group-create', qos_policy_group_create_args, False)
+
+    def test_qos_policy_group_get_complementary_throughput_units(self):
+        api_response = self._qos_policy_group_response(
+            max_throughput='5000MB/s', min_throughput='2000iops')
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.qos_policy_group_get(fake.QOS_POLICY_GROUP_NAME)
+
+        expected = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'vserver': fake.VSERVER_NAME,
+            'num-workloads': 1,
+            'capacity_shared': 'true',
+            'max_throughput_mbps': 5000,
+            'min_throughput_iops': 2000,
+        }
+        self.assertEqual(expected, result)
+
+    def test_get_nfs_config_without_desired_args(self):
+        api_response = netapp_api.NaElement(fake.PASSED_RESPONSE)
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=api_response))
+        self.mock_object(self.client, 'parse_nfs_config',
+                         mock.Mock(return_value={}))
+
+        result = self.client.get_nfs_config([], fake.VSERVER_NAME)
+
+        nfs_service_get_iter_args = {
+            'query': {
+                'nfs-info': {
+                    'vserver': fake.VSERVER_NAME,
+                },
+            },
+        }
+        self.client.send_request.assert_called_once_with(
+            'nfs-service-get-iter', nfs_service_get_iter_args)
+        self.assertEqual({}, result)
+
+    def test_get_fpolicy_events_without_event_name(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_EVENT_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.get_fpolicy_events(protocol=fake.FPOLICY_PROTOCOL)
+
+        fpolicy_event_get_iter_args = {
+            'query': {
+                'fpolicy-event-options-config': {
+                    'protocol': fake.FPOLICY_PROTOCOL,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-event-get-iter', fpolicy_event_get_iter_args)
+
+    def test_get_fpolicy_events_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_events(
+            event_name=fake.FPOLICY_EVENT_NAME)
+
+        self.assertEqual([], result)
+
+    def test_get_fpolicy_policies_without_policy_name(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_POLICY_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.get_fpolicy_policies(fake.SHARE_NAME)
+
+        fpolicy_policy_get_iter_args = {
+            'query': {
+                'fpolicy-policy-info': {
+                    'engine-name': 'native',
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-get-iter', fpolicy_policy_get_iter_args)
+
+    def test_get_fpolicy_policies_without_engine_name(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_POLICY_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.get_fpolicy_policies(
+            fake.SHARE_NAME, policy_name=fake.FPOLICY_POLICY_NAME,
+            engine_name=None)
+
+        fpolicy_policy_get_iter_args = {
+            'query': {
+                'fpolicy-policy-info': {
+                    'policy-name': fake.FPOLICY_POLICY_NAME,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-get-iter', fpolicy_policy_get_iter_args)
+
+    def test_get_fpolicy_policies_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_policies(fake.SHARE_NAME)
+
+        self.assertEqual([], result)
+
+    def test_create_fpolicy_scope_without_extensions(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_fpolicy_scope(fake.FPOLICY_POLICY_NAME,
+                                         fake.SHARE_NAME)
+
+        fpolicy_scope_create_args = {
+            'policy-name': fake.FPOLICY_POLICY_NAME,
+            'shares-to-include': {
+                'string': fake.SHARE_NAME,
+            },
+            'file-extensions-to-include': [],
+            'file-extensions-to-exclude': [],
+        }
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-scope-create', fpolicy_scope_create_args)
+
+    def test_modify_fpolicy_scope_without_optional_arguments(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.modify_fpolicy_scope(fake.SHARE_NAME,
+                                         fake.FPOLICY_POLICY_NAME)
+
+        self.client.send_request.assert_called_once_with(
+            'fpolicy-policy-scope-modify',
+            {'policy-name': fake.FPOLICY_POLICY_NAME})
+
+    def test_get_fpolicy_scopes_without_policy_name(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_SCOPE_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.get_fpolicy_scopes(
+            fake.SHARE_NAME,
+            extensions_to_include=fake.FPOLICY_EXT_TO_INCLUDE)
+
+        policy_scope_info = (
+            self.client.send_iter_request.call_args[0][1]['query'][
+                'fpolicy-scope-config'])
+        self.assertNotIn('policy-name', policy_scope_info)
+        self.assertNotIn('shares-to-include', policy_scope_info)
+
+    def test_get_fpolicy_scopes_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_scopes(fake.SHARE_NAME)
+
+        self.assertEqual([], result)
+
+    def test_get_fpolicy_policies_status_without_policy_name(self):
+        api_response = netapp_api.NaElement(
+            fake.FPOLICY_POLICY_STATUS_GET_ITER_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.get_fpolicy_policies_status(fake.SHARE_NAME)
+
+        fpolicy_status_get_iter_args = {
+            'query': {
+                'fpolicy-policy-status-info': {},
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'fpolicy-policy-status-get-iter', fpolicy_status_get_iter_args)
+
+    def test_get_fpolicy_policies_status_not_found(self):
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_fpolicy_policies_status(fake.SHARE_NAME)
+
+        self.assertEqual([], result)
+
+    def test_get_svm_volumes_total_size_excludes_root_volume(self):
+        records = {
+            'records': [
+                {'name': 'root', 'size': 1024 ** 3},
+                {'name': fake.SHARE_NAME, 'size': 2 * 1024 ** 3},
+            ],
+        }
+        self.mock_object(self.client, 'send_request',
+                         mock.Mock(return_value=records))
+
+        result = self.client.get_svm_volumes_total_size(fake.VSERVER_NAME)
+
+        self.assertEqual(2, result)
+
+    def test_snapmirror_restore_vol_without_source_snapshot(self):
+        self.mock_object(self.client, '_ensure_snapmirror_v2')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.snapmirror_restore_vol(
+            source_path=fake.SM_SOURCE_PATH, dest_path=fake.SM_DEST_PATH)
+
+        snapmirror_restore_args = {
+            'source-location': fake.SM_SOURCE_PATH,
+            'destination-location': fake.SM_DEST_PATH,
+        }
+        self.client.send_request.assert_called_once_with(
+            'snapmirror-restore', snapmirror_restore_args)
+
+    def test_get_vserver_aggr_snaplock_type_no_records(self):
+        self.client.features.add_feature('SNAPLOCK')
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client, 'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_vserver_aggr_snaplock_type(
+            fake.SHARE_AGGREGATE_NAME)
+
+        self.assertIsNone(result)

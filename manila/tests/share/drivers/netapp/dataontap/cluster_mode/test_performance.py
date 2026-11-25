@@ -382,6 +382,36 @@ class PerformanceLibraryTestCase(test.TestCase):
         expected_aggregate_names = ['aggr1', 'aggr2', 'aggr3']
         self.assertEqual(sorted(expected_aggregate_names), sorted(result))
 
+    def test_get_aggregates_for_pools_skips_flexgroup_flexvol_pool(self):
+        """A FlexGroup pool spans aggregates, so it names none of them."""
+        flexvol_pools = dict(self.fake_volumes)
+        flexvol_pools['flexgroup_flexvol_pool'] = {
+            'netapp_aggregate': 'aggr1 aggr2',
+            'netapp_flexgroup': True,
+        }
+
+        result = self.perf_library._get_aggregates_for_pools(
+            flexvol_pools, self.fake_aggregates)
+
+        self.assertEqual(['aggr1', 'aggr2', 'aggr3'], sorted(result))
+
+    def test_get_nodes_for_aggregates_without_owner_node(self):
+
+        aggregate_names = ['aggr1', 'aggr2', 'aggr3']
+        owner_nodes = [
+            {'owner_node': 'node1', 'home_node': 'node1'},
+            None,
+            {'home_node': 'node3'},
+        ]
+        self.mock_object(self.zapi_client, 'get_node_for_aggregate',
+                         mock.Mock(side_effect=owner_nodes))
+
+        result_node_names, result_aggr_node_map = (
+            self.perf_library._get_nodes_for_aggregates(aggregate_names))
+
+        self.assertEqual(['node1'], result_node_names)
+        self.assertEqual({'aggr1': 'node1'}, result_aggr_node_map)
+
     def test_get_nodes_for_aggregates_with_owner_node(self):
 
         aggregate_names = ['aggr1', 'aggr2', 'aggr3']
@@ -668,6 +698,20 @@ class PerformanceLibraryTestCase(test.TestCase):
 
         self.assertEqual('1453573777', result)
 
+    def test_find_performance_counter_timestamp_skips_other_instances(self):
+
+        counters = [
+            {'domain_busy': '1,2', 'instance-name': 'processor0',
+             'timestamp': '1453573777'},
+            {'domain_busy': '3,4', 'instance-name': 'processor1',
+             'timestamp': '1453573778'},
+        ]
+
+        result = self.perf_library._find_performance_counter_timestamp(
+            counters, 'domain_busy', instance_name='processor1')
+
+        self.assertEqual('1453573778', result)
+
     def test_find_performance_counter_timestamp_not_found(self):
 
         self.assertRaises(
@@ -776,6 +820,25 @@ class PerformanceLibraryTestCase(test.TestCase):
         mock_get_performance_counters.assert_called_once_with(
             'system', fake.SYSTEM_INSTANCE_UUIDS,
             ['avg_processor_busy', 'cpu_elapsed_time1', 'cpu_elapsed_time'])
+
+    def test_get_node_utilization_system_counters_modern_base_counter(self):
+        """Only the legacy 'cpu_elapsed_time1' base needs the extra counter."""
+        self.perf_library.avg_processor_busy_base_counter_name = (
+            'cpu_elapsed_time')
+        self.mock_object(
+            self.zapi_client, 'get_performance_instance_uuids',
+            mock.Mock(return_value=fake.SYSTEM_INSTANCE_UUIDS))
+        mock_get_performance_counters = self.mock_object(
+            self.zapi_client, 'get_performance_counters',
+            mock.Mock(return_value=fake.SYSTEM_COUNTERS))
+
+        result = self.perf_library._get_node_utilization_system_counters(
+            fake.NODE)
+
+        self.assertEqual(fake.SYSTEM_COUNTERS, result)
+        mock_get_performance_counters.assert_called_once_with(
+            'system', fake.SYSTEM_INSTANCE_UUIDS,
+            ['avg_processor_busy', 'cpu_elapsed_time'])
 
     def test_get_node_utilization_wafl_counters(self):
 
