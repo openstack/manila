@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed security service listing returning empty results for administrators
+    when the ``limit`` or ``offset`` query parameters were supplied. Both the
+    summary and detailed list APIs now apply these parameters as pagination
+    controls rather than resource filters.

@@ -64,6 +64,8 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants_query
+   - limit: limit
+   - offset: offset
 
 Response parameters
 -------------------
@@ -109,6 +111,8 @@ Request
 
    - project_id: project_id_path
    - all_tenants: all_tenants_query
+   - limit: limit
+   - offset: offset
 
 Response parameters
 -------------------

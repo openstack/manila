@@ -99,6 +99,10 @@ class SecurityServiceController(wsgi.Controller):
 
         search_opts = {}
         search_opts.update(req.GET)
+        # Exclude pagination controls from resource filters, but retain them
+        # in req.GET for common.limited() below.
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
 
         # NOTE(vponomaryov): remove 'status' from search opts
         # since it was removed from security service model.
