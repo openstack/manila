@@ -82,7 +82,7 @@ class ShareNetworkSubnetController(wsgi.Controller,
 
         try:
             share_network_subnet = db_api.share_network_subnet_get(
-                context, share_network_subnet_id)
+                context, share_network_subnet_id, parent_id=share_network_id)
         except exception.ShareNetworkSubnetNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
@@ -211,7 +211,7 @@ class ShareNetworkSubnetController(wsgi.Controller,
 
         try:
             share_network_subnet = db_api.share_network_subnet_get(
-                context, share_network_subnet_id)
+                context, share_network_subnet_id, parent_id=share_network_id)
         except exception.ShareNetworkSubnetNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
