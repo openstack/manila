@@ -66,14 +66,15 @@ class SecurityServiceController(wsgi.Controller):
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
+        policy.check_policy(context, RESOURCE_NAME,
+                            'delete', security_service)
+
         share_nets = db.share_network_get_all_by_security_service(
             context, id)
         if share_nets:
             msg = _("Cannot delete security service. It is "
                     "assigned to share network(s)")
             raise exc.HTTPForbidden(explanation=msg)
-        policy.check_policy(context, RESOURCE_NAME,
-                            'delete', security_service)
         db.security_service_delete(context, id)
 
         return webob.Response(status_int=http_client.ACCEPTED)
