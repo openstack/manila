@@ -73,6 +73,20 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         else:
             self.assertTrue(self.mock_client.get_volume_junction_path.called)
 
+    def test_create_share_keeping_current_export_policy(self):
+
+        mock_ensure_export_policy = self.mock_object(self.helper,
+                                                     '_ensure_export_policy')
+        self.mock_client.get_volume_junction_path.return_value = (
+            fake.NFS_SHARE_PATH)
+
+        self.helper.create_share(fake.NFS_SHARE, fake.SHARE_NAME,
+                                 clear_current_export_policy=False)
+
+        (self.mock_client.clear_nfs_export_policy_for_volume.
+            assert_not_called())
+        self.assertTrue(mock_ensure_export_policy.called)
+
     @ddt.data(True, False)
     def test_create_share_no_junction_path(self, is_flexgroup):
 

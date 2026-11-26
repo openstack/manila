@@ -52,7 +52,13 @@ class NetAppAIQWeigherTestCase(test.TestCase):
         self.mock_session.patch = mock.Mock()
         self.mock_session.put = mock.Mock()
 
-        data = {
+        self.netapp_aiq_weigher = None
+        with test_utils.create_temp_config_with_opts(self._config_data()):
+            self.netapp_aiq_weigher = netapp_aiq.NetAppAIQWeigher()
+
+    @staticmethod
+    def _config_data():
+        return {
             'netapp_active_iq': {
                 'aiq_hostname': "10.10.10.10",
                 'aiq_transport_type': 'https',
@@ -64,9 +70,40 @@ class NetAppAIQWeigherTestCase(test.TestCase):
                 'aiq_priority_order': 'ops'
             }
         }
-        self.netapp_aiq_weigher = None
+
+    @ddt.data('aiq_hostname', 'aiq_username', 'aiq_password')
+    def test_init_missing_required_option(self, option):
+        data = self._config_data()
+        del data['netapp_active_iq'][option]
+
         with test_utils.create_temp_config_with_opts(data):
-            self.netapp_aiq_weigher = netapp_aiq.NetAppAIQWeigher()
+            self.assertRaises(
+                exception.NetappActiveIQWeigherRequiredParameter,
+                netapp_aiq.NetAppAIQWeigher)
+
+    @ddt.data('http', 'https')
+    def test_init_derives_port_from_transport_type(self, transport_type):
+        data = self._config_data()
+        data['netapp_active_iq']['aiq_transport_type'] = transport_type
+
+        with test_utils.create_temp_config_with_opts(data):
+            weigher = netapp_aiq.NetAppAIQWeigher()
+
+        expected_port = "80" if transport_type == 'http' else "443"
+        self.assertEqual(expected_port, weigher.port)
+
+    def test_init_with_explicit_port_and_without_ssl_cert(self):
+        data = self._config_data()
+        data['netapp_active_iq']['aiq_port'] = 8443
+        del data['netapp_active_iq']['aiq_ssl_cert_path']
+
+        with test_utils.create_temp_config_with_opts(data):
+            weigher = netapp_aiq.NetAppAIQWeigher()
+
+        self.assertEqual(8443, weigher.port)
+        # Without a cert path, ssl_verify stays a plain boolean rather than
+        # being replaced by the path.
+        self.assertIs(True, weigher.ssl_verify)
 
     def test__weigh_object(self):
         self.assertRaises(NotImplementedError,
@@ -116,6 +153,49 @@ class NetAppAIQWeigherTestCase(test.TestCase):
         else:
             mock_balance_aggregates.assert_called_once_with(
                 resource_keys, 1, performance_level)
+
+    def test__weigh_active_iq_without_performance_level_name(self):
+        weight_properties = {'size': 1, 'share_type': {'extra_specs': {}}}
+        mock_get_psl_id = self.mock_object(
+            self.netapp_aiq_weigher, '_get_performance_level_id')
+        self.mock_object(self.netapp_aiq_weigher, '_get_resource_keys',
+                         mock.Mock(return_value=['fake_resource_key']))
+        self.mock_object(self.netapp_aiq_weigher, '_balance_aggregates',
+                         mock.Mock(return_value=[10.0]))
+
+        res = self.netapp_aiq_weigher._weigh_active_iq(
+            fakes.FAKE_ACTIVE_IQ_WEIGHER_LIST, weight_properties)
+
+        self.assertEqual([10.0], res)
+        mock_get_psl_id.assert_not_called()
+        self.netapp_aiq_weigher._balance_aggregates.assert_called_once_with(
+            ['fake_resource_key'], 1, None)
+
+    def test__get_performance_level_id(self):
+        mock__call_active_iq = self.mock_object(
+            self.netapp_aiq_weigher, '_call_active_iq',
+            mock.Mock(return_value=(200, jsonutils.dumps(
+                fakes.FAKE_ACTIVE_IQ_WEIGHER_PSL_RESPONSE))))
+
+        res = self.netapp_aiq_weigher._get_performance_level_id('fake_psl')
+
+        self.assertEqual('fake_psl_key', res)
+        mock__call_active_iq.assert_called_once_with(
+            'storage-provider/performance-service-levels?name=fake_psl',
+            'get')
+
+    @ddt.data(mock.Mock(side_effect=exception.NotFound),
+              mock.Mock(return_value=(400, "fake_res")),
+              mock.Mock(return_value=(200, jsonutils.dumps({'records': []}))),
+              mock.Mock(return_value=(200, None)))
+    def test__get_performance_level_id_not_found(self, mock_call):
+        self.mock_object(
+            self.netapp_aiq_weigher, '_call_active_iq', mock_call)
+
+        res = self.netapp_aiq_weigher._get_performance_level_id('fake_psl')
+
+        self.assertIsNone(res)
+        self.assertTrue(netapp_aiq.LOG.error.called)
 
     @ddt.data(True, False)
     def test__get_url(self, ipv6):
@@ -239,6 +319,27 @@ class NetAppAIQWeigherTestCase(test.TestCase):
             "separate_flag": False,
             "resource_keys": ['fake_key_1', 'fake_key_2', 'fake_key_3'],
             "ssl_key": 'fake_uuid'
+        }
+        mock__call_active_iq.assert_called_once_with(
+            'storage-provider/data-placement/balance', 'post', body=fake_body)
+
+    def test__balance_aggregates_without_performance_level(self):
+        mock__call_active_iq = self.mock_object(
+            self.netapp_aiq_weigher, '_call_active_iq',
+            mock.Mock(return_value=(200, jsonutils.dumps(
+                fakes.FAKE_ACTIVE_IQ_WEIGHER_BALANCE_RESPONSE))))
+
+        res = self.netapp_aiq_weigher._balance_aggregates(
+            ['fake_key_1'], 10, None)
+
+        self.assertEqual([10.0], res)
+        fake_body = {
+            "capacity": '10GB',
+            "eval_method": 1,
+            "opt_method": 0,
+            "priority_order": ['ops'],
+            "separate_flag": False,
+            "resource_keys": ['fake_key_1'],
         }
         mock__call_active_iq.assert_called_once_with(
             'storage-provider/data-placement/balance', 'post', body=fake_body)

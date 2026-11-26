@@ -4833,3 +4833,988 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library._check_data_lif_count_limit_reached_for_ha_pair,
             self.client,
         )
+
+    def test__check_data_lif_count_limit_reached_skips_unknown_nodes(self):
+        self.mock_object(self.client, 'get_storage_failover_partner',
+                         mock.Mock(return_value='node2'))
+        self.mock_object(self.client, 'list_cluster_nodes',
+                         mock.Mock(return_value=['node1', 'node2']))
+        self.mock_object(self.client, 'get_data_lif_details_for_nodes',
+                         mock.Mock(return_value=[]))
+        mock_get_migratable = self.mock_object(
+            self.client, 'get_migratable_data_lif_for_node')
+
+        self.library._check_data_lif_count_limit_reached_for_ha_pair(
+            self.client)
+
+        mock_get_migratable.assert_not_called()
+
+    def test_validate_dns_config_host_without_ip(self):
+        self._set_dns_config(['example.com'], ['10.0.0.1'], ['barbican'])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    @ddt.data('barbican:', ':10.0.0.5')
+    def test_validate_dns_config_host_with_empty_field(self, host):
+        self._set_dns_config(['example.com'], ['10.0.0.1'], [host])
+
+        self.assertRaises(exception.InvalidInput,
+                          self.library._validate_dns_config)
+
+    def test_merge_dns_host_tokens_skips_empty_tokens(self):
+        result = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary.\
+            _merge_dns_host_tokens(['', '  ', 'host1:10.0.0.5'])
+
+        self.assertEqual(['host1:10.0.0.5'], result)
+
+    def test_merge_dns_host_tokens_trailing_names_without_ip(self):
+        result = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary.\
+            _merge_dns_host_tokens(['host1:10.0.0.5', 'orphan1', 'orphan2'])
+
+        self.assertEqual(['host1:10.0.0.5', 'orphan1,orphan2'], result)
+
+    def test_parse_dns_hosts_ignores_blank_and_duplicate_names(self):
+        result = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary.\
+            _parse_dns_hosts(['barbican, ,barbican:10.0.0.5'])
+
+        self.assertEqual({'10.0.0.5': ['barbican']}, result)
+
+    def test_get_rest_client_for_backend(self):
+        mock_get_client = self.mock_object(
+            data_motion, 'get_client_for_backend',
+            mock.Mock(return_value='fake_rest_client'))
+
+        result = self.library._get_rest_client_for_backend()
+
+        self.assertEqual('fake_rest_client', result)
+        mock_get_client.assert_called_once_with(
+            self.library._backend_name, vserver_name=None,
+            force_rest_client=True)
+
+    def _fake_share_with_server(self, server_id='ss1',
+                                vserver_name=fake.VSERVER1):
+        share = copy.deepcopy(fake.SHARE)
+        share['share_server'] = {
+            'id': server_id,
+            'share_network_id': 'fake_share_network_id',
+            'backend_details': {'vserver_name': vserver_name},
+        }
+        return share
+
+    def test_reconcile_dns_on_vservers_without_dns_configured(self):
+        self.library._dns_domains = []
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_vserver')
+
+        self.library._reconcile_dns_on_vservers(mock.Mock(), [fake.SHARE])
+
+        mock_reconcile.assert_not_called()
+
+    def test_reconcile_dns_on_vservers_visits_each_vserver_once(self):
+        self.library._dns_domains = ['example.com']
+        share = self._fake_share_with_server()
+        duplicated_share = copy.deepcopy(share)
+        serverless_share = copy.deepcopy(fake.SHARE)
+        serverless_share['share_server'] = None
+        mock_get_ss_dns = self.mock_object(
+            self.library, '_get_ss_dns_for_share_server',
+            mock.Mock(return_value=(['ad.example.com'], ['10.0.0.3'])))
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_vserver')
+        ctx = mock.Mock()
+
+        self.library._reconcile_dns_on_vservers(
+            ctx, [share, duplicated_share, serverless_share])
+
+        mock_get_ss_dns.assert_called_once_with(ctx, share['share_server'])
+        mock_reconcile.assert_called_once_with(
+            fake.VSERVER1, ['ad.example.com'], ['10.0.0.3'])
+
+    def test_reconcile_dns_on_vservers_logs_failures(self):
+        self.library._dns_domains = ['example.com']
+        self.mock_object(self.library, '_get_ss_dns_for_share_server',
+                         mock.Mock(side_effect=Exception))
+        mock_log = self.mock_object(lib_multi_svm.LOG, 'exception')
+
+        self.library._reconcile_dns_on_vservers(
+            mock.Mock(), [self._fake_share_with_server()])
+
+        self.assertEqual(1, mock_log.call_count)
+
+    def test_get_ss_dns_for_share_server_without_share_network(self):
+        result = self.library._get_ss_dns_for_share_server(mock.Mock(), {})
+
+        self.assertEqual(([], []), result)
+
+    def test_get_ss_dns_for_share_server(self):
+        security_services = [
+            {'domain': 'ad.example.com', 'dns_ip': '10.0.0.3, 10.0.0.4'},
+            {'domain': ' ', 'dns_ip': '10.0.0.3'},
+            {'domain': 'ad.example.com', 'dns_ip': None},
+        ]
+        mock_get_all = self.mock_object(
+            lib_multi_svm.db, 'security_service_get_all_by_share_network',
+            mock.Mock(return_value=security_services))
+        ctx = mock.Mock()
+
+        domains, servers = self.library._get_ss_dns_for_share_server(
+            ctx, {'share_network_id': 'fake_share_network_id'})
+
+        self.assertEqual(['ad.example.com'], domains)
+        self.assertEqual(['10.0.0.3', '10.0.0.4'], servers)
+        mock_get_all.assert_called_once_with(ctx, 'fake_share_network_id')
+
+    def test_reconcile_dns_for_vserver_deduplicates_and_updates_hosts(self):
+        self.library._dns_domains = ['ad.example.com']
+        self.library._dns_nameservers = ['10.0.0.3']
+        self.library._dns_parsed_hosts = {
+            '10.0.0.5': ['barbican'],
+            '10.0.0.6': ['keystone', 'keystone.local'],
+        }
+        mock_rest = mock.Mock()
+        mock_rest.get_dns_config.return_value = {
+            'domains': ['ad.example.com'], 'dns-ips': ['10.0.0.3']}
+        mock_rest.get_local_hosts_for_vserver.return_value = {
+            '10.0.0.5': ['barbican'],
+            '10.0.0.6': ['keystone'],
+        }
+        self.mock_object(self.library, '_get_rest_client_for_backend',
+                         mock.Mock(return_value=mock_rest))
+
+        self.library._reconcile_dns_for_vserver(
+            fake.VSERVER1, ['ad.example.com'], ['10.0.0.3'])
+
+        mock_rest.configure_dns_for_vserver.assert_not_called()
+        mock_rest.create_local_host_for_vserver.assert_not_called()
+        mock_rest.delete_local_host_for_vserver.assert_not_called()
+        mock_rest.modify_local_host_for_vserver.assert_called_once_with(
+            fake.VSERVER1, '10.0.0.6', 'keystone', aliases=['keystone.local'])
+
+    def test_check_dns_caps_for_ss_skips_non_dict_and_duplicates(self):
+        """Blank and duplicate values must not count against ONTAP caps.
+
+        The configured values already sit exactly on both caps, so any value
+        counted twice would push the union over the limit and return an error.
+        """
+        self.library._dns_domains = ['d%d.com' % i for i in range(6)]
+        self.library._dns_nameservers = ['10.0.0.%d' % i for i in range(3)]
+        security_services = [
+            'not-a-dict',
+            {'domain': 'd0.com', 'dns_ip': '10.0.0.0, 10.0.0.1'},
+            {'domain': '  ', 'dns_ip': ' '},
+        ]
+
+        self.assertIsNone(
+            self.library._check_dns_caps_for_ss(security_services))
+
+    def test_get_vserver_with_backend_name(self):
+        mock_client = mock.Mock()
+        mock_client.vserver_exists.return_value = True
+        mock_get_client = self.mock_object(
+            data_motion, 'get_client_for_backend',
+            mock.Mock(return_value=mock_client))
+
+        vserver, client = self.library._get_vserver(
+            vserver_name=fake.VSERVER1, backend_name=fake.BACKEND_NAME)
+
+        self.assertEqual(fake.VSERVER1, vserver)
+        self.assertEqual(mock_client, client)
+        mock_get_client.assert_called_once_with(
+            fake.BACKEND_NAME, fake.VSERVER1)
+
+    def test_find_matching_aggregates_with_given_names(self):
+        self.mock_object(self.library, 'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
+        self.library.configuration.netapp_aggregate_name_search_pattern = (
+            '^%s$' % fake.AGGREGATES[0])
+
+        result = self.library._find_matching_aggregates(
+            aggregate_names=list(fake.AGGREGATES))
+
+        self.assertEqual([fake.AGGREGATES[0]], result)
+        self.client.list_non_root_aggregates.assert_not_called()
+
+    def test_create_vserver_dns_caps_exceeded(self):
+        self.mock_object(self.library._client, 'vserver_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_check_dns_caps_for_ss',
+                         mock.Mock(return_value='fake caps error'))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._create_vserver,
+                          fake.VSERVER1, fake.NETWORK_INFO_LIST)
+
+    def test_create_vserver_without_security_services(self):
+        network_info = copy.deepcopy(fake.NETWORK_INFO_LIST)
+        network_info[0]['security_services'] = []
+        self.mock_object(self.library._client, 'vserver_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.library, '_check_dns_caps_for_ss',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.library._client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library, '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
+        self.mock_object(self.library._client,
+                         'get_ipspace_name_for_vlan_port',
+                         mock.Mock(return_value=fake.IPSPACE))
+        self.mock_object(self.library, '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_get_flexgroup_aggr_set',
+                         mock.Mock(return_value=set(fake.AGGREGATES)))
+        self.mock_object(self.library, '_get_api_client',
+                         mock.Mock(return_value=mock.Mock()))
+        self.mock_object(self.library, '_setup_network_for_vserver')
+        self.mock_object(self.library, '_configure_dns_for_vserver')
+
+        self.library._create_vserver(fake.VSERVER1, network_info)
+
+        self.library._client.setup_security_services.assert_not_called()
+
+    def test__create_barbican_kms_config_rest_client_failure(self):
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(side_effect=exception.NetAppException))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._create_barbican_kms_config_for_specified_vserver,
+            fake.VSERVER1, fake.SERVER_METADATA_WITH_ENCRYPTION)
+
+    @ddt.data(True, False)
+    def test_setup_network_for_vserver_nfs_and_security_services(self, enable):
+        vserver_client = mock.Mock()
+        security_services = (fake.NETWORK_INFO['security_services']
+                             if enable else None)
+        self.mock_object(self.library._client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library, '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
+        self.mock_object(self.library, '_create_vserver_lifs')
+        self.mock_object(self.library, '_create_vserver_routes')
+        self.mock_object(self.library, '_create_vserver_admin_lif')
+
+        self.library._setup_network_for_vserver(
+            fake.VSERVER1, vserver_client, fake.NETWORK_INFO_LIST,
+            fake.IPSPACE, enable_nfs=enable,
+            security_services=security_services)
+
+        if enable:
+            vserver_client.enable_nfs.assert_called_once_with(
+                self.library.configuration.netapp_enabled_share_protocols,
+                nfs_config=None)
+            mock_setup_ss = self.library._client.setup_security_services
+            mock_setup_ss.assert_called_once_with(
+                security_services, vserver_client, fake.VSERVER1,
+                self.library.configuration.netapp_cifs_aes_encryption,
+                self.library.configuration.netapp_cifs_smb_signing)
+        else:
+            vserver_client.enable_nfs.assert_not_called()
+            self.library._client.setup_security_services.assert_not_called()
+
+    def test_create_ipspace_without_neutron_net_id(self):
+        self.library._client.features.IPSPACES = True
+        network_info = copy.deepcopy(fake.NETWORK_INFO)
+        network_info['neutron_net_id'] = None
+
+        result = self.library._create_ipspace(network_info)
+
+        self.assertEqual('Default', result)
+        self.library._client.create_ipspace.assert_not_called()
+
+    def test_create_vserver_admin_lif_pre_configured_home_ports(self):
+        lif_home_ports = {fake.CLUSTER_NODES[0]: 'fake_port1'}
+        self.mock_object(self.library, '_get_lif_name',
+                         mock.Mock(return_value='fake_admin_lif'))
+        self.mock_object(self.library, '_create_lif')
+
+        self.library._create_vserver_admin_lif(
+            fake.VSERVER1, 'fake_vserver_client', fake.NETWORK_INFO,
+            fake.IPSPACE, lif_home_ports=lif_home_ports)
+
+        self.library._client.list_cluster_nodes.assert_not_called()
+        self.library._create_lif.assert_called_once_with(
+            'fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
+            fake.CLUSTER_NODES[0], 'fake_admin_lif',
+            fake.NETWORK_INFO['admin_network_allocations'][0],
+            lif_home_port='fake_port1')
+
+    def test_delete_vserver_mixed_interfaces(self):
+        """Only VLAN home ports are cleaned up, and only enabled LIFs."""
+        network_interfaces = [
+            {'interface-name': 'lif1', 'home-node': c_fake.NODE_NAME,
+             'home-port': 'e0a', 'administrative-status': 'up'},
+            {'interface-name': 'lif2', 'home-node': c_fake.NODE_NAME2,
+             'home-port': 'e0b-100', 'administrative-status': 'down'},
+        ]
+        vserver_client = mock.Mock()
+        vserver_client.get_network_interfaces.return_value = (
+            network_interfaces)
+        self.mock_object(self.library, '_get_api_client',
+                         mock.Mock(return_value=vserver_client))
+        self.mock_object(self.library._client, 'get_ipspaces',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library._client, 'get_snapmirror_policies',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_delete_vserver_peers')
+
+        self.library._delete_vserver(fake.VSERVER1, needs_lock=False)
+
+        self.library._client.disable_network_interface.\
+            assert_called_once_with(fake.VSERVER1, 'lif1')
+
+    @ddt.data({'ipv6_enabled': True, 'expected': [4, 6]},
+              {'ipv6_enabled': False, 'expected': [4]})
+    @ddt.unpack
+    def test_get_configured_ip_versions(self, ipv6_enabled, expected):
+        self.mock_object(
+            self.client, 'get_net_options',
+            mock.Mock(return_value={'ipv6-enabled': ipv6_enabled}))
+
+        self.assertEqual(expected, self.library.get_configured_ip_versions())
+
+    def test_create_replica_within_one_cluster(self):
+        """Peering inside a single cluster needs no acceptance step."""
+        self.mock_object(self.library, '_get_vservers_from_replicas',
+                         mock.Mock(return_value=(self.fake_vserver,
+                                                 self.fake_new_vserver_name)))
+        self.mock_object(self.library, 'find_active_replica',
+                         mock.Mock(return_value=self.fake_replica))
+        self.mock_object(share_utils, 'extract_host',
+                         mock.Mock(side_effect=[self.fake_new_replica_host,
+                                                self.fake_replica_host]))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(side_effect=[self.fake_new_client,
+                                                self.fake_client]))
+        self.mock_object(self.library, '_get_vserver_peers',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.fake_new_client, 'get_cluster_name',
+                         mock.Mock(return_value=fake.CLUSTER_NAME))
+        self.mock_object(self.fake_client, 'get_cluster_name',
+                         mock.Mock(return_value=fake.CLUSTER_NAME))
+        self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
+                         'create_replica')
+
+        self.library.create_replica(None, [self.fake_replica],
+                                    self.fake_new_replica, [], [])
+
+        self.fake_client.create_vserver_peer.assert_called_once_with(
+            self.fake_new_vserver_name, self.fake_vserver,
+            peer_cluster_name=fake.CLUSTER_NAME)
+        self.fake_new_client.accept_vserver_peer.assert_not_called()
+
+    def test_delete_replica_with_remaining_snapmirrors(self):
+        """A leftover relationship is deleted again and keeps the peer."""
+        base_class = lib_base.NetAppCmodeFileStorageLibrary
+        self.mock_object(self.library, '_get_vservers_from_replicas',
+                         mock.Mock(return_value=(self.fake_vserver,
+                                                 self.fake_new_vserver_name)))
+        self.mock_object(base_class, 'delete_replica')
+        self.mock_object(self.library, '_get_snapmirrors_destinations',
+                         mock.Mock(side_effect=[[], ['fake_snapmirror']]))
+        self.mock_object(self.library, '_get_snapmirrors',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.library, '_delete_vserver_peer')
+
+        self.library.delete_replica(None, [self.fake_replica],
+                                    self.fake_new_replica, [])
+
+        # Bug 1996907: the replica is deleted a second time when a
+        # snapmirror destination is still present.
+        self.assertEqual(2, base_class.delete_replica.call_count)
+        base_class.delete_replica.assert_has_calls(2 * [mock.call(
+            None, [self.fake_replica], self.fake_new_replica, [])])
+        self.library._delete_vserver_peer.assert_not_called()
+
+    def test_unmanage_server(self):
+        self.assertIsNone(self.library.unmanage_server(fake.SHARE_SERVER))
+
+    def test__get_snapmirrors(self):
+        self.mock_object(self.client, 'get_snapmirrors',
+                         mock.Mock(return_value=['fake_snapmirror']))
+
+        result = self.library._get_snapmirrors(
+            self.fake_vserver, self.fake_new_vserver_name)
+
+        self.assertEqual(['fake_snapmirror'], result)
+        self.client.get_snapmirrors.assert_called_once_with(
+            source_vserver=self.fake_vserver,
+            dest_vserver=self.fake_new_vserver_name)
+
+    def test__get_snapmirrors_destinations(self):
+        self.mock_object(self.client, 'get_snapmirror_destinations',
+                         mock.Mock(return_value=['fake_destination']))
+
+        result = self.library._get_snapmirrors_destinations(
+            self.fake_vserver, self.fake_new_vserver_name)
+
+        self.assertEqual(['fake_destination'], result)
+        self.client.get_snapmirror_destinations.assert_called_once_with(
+            source_vserver=self.fake_vserver,
+            dest_vserver=self.fake_new_vserver_name)
+
+    @ddt.data(None, {'backend_details': {}})
+    def test_reconcile_dns_for_share_server_nothing_to_do(self, share_server):
+        self.library._dns_domains = ['example.com']
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_vserver')
+
+        self.library._reconcile_dns_for_share_server(mock.Mock(),
+                                                     share_server)
+
+        mock_reconcile.assert_not_called()
+
+    def test_reconcile_dns_for_share_server_without_dns_configured(self):
+        self.library._dns_domains = []
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_vserver')
+
+        self.library._reconcile_dns_for_share_server(mock.Mock(),
+                                                     fake.SHARE_SERVER)
+
+        mock_reconcile.assert_not_called()
+
+    def test_reconcile_dns_for_share_server(self):
+        self.library._dns_domains = ['example.com']
+        self.mock_object(
+            self.library, '_get_ss_dns_for_share_server',
+            mock.Mock(return_value=(['ad.example.com'], ['10.0.0.3'])))
+        mock_reconcile = self.mock_object(
+            self.library, '_reconcile_dns_for_vserver')
+
+        self.library._reconcile_dns_for_share_server(mock.Mock(),
+                                                     fake.SHARE_SERVER)
+
+        mock_reconcile.assert_called_once_with(
+            fake.VSERVER1, ['ad.example.com'], ['10.0.0.3'])
+
+    def test_reconcile_dns_for_share_server_logs_failures(self):
+        self.library._dns_domains = ['example.com']
+        self.mock_object(self.library, '_get_ss_dns_for_share_server',
+                         mock.Mock(side_effect=Exception))
+        mock_log = self.mock_object(lib_multi_svm.LOG, 'exception')
+
+        self.library._reconcile_dns_for_share_server(mock.Mock(),
+                                                     fake.SHARE_SERVER)
+
+        self.assertEqual(1, mock_log.call_count)
+
+    def test_choose_share_server_compatible_with_share_no_share_server(self):
+        result = self.library.choose_share_server_compatible_with_share(
+            None, [], fake.SHARE)
+
+        self.assertIsNone(result)
+
+    @ddt.data(exception.InvalidInput(reason='fake reason'),
+              exception.VserverNotSpecified(),
+              exception.VserverNotFound(vserver=fake.VSERVER1))
+    def test_check_reuse_share_server_vserver_unavailable(self, error):
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(side_effect=error))
+
+        result = self.library._check_reuse_share_server(
+            fake.SHARE_SERVER, None)
+
+        self.assertFalse(result)
+        self.assertTrue(lib_multi_svm.LOG.warning.called)
+
+    def test_manage_existing(self):
+        self.library.is_nfs_config_supported = False
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'manage_existing',
+            mock.Mock(return_value='fake_result'))
+
+        result = self.library.manage_existing(fake.SHARE, 'opts')
+
+        self.assertEqual('fake_result', result)
+        mock_super.assert_called_once_with(
+            fake.SHARE, 'opts', share_server=None)
+
+    def test__check_compatibility_using_svm_dr_compatible(self):
+        """A FlexGroup-free share server with enough space can use SVM DR."""
+        self._init_mocks_for_svm_dr_check_compatibility(
+            flexgroup_support=True, is_flexgroup_destination_host=False)
+
+        method, result = self.library._check_compatibility_using_svm_dr(
+            self.mock_src_client, self.mock_dest_client,
+            fake.SERVER_MIGRATION_REQUEST_SPEC, fake.POOLS)
+
+        self.assertEqual('svm_dr', method)
+        self.assertTrue(result)
+        self.assertTrue(self.library.is_flexgroup_destination_host.called)
+
+    def test__wait_for_operation_status_with_explicit_timeout(self):
+        self.mock_object(
+            self.mock_dest_client, 'get_job',
+            mock.Mock(return_value=c_fake.FAKE_JOB_SUCCESS_STATE))
+
+        self.library._wait_for_operation_status(
+            c_fake.FAKE_JOB_ID, self.mock_dest_client.get_job, timeout=30)
+
+        self.mock_dest_client.get_job.assert_called_once_with(
+            c_fake.FAKE_JOB_ID)
+
+    def test__wait_for_operation_status_timeout(self):
+        starting_job = copy.copy(c_fake.FAKE_JOB_SUCCESS_STATE)
+        starting_job['state'] = 'starting'
+        self.mock_object(self.mock_dest_client, 'get_job',
+                         mock.Mock(return_value=starting_job))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._wait_for_operation_status,
+            c_fake.FAKE_JOB_ID, self.mock_dest_client.get_job, timeout=10)
+
+        # The given timeout equals a single 10s retry interval, so the job
+        # must be polled exactly once before giving up.
+        self.assertEqual(1, self.mock_dest_client.get_job.call_count)
+
+    @ddt.data(True, False)
+    def test__check_compatibility_for_svm_migrate_ipspace_cleanup(self, vlan):
+        """A reused ipspace is left in place after a failed check."""
+        src_share_server = copy.deepcopy(self.fake_src_share_server)
+        if not vlan:
+            for allocation in src_share_server['network_allocations']:
+                allocation['segmentation_id'] = None
+        self.mock_object(self.library._client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library, '_get_node_data_port',
+                         mock.Mock(return_value=fake.NODE_DATA_PORT))
+        self.mock_object(self.library._client,
+                         'get_ipspace_name_for_vlan_port',
+                         mock.Mock(return_value=fake.IPSPACE))
+        self.mock_object(self.library, '_create_port_and_broadcast_domain')
+        self.mock_object(self.mock_dest_client, 'delete_ipspace',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.mock_dest_client, 'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.mock_dest_client, 'svm_migration_start',
+                         mock.Mock(side_effect=exception.NetAppException))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_compatibility_for_svm_migrate,
+            fake.CLUSTER_NAME, fake.VSERVER1, src_share_server,
+            fake.AGGREGATES, self.mock_dest_client)
+
+        self.mock_dest_client.delete_ipspace.assert_called_once_with(
+            fake.IPSPACE)
+        if vlan:
+            self.mock_dest_client.delete_vlan.assert_has_calls(
+                [mock.call(node, fake.NODE_DATA_PORT,
+                           fake.USER_NETWORK_ALLOCATIONS[0]['segmentation_id'])
+                 for node in fake.CLUSTER_NODES])
+        else:
+            self.mock_dest_client.delete_vlan.assert_not_called()
+
+    def test_share_server_migration_check_compatibility_no_cluster_creds(self):
+        self.library._have_cluster_creds = False
+
+        result = self.library.share_server_migration_check_compatibility(
+            None, self.fake_src_share_server,
+            self.fake_dest_share_server['host'], None, None, None)
+
+        self.assertEqual(fake.SERVER_MIGRATION_CHECK_NOT_COMPATIBLE, result)
+
+    def test_share_server_migration_check_compatibility_multiple_subnets(self):
+        self._configure_mocks_share_server_migration_check_compatibility()
+        share_network = copy.deepcopy(fake.SHARE_NETWORK)
+        share_network['share_network_subnets'] = [
+            {'id': 'fake_subnet_id_1'}, {'id': 'fake_subnet_id_2'}]
+
+        result = self.library.share_server_migration_check_compatibility(
+            None, self.fake_src_share_server,
+            self.fake_dest_share_server['host'], share_network,
+            share_network, None)
+
+        self.assertEqual(fake.SERVER_MIGRATION_CHECK_NOT_COMPATIBLE, result)
+
+    def test_share_server_migration_check_compatibility_not_supported(self):
+        self._configure_mocks_share_server_migration_check_compatibility(
+            failure_scenario=True)
+
+        result = self.library.share_server_migration_check_compatibility(
+            None, self.fake_src_share_server,
+            self.fake_dest_share_server['host'], fake.SHARE_NETWORK,
+            fake.SHARE_NETWORK, None)
+
+        self.assertEqual(fake.SERVER_MIGRATION_CHECK_NOT_COMPATIBLE, result)
+
+    def test_share_server_migration_check_compatibility_no_sec_services(self):
+        """A new share network without security services is compatible."""
+        self._configure_mocks_share_server_migration_check_compatibility()
+        old_share_network = copy.deepcopy(fake.SHARE_NETWORK)
+        old_share_network['security_services'] = []
+        new_share_network = copy.deepcopy(old_share_network)
+        new_share_network['id'] = 'fake_share_net_id_2'
+
+        result = self.library.share_server_migration_check_compatibility(
+            None, self.fake_src_share_server,
+            self.fake_dest_share_server['host'], old_share_network,
+            new_share_network, {})
+
+        self.assertTrue(result['compatible'])
+        self.assertEqual(new_share_network['id'], result['share_network_id'])
+
+    def test_share_server_migration_check_compatibility_same_sec_services(
+            self):
+        self._configure_mocks_share_server_migration_check_compatibility()
+        new_share_network = copy.deepcopy(fake.SHARE_NETWORK)
+        new_share_network['id'] = 'fake_share_net_id_2'
+
+        result = self.library.share_server_migration_check_compatibility(
+            None, self.fake_src_share_server,
+            self.fake_dest_share_server['host'], fake.SHARE_NETWORK,
+            new_share_network, {})
+
+        self.assertTrue(result['compatible'])
+
+    def test__share_server_migration_complete_svm_dr_source_unreachable(self):
+        """A last minute transfer is skipped when the source is unreachable."""
+        dm_session_mock = mock.Mock()
+        dm_session_mock.update_snapmirror_svm.side_effect = (
+            exception.StorageCommunicationException)
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=dm_session_mock))
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(self.fake_dest_vserver,
+                                    self.mock_dest_client)))
+        self.mock_object(self.library,
+                         '_setup_networking_for_destination_vserver')
+
+        self.library._share_server_migration_complete_svm_dr(
+            self.fake_src_share_server, self.fake_dest_share_server,
+            self.fake_src_vserver, self.mock_src_client,
+            [fake.SHARE_INSTANCE], fake.NETWORK_INFO_LIST)
+
+        self.mock_dest_client.start_vserver.assert_called_once_with(
+            self.fake_dest_vserver)
+
+    def test__share_server_migration_complete_svm_dr_recovery_failure(self):
+        """A source vserver that cannot be restarted is logged, not raised."""
+        dm_session_mock = mock.Mock()
+        dm_session_mock.quiesce_and_break_snapmirror_svm.side_effect = (
+            exception.NetAppException)
+        self.mock_object(data_motion, 'DataMotionSession',
+                         mock.Mock(return_value=dm_session_mock))
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(self.fake_dest_vserver,
+                                    self.mock_dest_client)))
+        self.mock_object(self.mock_src_client, 'start_vserver',
+                         mock.Mock(side_effect=exception.NetAppException))
+        self.mock_object(self.library, '_delete_share')
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._share_server_migration_complete_svm_dr,
+            self.fake_src_share_server, self.fake_dest_share_server,
+            self.fake_src_vserver, self.mock_src_client,
+            [fake.SHARE_INSTANCE], fake.NETWORK_INFO_LIST)
+
+        lib_multi_svm.LOG.warning.assert_called_once_with(
+            'Unable to recover source share server after a migration '
+            'failure.')
+        self.mock_src_client.start_vserver.assert_called_once_with(
+            self.fake_src_vserver)
+
+    @ddt.data(True, False)
+    def test_share_server_migration_complete_cleans_source_ipspace(
+            self, ipspace_deleted):
+        """The source ipspace and its VLAN ports are released afterwards."""
+        src_cluster_client = mock.Mock()
+        # The two port lists must differ so the assertion below can tell the
+        # ipspace ports apart from the degraded-port fallback.
+        ipspace_ports = list(c_fake.NETWORK_QUALIFIED_PORTS)
+        degraded_ports = list(c_fake.NETWORK_QUALIFIED_PORTS2)
+        self.assertNotEqual(ipspace_ports, degraded_ports)
+        src_ipspace = {'ports': ipspace_ports,
+                       'broadcast-domains': [c_fake.BROADCAST_DOMAIN]}
+        src_cluster_client.get_ipspaces.return_value = [src_ipspace]
+        src_cluster_client.delete_ipspace.return_value = ipspace_deleted
+        src_cluster_client.get_degraded_ports.return_value = degraded_ports
+        dest_share_server = copy.deepcopy(self.fake_dest_share_server)
+        dest_share_server['network_allocations'] = []
+        dest_share_server['backend_details'][
+            na_utils.MIGRATION_OPERATION_ID_KEY] = 'fake_migration_id'
+        self.mock_object(self.library, '_get_vserver',
+                         mock.Mock(side_effect=[
+                             (self.fake_src_vserver, self.mock_src_client),
+                             (self.fake_dest_vserver, self.mock_dest_client)]))
+        self.mock_object(self.library,
+                         '_share_server_migration_complete_svm_migrate')
+        self.mock_object(data_motion, 'get_client_for_host',
+                         mock.Mock(return_value=src_cluster_client))
+        self.mock_object(
+            self.mock_dest_client, 'get_volume',
+            mock.Mock(return_value=fake.CLIENT_GET_VOLUME_RESPONSE))
+        self.mock_object(self.library, '_create_export',
+                         mock.Mock(return_value=fake.NFS_EXPORTS))
+        mock_delete_vlans = self.mock_object(self.library,
+                                             '_delete_port_vlans')
+
+        self.library.share_server_migration_complete(
+            None, self.fake_src_share_server, dest_share_server,
+            [fake.SHARE_INSTANCE], [], fake.NETWORK_INFO_LIST)
+
+        expected_ports = ipspace_ports if ipspace_deleted else degraded_ports
+        mock_delete_vlans.assert_called_once_with(src_cluster_client,
+                                                  expected_ports)
+        if ipspace_deleted:
+            src_cluster_client.get_degraded_ports.assert_not_called()
+        else:
+            src_cluster_client.get_degraded_ports.assert_called_once_with(
+                [c_fake.BROADCAST_DOMAIN], mock.ANY)
+
+    def test__migration_cancel_using_svm_migrate_without_vlan(self):
+        dest_share_server = copy.deepcopy(self.fake_dest_share_server)
+        dest_share_server['network_allocations'] = []
+        migration_information = {
+            'destination': {'ipspace': {'name': 'fake_ipspace_name'}}}
+        self.mock_object(self.library, '_get_job_uuid',
+                         mock.Mock(return_value='fake_job_id'))
+        self.mock_object(data_motion, 'get_client_for_host',
+                         mock.Mock(return_value=self.mock_dest_client))
+        self.mock_object(self.mock_dest_client, 'svm_migration_get',
+                         mock.Mock(return_value=migration_information))
+        self.mock_object(self.library, '_wait_for_operation_status')
+
+        self.library._migration_cancel_using_svm_migrate(
+            'fake_migration_id', dest_share_server)
+
+        self.mock_dest_client.delete_vlan.assert_not_called()
+
+    def test_share_server_migration_get_progress_without_shares(self):
+        result = self.library.share_server_migration_get_progress(
+            None, self.fake_src_share_server, self.fake_dest_share_server,
+            [], [])
+
+        self.assertEqual({'total_progress': 0}, result)
+
+    def test_validate_provisioning_options_logical_space_without_thin(self):
+        self.library.configuration.netapp_enable_logical_space_reporting = True
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.library.validate_provisioning_options_for_share,
+            {'thin_provisioned': False})
+
+    def test_is_security_service_valid_ad_with_server_and_site(self):
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        security_service['default_ad_site'] = 'fake_site'
+
+        self.assertFalse(
+            self.library._is_security_service_valid(security_service))
+
+    def test_is_security_service_valid_missing_mandatory_parameter(self):
+        security_service = copy.deepcopy(fake.CIFS_SECURITY_SERVICE)
+        security_service['password'] = None
+
+        self.assertFalse(
+            self.library._is_security_service_valid(security_service))
+
+    def _mock_update_share_server_security_service(self, different_keys):
+        vserver_client = mock.Mock()
+        self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=[fake.VSERVER1, vserver_client]))
+        self.mock_object(self.library,
+                         'check_update_share_server_security_service',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_build_post_update_ss_dns',
+                         mock.Mock(return_value=([], [])))
+        self.mock_object(self.library, '_reconcile_dns_for_vserver')
+        self.mock_object(self.library,
+                         '_get_different_keys_for_equal_ss_type',
+                         mock.Mock(return_value=different_keys))
+        return vserver_client
+
+    def test_update_share_server_security_service_kerberos_same_server(self):
+        """A kerberos realm is only updated when the server changes."""
+        vserver_client = self._mock_update_share_server_security_service(
+            ['user'])
+
+        self.library.update_share_server_security_service(
+            mock.Mock(), fake.SHARE_SERVER, fake.NETWORK_INFO_LIST,
+            fake.KERBEROS_SECURITY_SERVICE_2,
+            current_security_service=fake.KERBEROS_SECURITY_SERVICE)
+
+        vserver_client.update_kerberos_realm.assert_not_called()
+
+    def test_update_share_server_security_service_ldap(self):
+        vserver_client = self._mock_update_share_server_security_service(
+            ['user'])
+
+        self.library.update_share_server_security_service(
+            mock.Mock(), fake.SHARE_SERVER, fake.NETWORK_INFO_LIST,
+            fake.LDAP_AD_SECURITY_SERVICE,
+            current_security_service=fake.LDAP_LINUX_SECURITY_SERVICE)
+
+        vserver_client.modify_ldap.assert_called_once_with(
+            fake.LDAP_AD_SECURITY_SERVICE, fake.LDAP_LINUX_SECURITY_SERVICE)
+
+    def test_build_post_update_ss_dns_removal(self):
+        """Dropping the only security service leaves nothing to configure."""
+        old_ss = {'id': 'old', 'domain': 'old.com', 'dns_ip': '10.0.0.1'}
+        network_info = [{'security_services': [old_ss]}]
+
+        domains, servers = self.library._build_post_update_ss_dns(
+            network_info, old_ss, None)
+
+        self.assertEqual([], domains)
+        self.assertEqual([], servers)
+
+    def test_build_post_update_ss_dns_skips_blanks_and_duplicates(self):
+        network_info = [{'security_services': [
+            {'id': 'ss1', 'domain': 'ad.com', 'dns_ip': '10.0.0.1'},
+            {'id': 'ss2', 'domain': 'ad.com', 'dns_ip': '10.0.0.1'},
+            {'id': 'ss3', 'domain': '', 'dns_ip': ''},
+        ]}]
+
+        domains, servers = self.library._build_post_update_ss_dns(
+            network_info, None, None)
+
+        self.assertEqual(['ad.com'], domains)
+        self.assertEqual(['10.0.0.1'], servers)
+
+    def test_check_update_share_server_security_service_invalid(self):
+        new_security_service = dict(fake.CIFS_SECURITY_SERVICE,
+                                    project_id=fake.TENANT_ID)
+        self.mock_object(self.library, '_is_security_service_valid',
+                         mock.Mock(return_value=False))
+        mock_message_api = mock.Mock()
+        self.mock_object(self.library, 'message_api', mock_message_api)
+        ctx = mock.Mock()
+
+        result = self.library.check_update_share_server_security_service(
+            ctx, fake.SHARE_SERVER, fake.NETWORK_INFO_LIST,
+            new_security_service)
+
+        self.assertFalse(result)
+        self.assertEqual(1, mock_message_api.create.call_count)
+
+    def test_check_update_share_server_security_service_exceeds_dns_caps(self):
+        self.mock_object(self.library, '_check_dns_caps_for_ss',
+                         mock.Mock(return_value='fake caps error'))
+
+        result = self.library.check_update_share_server_security_service(
+            None, fake.SHARE_SERVER, fake.NETWORK_INFO_LIST,
+            fake.CIFS_SECURITY_SERVICE)
+
+        self.assertFalse(result)
+
+    def test__get_backup_vserver_without_aggregate_pattern(self):
+        mock_dest_client = mock.Mock()
+        backend_config = _get_config()
+        backend_config.netapp_aggregate_name_search_pattern = None
+        self.mock_object(self.library, '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=backend_config))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+        self.mock_object(mock_dest_client, 'list_non_root_aggregates',
+                         mock.Mock(return_value=['aggr1', 'aggr2']))
+
+        result = self.library._get_backup_vserver(fake.SHARE_BACKUP,
+                                                  fake.SHARE_SERVER)
+
+        self.assertEqual('backup_fake_id', result)
+        mock_dest_client.create_vserver.assert_called_once_with(
+            'backup_fake_id',
+            None,
+            None,
+            ['aggr1', 'aggr2'],
+            'Default',
+            client_cmode_rest.DEFAULT_SECURITY_CERT_EXPIRE_DAYS,
+            12,
+            False,
+        )
+
+    def test__get_backup_vserver_unexpected_api_error(self):
+        mock_dest_client = mock.Mock()
+        self.mock_object(self.library, '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=_get_config()))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_dest_client))
+        self.mock_object(mock_dest_client, 'list_non_root_aggregates',
+                         mock.Mock(return_value=['aggr1']))
+        self.mock_object(
+            mock_dest_client, 'create_vserver',
+            mock.Mock(side_effect=netapp_api.NaApiError(code='fake_code')))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.library._get_backup_vserver,
+                          fake.SHARE_BACKUP, fake.SHARE_SERVER)
+
+    def test__delete_backup_vserver_unexpected_error(self):
+        mock_api_client = mock.Mock()
+        self.mock_object(self.library, '_get_backend',
+                         mock.Mock(return_value=fake.BACKEND_NAME))
+        self.mock_object(self.library, '_get_api_client_for_backend',
+                         mock.Mock(return_value=mock_api_client))
+        self.mock_object(
+            mock_api_client, 'delete_vserver',
+            mock.Mock(side_effect=exception.NetAppException(
+                message='Cannot delete Vserver.')))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._delete_backup_vserver,
+                          fake.SHARE_BACKUP, fake.VSERVER2)
+
+    def test_check_for_setup_error_without_configured_vserver(self):
+        self.library._have_cluster_creds = True
+        self.library.configuration.netapp_vserver = None
+        self.mock_object(self.client, 'list_non_root_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_initialize_flexgroup_pools')
+        self.mock_object(self.library, 'is_flexvol_pool_configured',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.library, '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library, '_validate_dns_config')
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'check_for_setup_error')
+
+        self.library.check_for_setup_error()
+
+        mock_super.assert_called_once_with()
+        self.assertFalse(lib_multi_svm.LOG.warning.called)
+
+    def test_manage_existing_with_compatible_nfs_config(self):
+        self.library.is_nfs_config_supported = True
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC))
+        self.mock_object(self.library,
+                         '_get_nfs_config_provisioning_options',
+                         mock.Mock(return_value='fake_nfs_config'))
+        self.mock_object(self.library, '_is_share_server_compatible',
+                         mock.Mock(return_value=True))
+        mock_super = self.mock_object(
+            lib_base.NetAppCmodeFileStorageLibrary, 'manage_existing',
+            mock.Mock(return_value='fake_result'))
+
+        result = self.library.manage_existing(fake.SHARE, 'opts',
+                                              share_server=fake.SHARE_SERVER)
+
+        self.assertEqual('fake_result', result)
+        mock_super.assert_called_once_with(
+            fake.SHARE, 'opts', share_server=fake.SHARE_SERVER)
+
+    def test__check_compatibility_using_svm_dr_without_capacity_check(self):
+        self.library.configuration.netapp_server_migration_check_capacity = (
+            False)
+        self._init_mocks_for_svm_dr_check_compatibility()
+
+        method, result = self.library._check_compatibility_using_svm_dr(
+            self.mock_src_client, self.mock_dest_client,
+            fake.SERVER_MIGRATION_REQUEST_SPEC, fake.POOLS)
+
+        self.assertEqual('svm_dr', method)
+        self.assertTrue(result)
+        self.library._check_capacity_compatibility.assert_not_called()

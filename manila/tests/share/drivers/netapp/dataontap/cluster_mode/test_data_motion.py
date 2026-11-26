@@ -24,6 +24,7 @@ from manila.share import configuration
 from manila.share import driver
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.client import client_cmode_rest
 from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
@@ -186,6 +187,40 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
         self.assertRaises(exception.BadConfigurationException,
                           data_motion.get_backup_configuration,
                           'nonexistent_backup_type')
+
+    def test_get_client_for_backend_force_rest_client(self):
+        mock_rest_client = self.mock_object(
+            client_cmode_rest, "NetAppRestClient", mock.Mock())
+        self.mock_object(data_motion, "get_backend_configuration",
+                         mock.Mock(return_value=self.config))
+
+        data_motion.get_client_for_backend(self.backend,
+                                           force_rest_client=True)
+
+        mock_rest_client.assert_called_once_with(
+            hostname='fake.hostname', password='fake_password',
+            username='fake_user', transport_type='https', port=8866,
+            ssl_cert_path='/etc/ssl/certs', ssl_cert_verify=True,
+            trace=mock.ANY, vserver=None,
+            async_rest_timeout=self.config.netapp_rest_operation_timeout,
+            private_key_file='/fake_private_key.pem',
+            certificate_file='/fake_cert.pem',
+            ca_certificate_file='/fake_ca_cert.crt',
+            zapi_fallback_enabled=self.config.netapp_zapi_fallback_enabled,
+            certificate_host_validation=False)
+        self.mock_cmode_client.assert_not_called()
+
+    def test_get_config_for_backend_dhss_true_drops_the_vserver(self):
+        """A pre-created vserver must not be reused when DHSS is enabled."""
+        self.mock_object(data_motion, "CONF")
+        CONF.set_override("netapp_vserver", 'fake_vserver',
+                          group=self.backend)
+        CONF.set_override("driver_handles_share_servers", True,
+                          group=self.backend)
+
+        config = data_motion.get_backend_configuration(self.backend)
+
+        self.assertIsNone(config.netapp_vserver)
 
 
 @ddt.ddt
@@ -1447,3 +1482,280 @@ class NetAppCDOTDataMotionSessionTestCase(test.TestCase):
             self.dm_session.get_policy_from_share_replica_metadata(share))
         self.assertEqual('MirrorAllSnapshots', policy)
         self.assertFalse(is_sync_policy)
+
+    def test__get_backend_snapmirror_policy_name_svm(self):
+        config = mock.Mock()
+        config.netapp_snapmirror_policy_name_svm_template = (
+            'snapmirror_policy_%(share_server_id)s')
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=config))
+
+        result = self.dm_session._get_backend_snapmirror_policy_name_svm(
+            'fake-share-server-id', self.source_backend)
+
+        self.assertEqual('snapmirror_policy_fake_share_server_id', result)
+        data_motion.get_backend_configuration.assert_called_once_with(
+            self.source_backend)
+
+    def test_get_vserver_from_share_server_without_backend_details(self):
+        self.assertIsNone(self.dm_session.get_vserver_from_share_server({}))
+
+    def test_delete_snapmirror_quiesce_does_not_exist(self):
+        """A missing relationship makes the quiesce step a no-op."""
+        mock_src_client = mock.Mock()
+        mock_dest_client = mock.Mock()
+        mock_dest_client.quiesce_snapmirror_vol.side_effect = (
+            netapp_api.NaApiError(code=netapp_api.EAPIERROR))
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(side_effect=[mock_dest_client,
+                                                mock_src_client]))
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.netapp_snapmirror_release_timeout = 30
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.dm_session, 'wait_for_snapmirror_release_vol')
+
+        self.dm_session.delete_snapmirror(self.fake_src_share,
+                                          self.fake_dest_share)
+
+        mock_dest_client.quiesce_snapmirror_vol.assert_called_once_with(
+            mock.ANY, self.fake_src_vol_name, mock.ANY,
+            self.fake_dest_vol_name)
+        mock_dest_client.delete_snapmirror_vol.assert_called_once_with(
+            mock.ANY, self.fake_src_vol_name, mock.ANY,
+            self.fake_dest_vol_name)
+
+    def test_modify_snapmirror(self):
+        self.dm_session.modify_snapmirror(self.fake_src_share,
+                                          self.fake_dest_share,
+                                          schedule='daily')
+
+        self.mock_dest_client.modify_snapmirror_vol.assert_called_once_with(
+            self.source_vserver, self.fake_src_vol_name,
+            self.dest_vserver, self.fake_dest_vol_name, schedule='daily')
+
+    def test_modify_snapmirror_falls_back_to_the_configured_schedule(self):
+        self.dm_session.modify_snapmirror(self.fake_src_share,
+                                          self.fake_dest_share)
+
+        self.mock_dest_client.modify_snapmirror_vol.assert_called_once_with(
+            self.source_vserver, self.fake_src_vol_name,
+            self.dest_vserver, self.fake_dest_vol_name, schedule='hourly')
+
+    def test_change_snapmirror_source_from_the_active_replica(self):
+        """The active replica reuses the policy of its own relationship."""
+        fake_new_src_share = copy.deepcopy(fake.SHARE)
+        fake_new_src_share['id'] = 'd02d497a-236c-4852-812a-0d39373e312a'
+        fake_new_src_share_name = 'share_d02d497a_236c_4852_812a_0d39373e312a'
+        self.mock_object(self.dm_session, 'delete_snapmirror')
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=self.mock_dest_client))
+        self.mock_object(
+            self.dm_session, 'get_snapmirrors',
+            mock.Mock(return_value=[{'policy': na_utils.SYNC_POLICY_NAME}]))
+
+        is_sync_policy = self.dm_session.change_snapmirror_source(
+            self.fake_dest_share, self.fake_dest_share, fake_new_src_share,
+            [self.fake_dest_share, fake_new_src_share])
+
+        self.assertTrue(is_sync_policy)
+        # A sync policy leaves the schedule unset, by NetApp's design.
+        self.mock_dest_client.create_snapmirror_vol.assert_called_once_with(
+            mock.ANY, fake_new_src_share_name, mock.ANY,
+            self.fake_dest_vol_name, na_utils.EXTENDED_DATA_PROTECTION_TYPE,
+            schedule=None, policy=na_utils.SYNC_POLICY_NAME)
+
+    def test_change_snapmirror_source_snapmirror_lookup_fails(self):
+        fake_new_src_share = copy.deepcopy(fake.SHARE)
+        fake_new_src_share['id'] = 'd02d497a-236c-4852-812a-0d39373e312a'
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=self.mock_dest_client))
+        self.mock_object(self.dm_session, 'get_snapmirrors',
+                         mock.Mock(side_effect=netapp_api.NaApiError()))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.dm_session.change_snapmirror_source,
+            self.fake_dest_share, self.fake_dest_share, fake_new_src_share,
+            [self.fake_dest_share, fake_new_src_share])
+
+    def test_change_snapmirror_source_dhss_true_existing_vserver_peer(self):
+        fake_new_src_share = copy.deepcopy(self.fake_src_share)
+        fake_new_src_share['id'] = 'd02d497a-236c-4852-812a-0d39373e312a'
+        self.mock_object(self.dm_session, 'delete_snapmirror')
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=self.mock_dest_client))
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.driver_handles_share_servers = True
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.mock_dest_client, 'get_vserver_peers',
+                         mock.Mock(return_value=['fake_peer']))
+
+        self.dm_session.change_snapmirror_source(
+            self.fake_dest_share, self.fake_src_share, fake_new_src_share,
+            [self.fake_dest_share, fake_new_src_share])
+
+        self.assertTrue(self.mock_dest_client.get_vserver_peers.called)
+        self.assertFalse(self.mock_dest_client.create_vserver_peer.called)
+
+    def test_change_snapmirror_source_dhss_true_peers_in_one_cluster(self):
+        """Peering within a single cluster needs no acceptance step."""
+        fake_new_src_share = copy.deepcopy(self.fake_src_share)
+        fake_new_src_share['id'] = 'd02d497a-236c-4852-812a-0d39373e312a'
+        mock_new_src_client = mock.Mock()
+        self.mock_object(self.dm_session, 'delete_snapmirror')
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(side_effect=[self.mock_dest_client,
+                                                mock_new_src_client]))
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.driver_handles_share_servers = True
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.mock_dest_client, 'get_vserver_peers',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.mock_dest_client, 'get_cluster_name',
+                         mock.Mock(return_value='cluster1'))
+        self.mock_object(mock_new_src_client, 'get_cluster_name',
+                         mock.Mock(return_value='cluster1'))
+
+        self.dm_session.change_snapmirror_source(
+            self.fake_dest_share, self.fake_src_share, fake_new_src_share,
+            [self.fake_dest_share, fake_new_src_share])
+
+        self.assertTrue(self.mock_dest_client.create_vserver_peer.called)
+        self.assertFalse(mock_new_src_client.accept_vserver_peer.called)
+
+    def test_remove_qos_on_old_active_replica_fixed_qos_type_specs(self):
+        mock_source_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_source_client))
+        self.mock_object(data_motion.LOG, 'exception')
+
+        retval = self.dm_session.remove_qos_on_old_active_replica(
+            self.fake_src_share, {'policy_type': 'fixed'})
+
+        self.assertIsNone(retval)
+        (mock_source_client.set_qos_policy_group_for_volume
+         .assert_called_once_with(self.fake_src_vol_name, 'none'))
+        data_motion.LOG.exception.assert_not_called()
+
+    def test_remove_qos_on_old_active_replica_qos_specs_unreachable(self):
+        mock_source_client = mock.Mock()
+        self.mock_object(data_motion, 'get_client_for_backend',
+                         mock.Mock(return_value=mock_source_client))
+        self.mock_object(
+            mock_source_client, 'set_qos_adaptive_policy_group_for_volume',
+            mock.Mock(side_effect=exception.StorageCommunicationException))
+        self.mock_object(data_motion.LOG, 'exception')
+
+        retval = self.dm_session.remove_qos_on_old_active_replica(
+            self.fake_src_share, {'policy_type': 'adaptive'})
+
+        self.assertIsNone(retval)
+        data_motion.LOG.exception.assert_called_once()
+
+    def test_cancel_snapmirror_svm_destination_does_not_exist(self):
+        """There is nothing to cancel if the destination vserver is gone."""
+        mock_dest_client = mock.Mock()
+        self.mock_object(self.dm_session, 'get_client_and_vserver_name',
+                         mock.Mock(return_value=(mock_dest_client,
+                                                 self.dest_vserver)))
+        mock_backend_config = na_fakes.create_configuration()
+        mock_backend_config.netapp_server_migration_state_change_timeout = 30
+        self.mock_object(data_motion, 'get_backend_configuration',
+                         mock.Mock(return_value=mock_backend_config))
+        self.mock_object(self.dm_session, 'get_snapmirrors_svm',
+                         mock.Mock(return_value=[]))
+        self.mock_object(mock_dest_client, 'get_vserver_info',
+                         mock.Mock(return_value=None))
+        self.mock_object(self.dm_session, 'convert_svm_to_default_subtype')
+
+        result = self.dm_session.cancel_snapmirror_svm(
+            self.fake_src_share_server, self.fake_dest_share_server)
+
+        self.assertIsNone(result)
+        mock_dest_client.get_vserver_info.assert_called_once_with(
+            self.dest_vserver)
+        self.assertFalse(
+            self.dm_session.convert_svm_to_default_subtype.called)
+
+    def test_wait_for_vserver_state_without_expectations(self):
+        """With nothing expected, the first vserver read ends the wait."""
+        mock_client = mock.Mock()
+        self.mock_object(mock_client, 'get_vserver_info',
+                         mock.Mock(return_value=fake.VSERVER_INFO))
+
+        self.dm_session.wait_for_vserver_state(fake.VSERVER1, mock_client,
+                                               timeout=20)
+
+        mock_client.get_vserver_info.assert_called_once_with(fake.VSERVER1)
+
+    def test_wait_for_snapmirror_release_svm_unexpected_api_error(self):
+        """An unrecognised release error still waits for the next check."""
+        src_mock_client = mock.Mock()
+        self.mock_object(src_mock_client, 'get_snapmirror_destinations_svm',
+                         mock.Mock(side_effect=[['fake_snapmirror'], []]))
+        self.mock_object(src_mock_client, 'release_snapmirror_svm',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             code='fake_code', message='fake_message')))
+
+        self.dm_session.wait_for_snapmirror_release_svm(
+            fake.VSERVER1, fake.VSERVER2, src_mock_client, timeout=20)
+
+        src_mock_client.release_snapmirror_svm.assert_called_once_with(
+            fake.VSERVER1, fake.VSERVER2)
+
+    def test_wait_for_snapmirror_release_vol_unexpected_api_error(self):
+        """An unrecognised release error still waits for the next check."""
+        src_mock_client = mock.Mock()
+        self.mock_object(src_mock_client, 'get_snapmirror_destinations',
+                         mock.Mock(side_effect=[['fake_snapmirror'], []]))
+        self.mock_object(src_mock_client, 'release_snapmirror_vol',
+                         mock.Mock(side_effect=netapp_api.NaApiError(
+                             code='fake_code', message='fake_message')))
+
+        self.dm_session.wait_for_snapmirror_release_vol(
+            fake.VSERVER1, fake.VSERVER2, fake.SHARE_NAME, fake.SHARE_NAME2,
+            False, src_mock_client, timeout=20)
+
+        src_mock_client.release_snapmirror_vol.assert_called_once_with(
+            fake.VSERVER1, fake.SHARE_NAME, fake.VSERVER2, fake.SHARE_NAME2,
+            relationship_info_only=False)
+
+    def test_get_most_available_aggr_of_vserver_without_aggregates(self):
+        vserver_client = mock.Mock()
+        self.mock_object(vserver_client, 'get_vserver_aggregate_capacities',
+                         mock.Mock(return_value={}))
+
+        self.assertIsNone(
+            self.dm_session.get_most_available_aggr_of_vserver(
+                vserver_client))
+
+    def test_get_most_available_aggr_of_vserver_picks_a_later_aggregate(self):
+        vserver_client = mock.Mock()
+        aggr_space_attr = {'aggr1': {'available': 2024},
+                           fake.AGGREGATE: {'available': 5678}}
+        self.mock_object(vserver_client, 'get_vserver_aggregate_capacities',
+                         mock.Mock(return_value=aggr_space_attr))
+
+        result = self.dm_session.get_most_available_aggr_of_vserver(
+            vserver_client)
+
+        self.assertEqual(fake.AGGREGATE, result)
+
+    def test_initialize_and_wait_snapmirror_vol_timeout(self):
+        vserver_client = mock.Mock()
+        self.mock_object(
+            vserver_client, 'get_snapmirrors',
+            mock.Mock(return_value=[{'relationship-status': 'transferring'}]))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.dm_session.initialize_and_wait_snapmirror_vol,
+            vserver_client, fake.VSERVER1, fake.FLEXVOL_NAME, fake.VSERVER2,
+            fake.FLEXVOL_NAME_1, timeout=10)
+
+        vserver_client.get_snapmirrors.assert_called_once_with(
+            source_path='%s:%s' % (fake.VSERVER1, fake.FLEXVOL_NAME),
+            dest_path='%s:%s' % (fake.VSERVER2, fake.FLEXVOL_NAME_1))
