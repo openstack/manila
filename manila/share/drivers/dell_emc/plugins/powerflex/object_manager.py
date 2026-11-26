@@ -54,9 +54,11 @@ class StorageObjectManager(object):
 
     def execute_powerflex_get_request(self, url, **url_params):
         request = url % url_params
-        res = requests.get(request,
-                           headers=self._get_headers(),
-                           verify=self._get_verify_cert())
+        res = requests.get(
+            request,
+            headers=self._get_headers(),
+            verify=self._get_verify_cert(),
+            timeout=60)
         res = self._check_response(res, request, "GET")
         response = res.json()
 
@@ -66,10 +68,12 @@ class StorageObjectManager(object):
         if not params:
             params = {}
         request = url % url_params
-        res = requests.post(request,
-                            data=json.dumps(params),
-                            headers=self._get_headers(),
-                            verify=self._get_verify_cert())
+        res = requests.post(
+            request,
+            data=json.dumps(params),
+            headers=self._get_headers(),
+            verify=self._get_verify_cert(),
+            timeout=60)
         res = self._check_response(res, request, "POST", params)
         response = None
         try:
@@ -82,9 +86,11 @@ class StorageObjectManager(object):
 
     def execute_powerflex_delete_request(self, url, **url_params):
         request = url % url_params
-        res = requests.delete(request,
-                              headers=self._get_headers(),
-                              verify=self._get_verify_cert())
+        res = requests.delete(
+            request,
+            headers=self._get_headers(),
+            verify=self._get_verify_cert(),
+            timeout=60)
         res = self._check_response(res, request, "DELETE")
         return res
 
@@ -92,10 +98,12 @@ class StorageObjectManager(object):
         if not params:
             params = {}
         request = url % url_params
-        res = requests.patch(request,
-                             data=json.dumps(params),
-                             headers=self._get_headers(),
-                             verify=self._get_verify_cert())
+        res = requests.patch(
+            request,
+            data=json.dumps(params),
+            headers=self._get_headers(),
+            verify=self._get_verify_cert(),
+            timeout=60)
         res = self._check_response(res, request, "PATCH")
         return res
 
@@ -115,10 +123,12 @@ class StorageObjectManager(object):
             self.got_token = False
             payload = json.dumps({"username": self.rest_username,
                                   "password": self.rest_password})
-            res = requests.post(login_request,
-                                headers=self._get_headers(),
-                                data=payload,
-                                verify=verify_cert)
+            res = requests.post(
+                login_request,
+                headers=self._get_headers(),
+                data=payload,
+                verify=verify_cert,
+                timeout=60)
             if (res.status_code == http_client.UNAUTHORIZED or
                     res.status_code == http_client.FORBIDDEN):
                 message = ("PowerFlex REST API access is still forbidden or "
@@ -133,23 +143,31 @@ class StorageObjectManager(object):
                 LOG.info("Going to perform request again %s with valid token.",
                          request)
                 if (request_type == "GET"):
-                    response = requests.get(request,
-                                            headers=self._get_headers(),
-                                            verify=verify_cert)
+                    response = requests.get(
+                        request,
+                        headers=self._get_headers(),
+                        verify=verify_cert,
+                        timeout=60)
                 elif (request_type == "POST"):
-                    response = requests.post(request,
-                                             headers=self._get_headers(),
-                                             data=json.dumps(params),
-                                             verify=verify_cert)
+                    response = requests.post(
+                        request,
+                        headers=self._get_headers(),
+                        data=json.dumps(params),
+                        verify=verify_cert,
+                        timeout=60)
                 elif (request_type == "DELETE"):
-                    response = requests.delete(request,
-                                               headers=self._get_headers(),
-                                               verify=verify_cert)
+                    response = requests.delete(
+                        request,
+                        headers=self._get_headers(),
+                        verify=verify_cert,
+                        timeout=60)
                 elif (request_type == "PATCH"):
-                    response = requests.patch(request,
-                                              headers=self._get_headers(),
-                                              data=json.dumps(params),
-                                              verify=verify_cert)
+                    response = requests.patch(
+                        request,
+                        headers=self._get_headers(),
+                        data=json.dumps(params),
+                        verify=verify_cert,
+                        timeout=60)
                 level = logging.DEBUG
                 if response.status_code != http_client.OK:
                     level = logging.ERROR

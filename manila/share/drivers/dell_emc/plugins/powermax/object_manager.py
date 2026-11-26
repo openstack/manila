@@ -48,11 +48,8 @@ class StorageObjectManager(object):
 
         obj_types = StorageObject.__subclasses__()  # pylint: disable=no-member
         for item in obj_types:
-            key = item.__name__
-            self.context[key] = eval(key)(self.connectors,
-                                          elt_maker,
-                                          xml_parser,
-                                          self)
+            self.context[item.__name__] = item(
+                self.connectors, elt_maker, xml_parser, self)
 
     def getStorageContext(self, type):
         if type in self.context:

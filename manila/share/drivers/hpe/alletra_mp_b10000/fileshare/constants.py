@@ -25,7 +25,7 @@ BE_FILESYSTEM_NAME = "manilafs-%s"
 BE_SHARESETTING_NAME = "manilass-%s"
 
 # BE Default Block All IPs Access Rule
-DEFAULT_IP_1 = "0.0.0.0"
+DEFAULT_IP_1 = "0.0.0.0"  # nosec: B104 - NFS "all clients" rule, not a bind
 DEFAULT_ACCESS_LEVEL_1 = "ro"
 DEFAULT_SQUASH_OPTION_1 = "root_squash"
 BE_DEFAULT_CLIENT_INFO_LIST = [

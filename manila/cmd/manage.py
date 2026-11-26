@@ -202,7 +202,8 @@ class ShellCommands(object):
 
         arguments: path
         """
-        exec(compile(open(path).read(), path, 'exec'), locals(), globals())
+        exec(compile(open(path).read(), path, 'exec'),
+             locals(), globals())  # nosec: B102 - admin-provided script
 
 
 class HostCommands(object):
