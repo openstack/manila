@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import copy
 import json
 import math
 from unittest import mock
@@ -2004,6 +2005,7 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
                 "fs_name": volname,
 
             },
+            "access_type": "none",
             "clients": clients
         }
 
@@ -2057,6 +2059,7 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
                 "fs_name": volname
 
             },
+            "access_type": "ro",
             "clients": {
                 'access_type': "ro",
                 'addresses': ['10.0.0.1'],
@@ -2064,9 +2067,12 @@ class NFSClusterProtocolHelperTestCase(test.TestCase):
             }
         }
 
+        expected_export = copy.deepcopy(export)
+        expected_export["access_type"] = "none"
+        expected_export['clients'] = new_clients
+        inbuf = json.dumps(expected_export).encode('utf-8')
+
         driver.rados_command.return_value = export
-        export['clients'] = new_clients
-        inbuf = json.dumps(export).encode('utf-8')
 
         self._nfscluster_protocol_helper._allow_access(
             self._share, new_clients, sub_name=self._share['id']
